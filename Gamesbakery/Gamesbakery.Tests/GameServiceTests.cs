@@ -2,7 +2,6 @@
 using Gamesbakery.Core.Repositories;
 using Gamesbakery.BusinessLogic.Services;
 using Moq;
-using Xunit;
 
 namespace Gamesbakery.Tests
 {
@@ -23,14 +22,14 @@ namespace Gamesbakery.Tests
         public async Task AddGameAsync_ValidData_ReturnsGameDTO()
         {
             // Arrange
-            var categoryId = 1;
+            var categoryId = Guid.NewGuid();
             var title = "Game Title";
             var price = 59.99m;
             var releaseDate = DateTime.UtcNow;
             var description = "Game Description";
             var originalPublisher = "Bethesda";
             var category = new Category(categoryId, "Action", "Action games");
-            var game = new Game(1, categoryId, title, price, releaseDate, description, true, originalPublisher);
+            var game = new Game(Guid.NewGuid(), categoryId, title, price, releaseDate, description, true, originalPublisher);
 
             _categoryRepositoryMock.Setup(repo => repo.GetByIdAsync(categoryId)).ReturnsAsync(category);
             _gameRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<Game>())).ReturnsAsync(game);
@@ -49,7 +48,7 @@ namespace Gamesbakery.Tests
         public async Task AddGameAsync_CategoryNotFound_ThrowsKeyNotFoundException()
         {
             // Arrange
-            var categoryId = 1;
+            var categoryId = Guid.NewGuid();
             var title = "Game Title";
             var price = 59.99m;
             var releaseDate = DateTime.UtcNow;
@@ -66,7 +65,7 @@ namespace Gamesbakery.Tests
         public async Task AddGameAsync_NegativePrice_ThrowsArgumentException()
         {
             // Arrange
-            var categoryId = 1;
+            var categoryId = Guid.NewGuid();
             var title = "Game Title";
             var price = -10m;
             var releaseDate = DateTime.UtcNow;
@@ -84,10 +83,11 @@ namespace Gamesbakery.Tests
         public async Task GetAllGamesAsync_ReturnsGameDTOList()
         {
             // Arrange
+            var categoryId = Guid.NewGuid();
             var games = new List<Game>
             {
-                new Game(1, 1, "Game 1", 59.99m, DateTime.UtcNow, "Desc 1", true, "Bethesda"),
-                new Game(2, 1, "Game 2", 29.99m, DateTime.UtcNow, "Desc 2", true, "Valve")
+                new Game(Guid.NewGuid(), categoryId, "Game 1", 59.99m, DateTime.UtcNow, "Desc 1", true, "Bethesda"),
+                new Game(Guid.NewGuid(), categoryId, "Game 2", 29.99m, DateTime.UtcNow, "Desc 2", true, "Valve")
             };
             _gameRepositoryMock.Setup(repo => repo.GetAllAsync()).ReturnsAsync(games);
 
@@ -103,8 +103,9 @@ namespace Gamesbakery.Tests
         public async Task SetGameForSaleAsync_ValidData_Success()
         {
             // Arrange
-            var gameId = 1;
-            var game = new Game(gameId, 1, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
+            var gameId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
+            var game = new Game(gameId, categoryId, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
             _gameRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Game>())).ReturnsAsync(game);
 
@@ -120,7 +121,7 @@ namespace Gamesbakery.Tests
         public async Task SetGameForSaleAsync_GameNotFound_ThrowsKeyNotFoundException()
         {
             // Arrange
-            var gameId = 1;
+            var gameId = Guid.NewGuid();
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync((Game)null);
 
             // Act & Assert

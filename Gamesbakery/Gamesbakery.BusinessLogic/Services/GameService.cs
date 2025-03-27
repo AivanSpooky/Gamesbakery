@@ -16,18 +16,19 @@ namespace Gamesbakery.BusinessLogic.Services
             _categoryRepository = categoryRepository;
         }
 
-        public async Task<GameDetailsDTO> AddGameAsync(int categoryId, string title, decimal price, DateTime releaseDate, string description, string originalPublisher)
+        public async Task<GameDetailsDTO> AddGameAsync(Guid categoryId, string title, decimal price, DateTime releaseDate, string description, string originalPublisher)
         {
             var category = await _categoryRepository.GetByIdAsync(categoryId);
             if (category == null)
                 throw new KeyNotFoundException($"Category with ID {categoryId} not found.");
 
-            var game = new Game(0, categoryId, title, price, releaseDate, description, true, originalPublisher);
+            // Используем Guid.NewGuid() вместо 0
+            var game = new Game(Guid.NewGuid(), categoryId, title, price, releaseDate, description, true, originalPublisher);
             var createdGame = await _gameRepository.AddAsync(game);
             return MapToDetailsDTO(createdGame);
         }
 
-        public async Task<GameDetailsDTO> GetGameByIdAsync(int id)
+        public async Task<GameDetailsDTO> GetGameByIdAsync(Guid id)
         {
             var game = await _gameRepository.GetByIdAsync(id);
             if (game == null)
@@ -41,7 +42,7 @@ namespace Gamesbakery.BusinessLogic.Services
             return games.Select(MapToListDTO).ToList();
         }
 
-        public async Task<GameDetailsDTO> SetGameForSaleAsync(int gameId, bool isForSale)
+        public async Task<GameDetailsDTO> SetGameForSaleAsync(Guid gameId, bool isForSale)
         {
             var game = await _gameRepository.GetByIdAsync(gameId);
             if (game == null)

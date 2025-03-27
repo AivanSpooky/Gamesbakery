@@ -2,7 +2,7 @@
 {
     public class CategoryDTO
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public string GenreName { get; set; }
         public string Description { get; set; }
     }

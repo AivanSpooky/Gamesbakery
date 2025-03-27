@@ -2,20 +2,24 @@
 {
     public class OrderItem
     {
-        public int Id { get; private set; }
-        public int OrderId { get; private set; }
-        public int GameId { get; private set; }
-        public int SellerId { get; private set; }
+        public Guid Id { get; private set; }
+        public Guid OrderId { get; private set; }
+        public Guid GameId { get; private set; }
+        public Guid SellerId { get; private set; }
         public string? Key { get; private set; }
 
-        public OrderItem(int id, int orderId, int gameId, int sellerId, string? key)
+        public OrderItem()
         {
-            if (orderId <= 0)
-                throw new ArgumentException("OrderId must be positive.", nameof(orderId));
-            if (gameId <= 0)
-                throw new ArgumentException("GameId must be positive.", nameof(gameId));
-            if (sellerId <= 0)
-                throw new ArgumentException("SellerId must be positive.", nameof(sellerId));
+        }
+
+        public OrderItem(Guid id, Guid orderId, Guid gameId, Guid sellerId, string? key)
+        {
+            if (orderId == Guid.Empty)
+                throw new ArgumentException("OrderId cannot be empty.", nameof(orderId));
+            if (gameId == Guid.Empty)
+                throw new ArgumentException("GameId cannot be empty.", nameof(gameId));
+            if (sellerId == Guid.Empty)
+                throw new ArgumentException("SellerId cannot be empty.", nameof(sellerId));
             if (key != null && (string.IsNullOrWhiteSpace(key) || key.Length > 50))
                 throw new ArgumentException("Key must be between 1 and 50 characters if provided.", nameof(key));
 

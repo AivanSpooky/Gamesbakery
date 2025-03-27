@@ -2,12 +2,16 @@
 {
     public class Seller
     {
-        public int Id { get; private set; }
+        public Guid Id { get; private set; }
         public string SellerName { get; private set; }
         public DateTime RegistrationDate { get; private set; }
         public double AvgRating { get; private set; }
 
-        public Seller(int id, string sellerName, DateTime registrationDate, double avgRating)
+        public Seller()
+        {
+        }
+
+        public Seller(Guid id, string sellerName, DateTime registrationDate, double avgRating)
         {
             if (string.IsNullOrWhiteSpace(sellerName) || sellerName.Length > 100)
                 throw new ArgumentException("SellerName must be between 1 and 100 characters.", nameof(sellerName));

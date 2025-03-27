@@ -2,19 +2,23 @@
 {
     public class Review
     {
-        public int Id { get; private set; }
-        public int UserId { get; private set; }
-        public int GameId { get; private set; }
+        public Guid Id { get; private set; }
+        public Guid UserId { get; private set; }
+        public Guid GameId { get; private set; }
         public string Text { get; private set; }
         public int Rating { get; private set; }
         public DateTime CreationDate { get; private set; }
 
-        public Review(int id, int userId, int gameId, string text, int rating, DateTime creationDate)
+        public Review()
         {
-            if (userId <= 0)
-                throw new ArgumentException("UserId must be positive.", nameof(userId));
-            if (gameId <= 0)
-                throw new ArgumentException("GameId must be positive.", nameof(gameId));
+        }
+
+        public Review(Guid id, Guid userId, Guid gameId, string text, int rating, DateTime creationDate)
+        {
+            if (userId == Guid.Empty)
+                throw new ArgumentException("UserId cannot be empty.", nameof(userId));
+            if (gameId == Guid.Empty)
+                throw new ArgumentException("GameId cannot be empty.", nameof(gameId));
             if (string.IsNullOrWhiteSpace(text))
                 throw new ArgumentException("Text cannot be empty.", nameof(text));
             if (rating < 1 || rating > 5)

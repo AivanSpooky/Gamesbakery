@@ -2,7 +2,6 @@ using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
 using Gamesbakery.BusinessLogic.Services;
 using Moq;
-using Xunit;
 
 namespace Gamesbakery.Tests
 {
@@ -24,8 +23,9 @@ namespace Gamesbakery.Tests
             var username = "JohnDoe";
             var email = "john.doe@example.com";
             var password = "password123";
-            var country = "USA";
-            var user = new User(1, username, email, DateTime.UtcNow, country, password, false, 0);
+            var country = "United States";
+            var userId = Guid.NewGuid();
+            var user = new User(userId, username, email, DateTime.UtcNow, country, password, false, 0);
             _userRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<User>())).ReturnsAsync(user);
 
             // Act
@@ -44,7 +44,7 @@ namespace Gamesbakery.Tests
             var username = "";
             var email = "john.doe@example.com";
             var password = "password123";
-            var country = "USA";
+            var country = "United States";
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => _userService.RegisterUserAsync(username, email, password, country));
@@ -57,7 +57,7 @@ namespace Gamesbakery.Tests
             var username = "JohnDoe";
             var email = "john.doe@example.com";
             var password = new string('a', 101); // Длина > 100
-            var country = "USA";
+            var country = "United States";
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => _userService.RegisterUserAsync(username, email, password, country));
@@ -67,8 +67,8 @@ namespace Gamesbakery.Tests
         public async Task GetUserByIdAsync_UserExists_ReturnsUserDTO()
         {
             // Arrange
-            var userId = 1;
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 100);
+            var userId = Guid.NewGuid();
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
 
             // Act
@@ -83,7 +83,7 @@ namespace Gamesbakery.Tests
         public async Task GetUserByIdAsync_UserNotFound_ThrowsKeyNotFoundException()
         {
             // Arrange
-            var userId = 1;
+            var userId = Guid.NewGuid();
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync((User)null);
 
             // Act & Assert
@@ -94,9 +94,9 @@ namespace Gamesbakery.Tests
         public async Task UpdateBalanceAsync_ValidBalance_ReturnsUserDTO()
         {
             // Arrange
-            var userId = 1;
+            var userId = Guid.NewGuid();
             var newBalance = 200m;
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 100);
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
             _userRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<User>())).ReturnsAsync(user);
 
@@ -112,9 +112,9 @@ namespace Gamesbakery.Tests
         public async Task UpdateBalanceAsync_NegativeBalance_ThrowsArgumentException()
         {
             // Arrange
-            var userId = 1;
+            var userId = Guid.NewGuid();
             var newBalance = -50m;
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 100);
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
 
             // Act & Assert
@@ -125,8 +125,8 @@ namespace Gamesbakery.Tests
         public async Task BlockUserAsync_UserExists_Success()
         {
             // Arrange
-            var userId = 1;
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 100);
+            var userId = Guid.NewGuid();
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
             _userRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<User>())).ReturnsAsync(user);
 
@@ -141,7 +141,7 @@ namespace Gamesbakery.Tests
         public async Task BlockUserAsync_UserNotFound_ThrowsKeyNotFoundException()
         {
             // Arrange
-            var userId = 1;
+            var userId = Guid.NewGuid();
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync((User)null);
 
             // Act & Assert

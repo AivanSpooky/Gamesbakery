@@ -1,6 +1,6 @@
 ﻿public class UserProfileDTO
 {
-    public int Id { get; set; } // (для профиля пользователя)
+    public Guid Id { get; set; } // (для профиля пользователя)
     public string Username { get; set; }
     public string Email { get; set; }
     public DateTime RegistrationDate { get; set; }

@@ -5,6 +5,6 @@ namespace Gamesbakery.Core.Repositories
     public interface IReviewRepository
     {
         Task<Review> AddAsync(Review review);
-        Task<List<Review>> GetByGameIdAsync(int gameId);
+        Task<List<Review>> GetByGameIdAsync(Guid gameId);
     }
 }

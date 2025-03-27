@@ -2,9 +2,9 @@
 {
     public class ReviewDTO
     {
-        public int Id { get; set; }
-        public int UserId { get; set; }
-        public int GameId { get; set; }
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+        public Guid GameId { get; set; }
         public string Text { get; set; }
         public int Rating { get; set; }
         public DateTime CreationDate { get; set; }

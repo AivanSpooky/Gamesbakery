@@ -2,17 +2,23 @@
 {
     public class Order
     {
-        public int Id { get; private set; }
-        public int UserId { get; private set; }
+        public Guid Id { get; private set; }
+        public Guid UserId { get; private set; }
         public DateTime OrderDate { get; private set; }
         public decimal Price { get; private set; }
         public bool IsCompleted { get; private set; }
         public bool IsOverdue { get; private set; }
+        public void Complete() => IsCompleted = true;
+        public void MarkAsOverdue() => IsOverdue = true;
 
-        public Order(int id, int userId, DateTime orderDate, decimal price, bool isCompleted, bool isOverdue)
+        public Order()
         {
-            if (userId <= 0)
-                throw new ArgumentException("UserId must be positive.", nameof(userId));
+        }
+
+        public Order(Guid id, Guid userId, DateTime orderDate, decimal price, bool isCompleted, bool isOverdue)
+        {
+            if (userId == Guid.Empty)
+                throw new ArgumentException("UserId cannot be empty.", nameof(userId));
             if (price < 0)
                 throw new ArgumentException("Price cannot be negative.", nameof(price));
 
@@ -23,8 +29,5 @@
             IsCompleted = isCompleted;
             IsOverdue = isOverdue;
         }
-
-        public void Complete() => IsCompleted = true;
-        public void MarkAsOverdue() => IsOverdue = true;
     }
 }

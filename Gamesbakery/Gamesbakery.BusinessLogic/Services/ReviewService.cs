@@ -17,7 +17,7 @@ namespace Gamesbakery.BusinessLogic.Services
             _gameRepository = gameRepository;
         }
 
-        public async Task<ReviewDTO> AddReviewAsync(int userId, int gameId, string text, int rating)
+        public async Task<ReviewDTO> AddReviewAsync(Guid userId, Guid gameId, string text, int rating)
         {
             // Проверка существования пользователя
             var user = await _userRepository.GetByIdAsync(userId);
@@ -32,13 +32,13 @@ namespace Gamesbakery.BusinessLogic.Services
                 throw new KeyNotFoundException($"Game with ID {gameId} not found.");
 
             // Создание отзыва
-            var review = new Review(0, userId, gameId, text, rating, DateTime.UtcNow);
+            var review = new Review(Guid.NewGuid(), userId, gameId, text, rating, DateTime.UtcNow);
             var createdReview = await _reviewRepository.AddAsync(review);
 
             return MapToDTO(createdReview);
         }
 
-        public async Task<List<ReviewDTO>> GetReviewsByGameIdAsync(int gameId)
+        public async Task<List<ReviewDTO>> GetReviewsByGameIdAsync(Guid gameId)
         {
             // Проверка существования игры
             var game = await _gameRepository.GetByIdAsync(gameId);

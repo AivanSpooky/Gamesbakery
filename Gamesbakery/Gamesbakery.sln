@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113 d17.12
+VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.Web", "Gamesbakery\Gamesbakery.Web.csproj", "{CE11045B-089B-4E26-BB39-AB181C624D29}"
 EndProject
@@ -9,7 +9,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.Core", "Gamesba
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.BusinessLogic", "Gamesbakery.BusinessLogic\Gamesbakery.BusinessLogic.csproj", "{8259CE07-027B-475C-BA35-2CA3B6E26137}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.Tests", "Gamesbakery.Tests\Gamesbakery.Tests.csproj", "{E2828902-803B-4E6D-92CD-2313F2D0BBE1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.BusinessLogic.Tests", "Gamesbakery.Tests\Gamesbakery.BusinessLogic.Tests.csproj", "{E2828902-803B-4E6D-92CD-2313F2D0BBE1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.DataAccess", "Gamesbakery.DataAccess\Gamesbakery.DataAccess.csproj", "{4042691C-C658-4006-9056-2A38E3CE103A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.DataSeeder", "Gamesbakery.DataSeeder\Gamesbakery.DataSeeder.csproj", "{87049659-816B-49FA-B156-3530C855A861}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.DataAccess.Tests", "Gamesbakery.DataAccess.Tests\Gamesbakery.DataAccess.Tests.csproj", "{0BB89497-6C92-4C43-B3EB-B7F3CD60BACF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +39,18 @@ Global
 		{E2828902-803B-4E6D-92CD-2313F2D0BBE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E2828902-803B-4E6D-92CD-2313F2D0BBE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E2828902-803B-4E6D-92CD-2313F2D0BBE1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4042691C-C658-4006-9056-2A38E3CE103A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4042691C-C658-4006-9056-2A38E3CE103A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4042691C-C658-4006-9056-2A38E3CE103A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4042691C-C658-4006-9056-2A38E3CE103A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87049659-816B-49FA-B156-3530C855A861}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87049659-816B-49FA-B156-3530C855A861}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87049659-816B-49FA-B156-3530C855A861}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87049659-816B-49FA-B156-3530C855A861}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0BB89497-6C92-4C43-B3EB-B7F3CD60BACF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0BB89497-6C92-4C43-B3EB-B7F3CD60BACF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0BB89497-6C92-4C43-B3EB-B7F3CD60BACF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0BB89497-6C92-4C43-B3EB-B7F3CD60BACF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

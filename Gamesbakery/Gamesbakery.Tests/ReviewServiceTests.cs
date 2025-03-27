@@ -2,7 +2,6 @@
 using Gamesbakery.Core.Repositories;
 using Gamesbakery.BusinessLogic.Services;
 using Moq;
-using Xunit;
 
 namespace Gamesbakery.Tests
 {
@@ -25,13 +24,14 @@ namespace Gamesbakery.Tests
         public async Task AddReviewAsync_ValidData_ReturnsReviewDTO()
         {
             // Arrange
-            var userId = 1;
-            var gameId = 1;
+            var userId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
             var text = "Great game!";
             var rating = 5;
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 100);
-            var game = new Game(gameId, 1, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
-            var review = new Review(1, userId, gameId, text, rating, DateTime.UtcNow);
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
+            var game = new Game(gameId, categoryId, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
+            var review = new Review(Guid.NewGuid(), userId, gameId, text, rating, DateTime.UtcNow);
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
@@ -50,12 +50,13 @@ namespace Gamesbakery.Tests
         public async Task AddReviewAsync_InvalidRating_ThrowsArgumentException()
         {
             // Arrange
-            var userId = 1;
-            var gameId = 1;
+            var userId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
             var text = "Great game!";
             var rating = 6; // Рейтинг должен быть от 1 до 5
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 100);
-            var game = new Game(gameId, 1, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
+            var game = new Game(gameId, categoryId, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
@@ -68,12 +69,13 @@ namespace Gamesbakery.Tests
         public async Task AddReviewAsync_EmptyText_ThrowsArgumentException()
         {
             // Arrange
-            var userId = 1;
-            var gameId = 1;
+            var userId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
             var text = "";
             var rating = 5;
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 100);
-            var game = new Game(gameId, 1, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
+            var game = new Game(gameId, categoryId, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
@@ -86,12 +88,13 @@ namespace Gamesbakery.Tests
         public async Task AddReviewAsync_BlockedUser_ThrowsInvalidOperationException()
         {
             // Arrange
-            var userId = 1;
-            var gameId = 1;
+            var userId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
             var text = "Great game!";
             var rating = 5;
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", true, 100);
-            var game = new Game(gameId, 1, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", true, 100);
+            var game = new Game(gameId, categoryId, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
@@ -104,12 +107,15 @@ namespace Gamesbakery.Tests
         public async Task GetReviewsByGameIdAsync_GameExists_ReturnsReviewDTOList()
         {
             // Arrange
-            var gameId = 1;
-            var game = new Game(gameId, 1, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
+            var gameId = Guid.NewGuid();
+            var userId1 = Guid.NewGuid();
+            var userId2 = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
+            var game = new Game(gameId, categoryId, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
             var reviews = new List<Review>
             {
-                new Review(1, 1, gameId, "Great game!", 5, DateTime.UtcNow),
-                new Review(2, 2, gameId, "Not bad", 3, DateTime.UtcNow)
+                new Review(Guid.NewGuid(), userId1, gameId, "Great game!", 5, DateTime.UtcNow),
+                new Review(Guid.NewGuid(), userId2, gameId, "Not bad", 3, DateTime.UtcNow)
             };
 
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
@@ -127,7 +133,7 @@ namespace Gamesbakery.Tests
         public async Task GetReviewsByGameIdAsync_GameNotFound_ThrowsKeyNotFoundException()
         {
             // Arrange
-            var gameId = 1;
+            var gameId = Guid.NewGuid();
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync((Game)null);
 
             // Act & Assert

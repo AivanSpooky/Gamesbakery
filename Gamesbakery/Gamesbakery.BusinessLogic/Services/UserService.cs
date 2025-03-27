@@ -1,6 +1,5 @@
 ﻿using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
-using Gamesbakery.Core.DTOs;
 using Gamesbakery.Core.DTOs.UserDTO;
 
 namespace Gamesbakery.BusinessLogic.Services
@@ -16,12 +15,12 @@ namespace Gamesbakery.BusinessLogic.Services
 
         public async Task<UserProfileDTO> RegisterUserAsync(string username, string email, string password, string country)
         {
-            var user = new User(0, username, email, DateTime.UtcNow, country, password, false, 0);
+            var user = new User(Guid.NewGuid(), username, email, DateTime.UtcNow, country, password, false, 0);
             var createdUser = await _userRepository.AddAsync(user);
             return MapToProfileDTO(createdUser);
         }
 
-        public async Task<UserProfileDTO> GetUserByIdAsync(int id)
+        public async Task<UserProfileDTO> GetUserByIdAsync(Guid id)
         {
             var user = await _userRepository.GetByIdAsync(id);
             if (user == null)
@@ -37,7 +36,7 @@ namespace Gamesbakery.BusinessLogic.Services
             return MapToProfileDTO(user);
         }
 
-        public async Task<UserProfileDTO> UpdateBalanceAsync(int userId, decimal newBalance)
+        public async Task<UserProfileDTO> UpdateBalanceAsync(Guid userId, decimal newBalance)
         {
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null)
@@ -48,7 +47,7 @@ namespace Gamesbakery.BusinessLogic.Services
             return MapToProfileDTO(updatedUser);
         }
 
-        public async Task BlockUserAsync(int userId)
+        public async Task BlockUserAsync(Guid userId)
         {
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null)
@@ -58,7 +57,7 @@ namespace Gamesbakery.BusinessLogic.Services
             await _userRepository.UpdateAsync(user);
         }
 
-        public async Task UnblockUserAsync(int userId)
+        public async Task UnblockUserAsync(Guid userId)
         {
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null)

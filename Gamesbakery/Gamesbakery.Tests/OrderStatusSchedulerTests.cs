@@ -2,7 +2,6 @@
 using Gamesbakery.Core.Repositories;
 using Gamesbakery.BusinessLogic.Schedulers;
 using Moq;
-using Xunit;
 
 namespace Gamesbakery.Tests
 {
@@ -23,16 +22,21 @@ namespace Gamesbakery.Tests
         public async Task UpdateOrderStatusesAsync_AllKeysGenerated_OrderCompleted()
         {
             // Arrange
-            var order = new Order(1, 1, DateTime.UtcNow.AddDays(-5), 100, false, false);
+            var orderId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var gameId1 = Guid.NewGuid();
+            var gameId2 = Guid.NewGuid();
+            var sellerId = Guid.NewGuid();
+            var order = new Order(orderId, userId, DateTime.UtcNow.AddDays(-5), 100, false, false);
             var orders = new List<Order> { order };
             var orderItems = new List<OrderItem>
             {
-                new OrderItem(1, 1, 1, 1, "KEY-123"),
-                new OrderItem(2, 1, 2, 1, "KEY-456")
+                new OrderItem(Guid.NewGuid(), orderId, gameId1, sellerId, "KEY-123"),
+                new OrderItem(Guid.NewGuid(), orderId, gameId2, sellerId, "KEY-456")
             };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(0)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(1)).ReturnsAsync(orderItems);
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(orderId)).ReturnsAsync(orderItems);
             _orderRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Order>())).ReturnsAsync(order);
 
             // Act
@@ -47,16 +51,21 @@ namespace Gamesbakery.Tests
         public async Task UpdateOrderStatusesAsync_KeysNotGenerated_14DaysPassed_OrderOverdue()
         {
             // Arrange
-            var order = new Order(1, 1, DateTime.UtcNow.AddDays(-15), 100, false, false);
+            var orderId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var gameId1 = Guid.NewGuid();
+            var gameId2 = Guid.NewGuid();
+            var sellerId = Guid.NewGuid();
+            var order = new Order(orderId, userId, DateTime.UtcNow.AddDays(-15), 100, false, false);
             var orders = new List<Order> { order };
             var orderItems = new List<OrderItem>
             {
-                new OrderItem(1, 1, 1, 1, null),
-                new OrderItem(2, 1, 2, 1, "KEY-456")
+                new OrderItem(Guid.NewGuid(), orderId, gameId1, sellerId, null),
+                new OrderItem(Guid.NewGuid(), orderId, gameId2, sellerId, "KEY-456")
             };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(0)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(1)).ReturnsAsync(orderItems);
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(orderId)).ReturnsAsync(orderItems);
             _orderRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Order>())).ReturnsAsync(order);
 
             // Act
@@ -71,11 +80,13 @@ namespace Gamesbakery.Tests
         public async Task UpdateOrderStatusesAsync_OrderAlreadyCompleted_NoChanges()
         {
             // Arrange
-            var order = new Order(1, 1, DateTime.UtcNow.AddDays(-5), 100, true, false);
+            var orderId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var order = new Order(orderId, userId, DateTime.UtcNow.AddDays(-5), 100, true, false);
             var orders = new List<Order> { order };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(0)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(It.IsAny<int>())).ReturnsAsync(new List<OrderItem>());
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(It.IsAny<Guid>())).ReturnsAsync(new List<OrderItem>());
 
             // Act
             await _scheduler.UpdateOrderStatusesAsync();
@@ -90,11 +101,13 @@ namespace Gamesbakery.Tests
         public async Task UpdateOrderStatusesAsync_OrderAlreadyOverdue_NoChanges()
         {
             // Arrange
-            var order = new Order(1, 1, DateTime.UtcNow.AddDays(-15), 100, false, true);
+            var orderId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var order = new Order(orderId, userId, DateTime.UtcNow.AddDays(-15), 100, false, true);
             var orders = new List<Order> { order };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(0)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(It.IsAny<int>())).ReturnsAsync(new List<OrderItem>());
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(It.IsAny<Guid>())).ReturnsAsync(new List<OrderItem>());
 
             // Act
             await _scheduler.UpdateOrderStatusesAsync();
@@ -109,16 +122,21 @@ namespace Gamesbakery.Tests
         public async Task UpdateOrderStatusesAsync_KeysNotGenerated_LessThan14Days_NoChanges()
         {
             // Arrange
-            var order = new Order(1, 1, DateTime.UtcNow.AddDays(-5), 100, false, false);
+            var orderId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var gameId1 = Guid.NewGuid();
+            var gameId2 = Guid.NewGuid();
+            var sellerId = Guid.NewGuid();
+            var order = new Order(orderId, userId, DateTime.UtcNow.AddDays(-5), 100, false, false);
             var orders = new List<Order> { order };
             var orderItems = new List<OrderItem>
             {
-                new OrderItem(1, 1, 1, 1, null),
-                new OrderItem(2, 1, 2, 1, "KEY-456")
+                new OrderItem(Guid.NewGuid(), orderId, gameId1, sellerId, null),
+                new OrderItem(Guid.NewGuid(), orderId, gameId2, sellerId, "KEY-456")
             };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(0)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(1)).ReturnsAsync(orderItems);
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(orderId)).ReturnsAsync(orderItems);
 
             // Act
             await _scheduler.UpdateOrderStatusesAsync();

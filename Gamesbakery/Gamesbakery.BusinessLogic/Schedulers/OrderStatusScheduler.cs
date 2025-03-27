@@ -21,12 +21,10 @@ namespace Gamesbakery.BusinessLogic.Schedulers
 
         public async Task UpdateOrderStatusesAsync()
         {
-            // Получаем все заказы (0 означает все заказы)
-            var orders = await _orderRepository.GetByUserIdAsync(0);
+            var orders = await _orderRepository.GetByUserIdAsync(Guid.Empty);
 
             foreach (var order in orders)
             {
-                // Пропускаем уже выполненные или просроченные заказы
                 if (order.IsCompleted || order.IsOverdue)
                     continue;
 

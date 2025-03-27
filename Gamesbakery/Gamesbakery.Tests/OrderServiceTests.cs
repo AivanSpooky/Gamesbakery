@@ -2,7 +2,6 @@
 using Gamesbakery.Core.Repositories;
 using Gamesbakery.BusinessLogic.Services;
 using Moq;
-using Xunit;
 
 namespace Gamesbakery.Tests
 {
@@ -29,17 +28,21 @@ namespace Gamesbakery.Tests
         public async Task CreateOrderAsync_ValidData_ReturnsOrderDTO()
         {
             // Arrange
-            var userId = 1;
-            var gameIds = new List<int> { 1, 2 };
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 200);
-            var game1 = new Game(1, 1, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
-            var game2 = new Game(2, 1, "Game 2", 50, DateTime.UtcNow, "Desc 2", true, "Valve");
-            var seller = new Seller(1, "Seller1", DateTime.UtcNow, 4.5);
-            var order = new Order(1, userId, DateTime.UtcNow, 100, false, false);
+            var userId = Guid.NewGuid();
+            var gameId1 = Guid.NewGuid();
+            var gameId2 = Guid.NewGuid();
+            var gameIds = new List<Guid> { gameId1, gameId2 };
+            var categoryId = Guid.NewGuid();
+            var sellerId = Guid.NewGuid();
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 200);
+            var game1 = new Game(gameId1, categoryId, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
+            var game2 = new Game(gameId2, categoryId, "Game 2", 50, DateTime.UtcNow, "Desc 2", true, "Valve");
+            var seller = new Seller(sellerId, "Seller1", DateTime.UtcNow, 4.5);
+            var order = new Order(Guid.NewGuid(), userId, DateTime.UtcNow, 100, false, false);
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
-            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(1)).ReturnsAsync(game1);
-            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(2)).ReturnsAsync(game2);
+            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId1)).ReturnsAsync(game1);
+            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId2)).ReturnsAsync(game2);
             _sellerRepositoryMock.Setup(repo => repo.GetAllAsync()).ReturnsAsync(new List<Seller> { seller });
             _orderRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<Order>())).ReturnsAsync(order);
             _orderItemRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<OrderItem>())).ReturnsAsync((OrderItem orderItem) => orderItem);
@@ -58,14 +61,17 @@ namespace Gamesbakery.Tests
         public async Task CreateOrderAsync_InsufficientBalance_ThrowsInvalidOperationException()
         {
             // Arrange
-            var userId = 1;
-            var gameIds = new List<int> { 1 };
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 20);
-            var game = new Game(1, 1, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
-            var seller = new Seller(1, "Seller1", DateTime.UtcNow, 4.5); // Создаём продавца
+            var userId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
+            var gameIds = new List<Guid> { gameId };
+            var categoryId = Guid.NewGuid();
+            var sellerId = Guid.NewGuid();
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 20);
+            var game = new Game(gameId, categoryId, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
+            var seller = new Seller(sellerId, "Seller1", DateTime.UtcNow, 4.5);
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
-            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(1)).ReturnsAsync(game);
+            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
             _sellerRepositoryMock.Setup(repo => repo.GetAllAsync()).ReturnsAsync(new List<Seller> { seller });
 
             // Act & Assert
@@ -76,13 +82,15 @@ namespace Gamesbakery.Tests
         public async Task CreateOrderAsync_BlockedUser_ThrowsInvalidOperationException()
         {
             // Arrange
-            var userId = 1;
-            var gameIds = new List<int> { 1 };
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", true, 200);
-            var game = new Game(1, 1, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
+            var userId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
+            var gameIds = new List<Guid> { gameId };
+            var categoryId = Guid.NewGuid();
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", true, 200);
+            var game = new Game(gameId, categoryId, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
-            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(1)).ReturnsAsync(game);
+            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => _orderService.CreateOrderAsync(userId, gameIds));
@@ -92,12 +100,13 @@ namespace Gamesbakery.Tests
         public async Task CreateOrderAsync_GameNotFound_ThrowsKeyNotFoundException()
         {
             // Arrange
-            var userId = 1;
-            var gameIds = new List<int> { 1 };
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 200);
+            var userId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
+            var gameIds = new List<Guid> { gameId };
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 200);
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
-            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(1)).ReturnsAsync((Game)null);
+            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync((Game)null);
 
             // Act & Assert
             await Assert.ThrowsAsync<KeyNotFoundException>(() => _orderService.CreateOrderAsync(userId, gameIds));
@@ -107,13 +116,15 @@ namespace Gamesbakery.Tests
         public async Task CreateOrderAsync_GameNotForSale_ThrowsInvalidOperationException()
         {
             // Arrange
-            var userId = 1;
-            var gameIds = new List<int> { 1 };
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 200);
-            var game = new Game(1, 1, "Game 1", 50, DateTime.UtcNow, "Desc 1", false, "Bethesda");
+            var userId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
+            var gameIds = new List<Guid> { gameId };
+            var categoryId = Guid.NewGuid();
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 200);
+            var game = new Game(gameId, categoryId, "Game 1", 50, DateTime.UtcNow, "Desc 1", false, "Bethesda");
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
-            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(1)).ReturnsAsync(game);
+            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => _orderService.CreateOrderAsync(userId, gameIds));
@@ -123,13 +134,15 @@ namespace Gamesbakery.Tests
         public async Task CreateOrderAsync_NoSellersAvailable_ThrowsInvalidOperationException()
         {
             // Arrange
-            var userId = 1;
-            var gameIds = new List<int> { 1 };
-            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "USA", "password123", false, 200);
-            var game = new Game(1, 1, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
+            var userId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
+            var gameIds = new List<Guid> { gameId };
+            var categoryId = Guid.NewGuid();
+            var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 200);
+            var game = new Game(gameId, categoryId, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
-            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(1)).ReturnsAsync(game);
+            _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);
             _sellerRepositoryMock.Setup(repo => repo.GetAllAsync()).ReturnsAsync(new List<Seller>());
 
             // Act & Assert
@@ -140,11 +153,11 @@ namespace Gamesbakery.Tests
         public async Task GetOrdersByUserIdAsync_ReturnsOrderDTOList()
         {
             // Arrange
-            var userId = 1;
+            var userId = Guid.NewGuid();
             var orders = new List<Order>
             {
-                new Order(1, userId, DateTime.UtcNow, 100, false, false),
-                new Order(2, userId, DateTime.UtcNow, 50, true, false)
+                new Order(Guid.NewGuid(), userId, DateTime.UtcNow, 100, false, false),
+                new Order(Guid.NewGuid(), userId, DateTime.UtcNow, 50, true, false)
             };
             _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(userId)).ReturnsAsync(orders);
 
@@ -160,13 +173,15 @@ namespace Gamesbakery.Tests
         public async Task SetOrderItemKeyAsync_ValidData_Success()
         {
             // Arrange
-            var orderItemId = 1;
-            var sellerId = 1;
+            var orderItemId = Guid.NewGuid();
+            var sellerId = Guid.NewGuid();
+            var orderId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
             var key = "KEY-123";
-            var orderItem = new OrderItem(orderItemId, 1, 1, sellerId, null);
+            var orderItem = new OrderItem(orderItemId, orderId, gameId, sellerId, null);
 
             _orderItemRepositoryMock.Setup(repo => repo.GetByIdAsync(orderItemId)).ReturnsAsync(orderItem);
-            _orderItemRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<OrderItem>())).Callback<OrderItem>(item => item.SetKey(key)); // Имитация обновления
+            _orderItemRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<OrderItem>())).Callback<OrderItem>(item => item.SetKey(key));
 
             // Act
             await _orderService.SetOrderItemKeyAsync(orderItemId, key, sellerId);
@@ -180,11 +195,13 @@ namespace Gamesbakery.Tests
         public async Task SetOrderItemKeyAsync_WrongSeller_ThrowsInvalidOperationException()
         {
             // Arrange
-            var orderItemId = 1;
-            var sellerId = 1;
-            var wrongSellerId = 2;
+            var orderItemId = Guid.NewGuid();
+            var sellerId = Guid.NewGuid();
+            var wrongSellerId = Guid.NewGuid();
+            var orderId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
             var key = "KEY-123";
-            var orderItem = new OrderItem(orderItemId, 1, 1, sellerId, null);
+            var orderItem = new OrderItem(orderItemId, orderId, gameId, sellerId, null);
 
             _orderItemRepositoryMock.Setup(repo => repo.GetByIdAsync(orderItemId)).ReturnsAsync(orderItem);
 
@@ -196,10 +213,12 @@ namespace Gamesbakery.Tests
         public async Task SetOrderItemKeyAsync_InvalidKey_ThrowsArgumentException()
         {
             // Arrange
-            var orderItemId = 1;
-            var sellerId = 1;
+            var orderItemId = Guid.NewGuid();
+            var sellerId = Guid.NewGuid();
+            var orderId = Guid.NewGuid();
+            var gameId = Guid.NewGuid();
             var invalidKey = "";
-            var orderItem = new OrderItem(orderItemId, 1, 1, sellerId, null);
+            var orderItem = new OrderItem(orderItemId, orderId, gameId, sellerId, null);
 
             _orderItemRepositoryMock.Setup(repo => repo.GetByIdAsync(orderItemId)).ReturnsAsync(orderItem);
 
@@ -211,11 +230,14 @@ namespace Gamesbakery.Tests
         public async Task GetOrderItemsBySellerIdAsync_ReturnsOrderItemDTOList()
         {
             // Arrange
-            var sellerId = 1;
+            var sellerId = Guid.NewGuid();
+            var orderId = Guid.NewGuid();
+            var gameId1 = Guid.NewGuid();
+            var gameId2 = Guid.NewGuid();
             var orderItems = new List<OrderItem>
             {
-                new OrderItem(1, 1, 1, sellerId, null),
-                new OrderItem(2, 1, 2, sellerId, "KEY-456")
+                new OrderItem(Guid.NewGuid(), orderId, gameId1, sellerId, null),
+                new OrderItem(Guid.NewGuid(), orderId, gameId2, sellerId, "KEY-456")
             };
 
             _orderItemRepositoryMock.Setup(repo => repo.GetBySellerIdAsync(sellerId)).ReturnsAsync(orderItems);
@@ -233,7 +255,7 @@ namespace Gamesbakery.Tests
         public async Task GetOrderItemsBySellerIdAsync_NoOrderItems_ReturnsEmptyList()
         {
             // Arrange
-            var sellerId = 1;
+            var sellerId = Guid.NewGuid();
             _orderItemRepositoryMock.Setup(repo => repo.GetBySellerIdAsync(sellerId)).ReturnsAsync(new List<OrderItem>());
 
             // Act

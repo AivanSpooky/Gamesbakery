@@ -2,10 +2,10 @@
 {
     public class OrderItemDTO
     {
-        public int Id { get; set; }
-        public int OrderId { get; set; }
-        public int GameId { get; set; }
-        public int SellerId { get; set; }
+        public Guid Id { get; set; }
+        public Guid OrderId { get; set; }
+        public Guid GameId { get; set; }
+        public Guid SellerId { get; set; }
         public string? Key { get; set; }
     }
 }

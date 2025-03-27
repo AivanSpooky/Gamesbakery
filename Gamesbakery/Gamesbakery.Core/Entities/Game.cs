@@ -1,21 +1,25 @@
-﻿// Game.cs
-namespace Gamesbakery.Core.Entities
+﻿namespace Gamesbakery.Core.Entities
 {
     public class Game
     {
-        public int Id { get; private set; }
-        public int CategoryId { get; private set; }
+        public Guid Id { get; private set; }
+        public Guid CategoryId { get; private set; }
         public string Title { get; private set; }
         public decimal Price { get; private set; }
         public DateTime ReleaseDate { get; private set; }
         public string Description { get; private set; }
         public bool IsForSale { get; private set; }
+        public void SetForSale(bool isForSale) => IsForSale = isForSale;
         public string OriginalPublisher { get; private set; }
 
-        public Game(int id, int categoryId, string title, decimal price, DateTime releaseDate, string description, bool isForSale, string originalPublisher)
+        public Game()
         {
-            if (categoryId <= 0)
-                throw new ArgumentException("CategoryId must be positive.", nameof(categoryId));
+        }
+
+        public Game(Guid id, Guid categoryId, string title, decimal price, DateTime releaseDate, string description, bool isForSale, string originalPublisher)
+        {
+            if (categoryId == Guid.Empty)
+                throw new ArgumentException("CategoryId cannot be empty.", nameof(categoryId));
             if (string.IsNullOrWhiteSpace(title))
                 throw new ArgumentException("Title cannot be empty.", nameof(title));
             if (price < 0)
@@ -35,6 +39,18 @@ namespace Gamesbakery.Core.Entities
             OriginalPublisher = originalPublisher;
         }
 
-        public void SetForSale(bool isForSale) => IsForSale = isForSale;
+        public void UpdatePrice(decimal newPrice)
+        {
+            if (newPrice < 0)
+                throw new ArgumentException("Price cannot be negative.", nameof(newPrice));
+            Price = newPrice;
+        }
+
+        public void UpdateTitle(string newTitle)
+        {
+            if (string.IsNullOrWhiteSpace(newTitle))
+                throw new ArgumentException("newTitle cannot be empty.", nameof(newTitle));
+            Title = newTitle;
+        }
     }
 }
