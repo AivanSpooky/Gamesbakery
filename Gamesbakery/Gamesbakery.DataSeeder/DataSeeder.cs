@@ -1,4 +1,5 @@
 ﻿using Bogus;
+using Gamesbakery.Core;
 using Gamesbakery.Core.Entities;
 using Gamesbakery.DataAccess;
 using Microsoft.EntityFrameworkCore;
@@ -20,15 +21,8 @@ namespace Gamesbakery.DataSeeder
         {
             try
             {
-                // Очистка базы данных
-                // Удаляем команды DBCC CHECKIDENT, так как Guid не требует автоинкремента
-                _context.Database.ExecuteSqlRaw("DELETE FROM Reviews;");
-                _context.Database.ExecuteSqlRaw("DELETE FROM OrderItems;");
-                _context.Database.ExecuteSqlRaw("DELETE FROM Orders;");
-                _context.Database.ExecuteSqlRaw("DELETE FROM Games;");
-                _context.Database.ExecuteSqlRaw("DELETE FROM Users;");
-                _context.Database.ExecuteSqlRaw("DELETE FROM Sellers;");
-                _context.Database.ExecuteSqlRaw("DELETE FROM Categories;");
+                // Очистка базы данных (триггеры автоматически удалят SQL-пользователей)
+                await CleanDatabaseAsync();
 
                 // Получаем список игр из Steam API
                 var client = new RestClient("https://api.steampowered.com");
@@ -47,16 +41,16 @@ namespace Gamesbakery.DataSeeder
                 Console.WriteLine("Categories seeded.");
 
                 var sellerIds = await SeedSellersAsync();
-                Console.WriteLine("Sellers seeded.");
+                Console.WriteLine($"Sellers seeded: {sellerIds.Count} sellers.");
 
                 var userIds = await SeedUsersAsync();
-                Console.WriteLine("Users seeded.");
+                Console.WriteLine($"Users seeded: {userIds.Count} users.");
 
                 var gameIds = await SeedGamesAsync(genreToCategoryId, selectedApps);
-                Console.WriteLine("Games seeded.");
+                Console.WriteLine($"Games seeded: {gameIds.Count} games.");
 
                 var orderIds = await SeedOrdersAsync(userIds);
-                Console.WriteLine("Orders seeded.");
+                Console.WriteLine($"Orders seeded: {orderIds.Count} orders.");
 
                 await SeedOrderItemsAsync(orderIds, gameIds, sellerIds);
                 Console.WriteLine("OrderItems seeded.");
@@ -67,8 +61,24 @@ namespace Gamesbakery.DataSeeder
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
                 throw new InvalidOperationException("Failed to seed the database.", ex);
             }
+        }
+
+        private async Task CleanDatabaseAsync()
+        {
+            // Очистка таблиц (триггеры автоматически удалят SQL-пользователей)
+            _context.Database.ExecuteSqlRaw("DELETE FROM Reviews;");
+            _context.Database.ExecuteSqlRaw("DELETE FROM OrderItems;");
+            _context.Database.ExecuteSqlRaw("DELETE FROM Orders;");
+            _context.Database.ExecuteSqlRaw("DELETE FROM Games;");
+            _context.Database.ExecuteSqlRaw("DELETE FROM Users;");
+            _context.Database.ExecuteSqlRaw("DELETE FROM Sellers;");
+            _context.Database.ExecuteSqlRaw("DELETE FROM Categories;");
+
+            await _context.SaveChangesAsync();
         }
 
         private async Task<(Dictionary<string, Guid> genreToCategoryId, List<SteamApp> selectedApps)> SeedCategoriesAsync(List<SteamApp> apps)
@@ -142,11 +152,21 @@ namespace Gamesbakery.DataSeeder
 
         private async Task<List<Guid>> SeedSellersAsync()
         {
+            var usedNames = new HashSet<string>();
             var faker = new Faker<Seller>()
                 .RuleFor(s => s.Id, f => Guid.NewGuid())
-                .RuleFor(s => s.SellerName, f => f.Company.CompanyName())
+                .RuleFor(s => s.SellerName, f =>
+                {
+                    string name;
+                    do name = f.Company.CompanyName();
+                    while (name.Length > 100 || usedNames.Contains(name));
+                    usedNames.Add(name);
+                    return name;
+                    //f.Company.CompanyName().Length > 100 ? f.Company.CompanyName().Substring(0, 100) : f.Company.CompanyName()
+                })
                 .RuleFor(s => s.RegistrationDate, f => f.Date.Past(5))
-                .RuleFor(s => s.AvgRating, f => f.Random.Double(0, 5));
+                .RuleFor(s => s.AvgRating, f => f.Random.Double(0, 5))
+                .RuleFor(s => s.Password, f => f.Random.String2(12, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()"));
 
             var sellers = faker.Generate(1000);
             await _context.Sellers.AddRangeAsync(sellers);
@@ -161,27 +181,27 @@ namespace Gamesbakery.DataSeeder
 
         private async Task<List<Guid>> SeedUsersAsync()
         {
-            var usedEmails = new HashSet<string>();
+            var usedNames = new HashSet<string>();
             var faker = new Faker<User>()
                 .RuleFor(u => u.Id, f => Guid.NewGuid())
-                .RuleFor(u => u.Username, f => f.Internet.UserName())
-                .RuleFor(u => u.Email, f =>
+                .RuleFor(u => u.Username, f =>
                 {
-                    string email;
-                    do email = f.Internet.Email();
-                    while (usedEmails.Contains(email));
-                    usedEmails.Add(email);
-                    return email;
+                    string name;
+                    do name = f.Internet.UserName();
+                    while (name.Length > 50 || usedNames.Contains(name));
+                    usedNames.Add(name);
+                    return name;
                 })
+                .RuleFor(u => u.Email, f => f.Internet.Email())
                 .RuleFor(u => u.RegistrationDate, f => f.Date.Past(3))
                 .RuleFor(u => u.Country, f =>
                 {
                     string country;
                     do country = f.Address.Country();
-                    while (country.Length > 50);
+                    while (country.Length > 300 || !CountryProvider.IsValidCountry(country));
                     return country;
                 })
-                .RuleFor(u => u.Password, f => f.Random.String2(8, 100))
+                .RuleFor(u => u.Password, f => f.Random.String2(12, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()"))
                 .RuleFor(u => u.IsBlocked, f => f.Random.Bool())
                 .RuleFor(u => u.Balance, f => f.Random.Decimal(0, 1000));
 

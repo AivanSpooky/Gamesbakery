@@ -7,19 +7,12 @@ FROM tempdb.sys.tables
 WHERE name LIKE '#TempTable%';
 DROP TABLE IF EXISTS #TempTable;
 DROP TABLE IF EXISTS #TempTable2;
-SET IDENTITY_INSERT Users OFF;
-SET IDENTITY_INSERT Games OFF;
-SET IDENTITY_INSERT Sellers OFF;
-SET IDENTITY_INSERT Categories OFF;
-SET IDENTITY_INSERT Orders OFF;
-SET IDENTITY_INSERT OrderItems OFF;
-SET IDENTITY_INSERT Reviews OFF;
 GO
 
 -- Импорт данных в таблицу Users
 CREATE TABLE #TempTable
 (
-    UserID INT IDENTITY(1,1),
+    UserID UNIQUEIDENTIFIER,  -- Изменено с INT на UNIQUEIDENTIFIER
     Name NVARCHAR(50),
     Email NVARCHAR(100),
     RegistrationDate DATE,
@@ -37,7 +30,6 @@ WITH
     FIRSTROW = 2,
     KEEPNULLS
 );
-SET IDENTITY_INSERT Users ON;
 INSERT INTO Users (UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance)
 SELECT 
     UserID, 
@@ -52,13 +44,19 @@ SELECT
     END,
     Balance
 FROM #TempTable;
-SET IDENTITY_INSERT Users OFF;
 DROP TABLE #TempTable;
 SELECT * FROM Users;
 GO
 
 -- Импорт данных в таблицу Sellers
-BULK INSERT Sellers
+CREATE TABLE #TempTable
+(
+    SellerID UNIQUEIDENTIFIER,  -- Изменено с INT на UNIQUEIDENTIFIER
+    Name NVARCHAR(100),
+    RegistrationDate DATE,
+    AverageRating DECIMAL(3,2)
+);
+BULK INSERT #TempTable
 FROM 'C:\Data\Gamesbakery\Sellers.csv'
 WITH
 (
@@ -67,11 +65,21 @@ WITH
     FIRSTROW = 2,
     KEEPNULLS
 );
+INSERT INTO Sellers (SellerID, Name, RegistrationDate, AverageRating)
+SELECT SellerID, Name, RegistrationDate, AverageRating
+FROM #TempTable;
+DROP TABLE #TempTable;
 SELECT * FROM Sellers;
 GO
 
 -- Импорт данных в таблицу Categories
-BULK INSERT Categories
+CREATE TABLE #TempTable
+(
+    CategoryID UNIQUEIDENTIFIER,  -- Изменено с INT на UNIQUEIDENTIFIER
+    Name NVARCHAR(50),
+    Description NVARCHAR(255)
+);
+BULK INSERT #TempTable
 FROM 'C:\Data\Gamesbakery\Categories.csv'
 WITH
 (
@@ -80,14 +88,18 @@ WITH
     FIRSTROW = 2,
     KEEPNULLS
 );
+INSERT INTO Categories (CategoryID, Name, Description)
+SELECT CategoryID, Name, Description
+FROM #TempTable;
+DROP TABLE #TempTable;
 SELECT * FROM Categories;
 GO
 
 -- Импорт данных в таблицу Games
-CREATE TABLE #TempTable2
+CREATE TABLE #TempTable
 (
-    GameID INT IDENTITY(1,1),
-    CategoryID INT,
+    GameID UNIQUEIDENTIFIER,  -- Изменено с INT на UNIQUEIDENTIFIER
+    CategoryID UNIQUEIDENTIFIER,  -- Изменено с INT на UNIQUEIDENTIFIER
     Title NVARCHAR(100),
     Price DECIMAL(10,2),
     ReleaseDate DATE,
@@ -95,7 +107,7 @@ CREATE TABLE #TempTable2
     OriginalPublisher NVARCHAR(100),
     IsForSale BIT
 );
-BULK INSERT #TempTable2
+BULK INSERT #TempTable
 FROM 'C:\Data\Gamesbakery\Games.csv'
 WITH
 (
@@ -104,21 +116,19 @@ WITH
     FIRSTROW = 2,
     KEEPNULLS
 );
-SET IDENTITY_INSERT Games ON;
 INSERT INTO Games (GameID, CategoryID, Title, Price, ReleaseDate, Description, OriginalPublisher, IsForSale)
 SELECT 
     GameID, CategoryID, Title, Price, ReleaseDate, Description, OriginalPublisher, IsForSale
-FROM #TempTable2;
-SET IDENTITY_INSERT Games OFF;
-DROP TABLE #TempTable2;
+FROM #TempTable;
+DROP TABLE #TempTable;
 SELECT * FROM Games;
 GO
 
 -- Импорт данных в таблицу Orders
 CREATE TABLE #TempTable
 (
-    OrderID INT IDENTITY(1,1),
-    UserID INT,
+    OrderID UNIQUEIDENTIFIER,  -- Изменено с INT на UNIQUEIDENTIFIER
+    UserID UNIQUEIDENTIFIER,  -- Изменено с INT на UNIQUEIDENTIFIER
     OrderDate DATETIME,
     TotalPrice DECIMAL(10,2),
     Status NVARCHAR(20),  -- Временное поле для строкового статуса
@@ -133,7 +143,6 @@ WITH
     FIRSTROW = 2,
     KEEPNULLS
 );
-SET IDENTITY_INSERT Orders ON;
 INSERT INTO Orders (OrderID, UserID, OrderDate, TotalPrice, IsCompleted, IsOverdue)
 SELECT 
     OrderID, 
@@ -146,7 +155,6 @@ SELECT
     END,
     IsOverdue
 FROM #TempTable;
-SET IDENTITY_INSERT Orders OFF;
 DROP TABLE #TempTable;
 SELECT * FROM Orders;
 GO
@@ -154,10 +162,10 @@ GO
 -- Импорт данных в таблицу OrderItems
 CREATE TABLE #TempTable
 (
-    OrderItemID INT IDENTITY(1,1),
-    OrderID INT,
-    GameID INT,
-    SellerID INT,
+    OrderItemID UNIQUEIDENTIFIER,  -- Изменено с INT на UNIQUEIDENTIFIER
+    OrderID UNIQUEIDENTIFIER,
+    GameID UNIQUEIDENTIFIER,
+    SellerID UNIQUEIDENTIFIER,
     KeyText NVARCHAR(50)
 );
 BULK INSERT #TempTable
@@ -169,12 +177,10 @@ WITH
     FIRSTROW = 2,
     KEEPNULLS
 );
-SET IDENTITY_INSERT OrderItems ON;
 INSERT INTO OrderItems (OrderItemID, OrderID, GameID, SellerID, KeyText)
 SELECT 
     OrderItemID, OrderID, GameID, SellerID, KeyText
 FROM #TempTable;
-SET IDENTITY_INSERT OrderItems OFF;
 DROP TABLE #TempTable;
 SELECT * FROM OrderItems;
 GO
@@ -182,9 +188,9 @@ GO
 -- Импорт данных в таблицу Reviews
 CREATE TABLE #TempTable
 (
-    ReviewID INT IDENTITY(1,1),
-    UserID INT,
-    GameID INT,
+    ReviewID UNIQUEIDENTIFIER,  -- Изменено с INT на UNIQUEIDENTIFIER
+    UserID UNIQUEIDENTIFIER,
+    GameID UNIQUEIDENTIFIER,
     Comment NVARCHAR(MAX),
     StarRating INT,
     CreationDate DATETIME
@@ -198,12 +204,10 @@ WITH
     FIRSTROW = 2,
     KEEPNULLS
 );
-SET IDENTITY_INSERT Reviews ON;
 INSERT INTO Reviews (ReviewID, UserID, GameID, Comment, StarRating, CreationDate)
 SELECT 
     ReviewID, UserID, GameID, Comment, StarRating, CreationDate
 FROM #TempTable;
-SET IDENTITY_INSERT Reviews OFF;
 DROP TABLE #TempTable;
 SELECT * FROM Reviews;
 GO

@@ -1,4 +1,5 @@
-﻿using Gamesbakery.Core.Entities;
+﻿using Gamesbakery.Core;
+using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +14,7 @@ namespace Gamesbakery.DataAccess.Repositories
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task<Category> AddAsync(Category category)
+        public async Task<Category> AddAsync(Category category, UserRole role)
         {
             try
             {
@@ -27,19 +28,23 @@ namespace Gamesbakery.DataAccess.Repositories
             }
         }
 
-        public async Task<Category> GetByIdAsync(Guid id)
+        public async Task<Category> GetByIdAsync(Guid id, UserRole role)
         {
-            //if (id == 0)
-            //    throw new ArgumentException("Id must be positive.", nameof(id));
+            try
+            {
+                var category = await _context.Categories.FindAsync(id);
+                if (category == null)
+                    throw new KeyNotFoundException($"Category with ID {id} not found.");
 
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
-                throw new KeyNotFoundException($"Category with ID {id} not found.");
-
-            return category;
+                return category;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to retrieve category with ID {id}: {ex.Message}", ex);
+            }
         }
 
-        public async Task<List<Category>> GetAllAsync()
+        public async Task<List<Category>> GetAllAsync(UserRole role)
         {
             try
             {

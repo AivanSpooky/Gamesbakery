@@ -1,5 +1,7 @@
-﻿using Gamesbakery.Core.Entities;
+﻿using Gamesbakery.Core;
+using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gamesbakery.DataAccess.Repositories
@@ -13,7 +15,7 @@ namespace Gamesbakery.DataAccess.Repositories
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task<User> AddAsync(User user)
+        public async Task<User> AddAsync(User user, UserRole role)
         {
             try
             {
@@ -27,44 +29,128 @@ namespace Gamesbakery.DataAccess.Repositories
             }
         }
 
-        public async Task<User> GetByIdAsync(Guid id)
+        public async Task<User> AddAsync(Guid userId, string username, string email, string password, string country, DateTime registrationDate, bool isBlocked, decimal balance, UserRole role)
         {
-            //if (id <= 0)
-            //    throw new ArgumentException("Id must be positive.", nameof(id));
+            if (_context.Database.CurrentTransaction != null)
+            {
+                await _context.Database.CurrentTransaction.RollbackAsync();
+            }
 
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-                throw new KeyNotFoundException($"User with ID {id} not found.");
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            return user;
+            try
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_RegisterUser @UserID, @Name, @Email, @Password, @Country, @RegistrationDate, @IsBlocked, @Balance",
+                    new SqlParameter("@UserID", userId),
+                    new SqlParameter("@Name", username),
+                    new SqlParameter("@Email", email),
+                    new SqlParameter("@Password", password),
+                    new SqlParameter("@Country", country),
+                    new SqlParameter("@RegistrationDate", registrationDate),
+                    new SqlParameter("@IsBlocked", isBlocked),
+                    new SqlParameter("@Balance", balance));
+
+                await transaction.CommitAsync();
+
+                return await _context.Users.FindAsync(userId);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
-        public async Task<User> GetByEmailAsync(string email)
+        public async Task<User> GetByIdAsync(Guid userId, UserRole role)
         {
-            if (string.IsNullOrWhiteSpace(email))
-                throw new ArgumentException("Email cannot be empty.", nameof(email));
+            try
+            {
+                if (role == UserRole.Admin)
+                {
+                    Console.WriteLine($"fff");
+                    var user = await _context.Users
+                        .FromSqlRaw("SELECT * FROM Users WHERE UserID = @UserID",
+                            new SqlParameter("@UserID", userId))
+                        .FirstOrDefaultAsync();
+                    Console.WriteLine($"fff");
+                    if (user == null)
+                        throw new KeyNotFoundException($"User with ID {userId} not found.");
+                    Console.WriteLine($"fff");
+                    return user;
+                }
+                else
+                {
+                    var user = await _context.UserProfiles
+                        .FirstOrDefaultAsync(u => u.Id == userId);
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-            if (user == null)
-                throw new KeyNotFoundException($"User with email {email} not found.");
+                    if (user == null)
+                        throw new KeyNotFoundException($"User with ID {userId} not found.");
 
-            return user;
+                    return user;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to retrieve user with ID {userId}: {ex.Message}", ex);
+            }
+
         }
 
-        public async Task<User> UpdateAsync(User user)
+        public async Task<User> UpdateAsync(User user, UserRole role)
         {
             if (user == null)
                 throw new ArgumentNullException(nameof(user));
 
             try
             {
-                _context.Users.Update(user);
-                await _context.SaveChangesAsync();
-                return await _context.Users.FindAsync(user.Id);
+                if (role == UserRole.Admin)
+                {
+                    var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
+                        "UPDATE Users SET Balance = @Balance, IsBlocked = @IsBlocked WHERE UserID = @UserID",
+                        new SqlParameter("@Balance", user.Balance),
+                        new SqlParameter("@IsBlocked", user.IsBlocked),
+                        new SqlParameter("@UserID", user.Id));
+
+                    if (rowsAffected == 0)
+                        throw new KeyNotFoundException($"User with ID {user.Id} not found.");
+
+                    return await _context.Users.FindAsync(user.Id);
+                }
+                else
+                {
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "UPDATE UserProfile SET Balance = @Balance WHERE UserID = @UserID",
+                        new SqlParameter("@Balance", user.Balance),
+                        new SqlParameter("@UserID", user.Id));
+
+                    return await _context.Users.FindAsync(user.Id);
+                }
             }
-            catch (DbUpdateException ex)
+            catch (Exception ex)
             {
-                throw new InvalidOperationException("Failed to update user in the database.", ex);
+                throw new InvalidOperationException($"Failed to update user in the database: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<User> GetByEmailAsync(string email, UserRole role)
+        {
+            try
+            {
+                if (role == UserRole.Admin)
+                {
+                    return await _context.Users
+                        .FirstOrDefaultAsync(u => u.Email == email);
+                }
+                else
+                {
+                    return await _context.UserProfiles
+                        .FirstOrDefaultAsync(u => u.Email == email);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to retrieve user with email {email}: {ex.Message}", ex);
             }
         }
     }

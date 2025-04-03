@@ -1,4 +1,5 @@
-﻿using Gamesbakery.Core.Entities;
+﻿using Gamesbakery.Core;
+using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
 
 /*
@@ -12,16 +13,19 @@ namespace Gamesbakery.BusinessLogic.Schedulers
     {
         private readonly IOrderRepository _orderRepository;
         private readonly IOrderItemRepository _orderItemRepository;
+        private readonly IAuthenticationService _authService;
 
-        public OrderStatusScheduler(IOrderRepository orderRepository, IOrderItemRepository orderItemRepository)
+        public OrderStatusScheduler(IOrderRepository orderRepository, IOrderItemRepository orderItemRepository, IAuthenticationService authService)
         {
             _orderRepository = orderRepository;
             _orderItemRepository = orderItemRepository;
+            _authService = authService;
         }
 
         public async Task UpdateOrderStatusesAsync()
         {
-            var orders = await _orderRepository.GetByUserIdAsync(Guid.Empty);
+            var currentRole = _authService.GetCurrentRole();
+            var orders = await _orderRepository.GetByUserIdAsync(Guid.Empty, currentRole);
 
             foreach (var order in orders)
             {
@@ -33,18 +37,18 @@ namespace Gamesbakery.BusinessLogic.Schedulers
                 if (daysSinceOrder >= 14)
                 {
                     order.MarkAsOverdue();
-                    await _orderRepository.UpdateAsync(order);
+                    await _orderRepository.UpdateAsync(order, currentRole);
                     continue;
                 }
 
                 // Проверяем, все ли ключи сгенерированы
-                var orderItems = await _orderItemRepository.GetByOrderIdAsync(order.Id);
+                var orderItems = await _orderItemRepository.GetByOrderIdAsync(order.Id, currentRole);
                 var allKeysGenerated = orderItems.All(item => !string.IsNullOrWhiteSpace(item.Key));
 
                 if (allKeysGenerated)
                 {
                     order.Complete();
-                    await _orderRepository.UpdateAsync(order);
+                    await _orderRepository.UpdateAsync(order, currentRole);
                 }
             }
         }

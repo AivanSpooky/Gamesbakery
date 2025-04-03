@@ -8,36 +8,30 @@ GO
 
 -- Создание таблицы Users без ограничений
 CREATE TABLE Users (
-    UserID INT IDENTITY(1,1),
+    UserID UNIQUEIDENTIFIER,
     Name NVARCHAR(50),
     Email NVARCHAR(100),
     RegistrationDate DATE,
-    Country NVARCHAR(50),
+    Country NVARCHAR(300),
     Password NVARCHAR(100),
     IsBlocked BIT,  -- 0: не заблокирован, 1: заблокирован
     Balance DECIMAL(10,2)
 );
 GO
 
---COLLATE Latin1_General_BIN2 
-  --      ENCRYPTED WITH (
-    --        COLUMN_ENCRYPTION_KEY = CEK_AutoP2,
-      --      ENCRYPTION_TYPE = Deterministic,
-        --    ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
-        --s)
-
 -- Создание таблицы Sellers без ограничений
 CREATE TABLE Sellers (
-    SellerID INT IDENTITY(1,1),
+    SellerID UNIQUEIDENTIFIER,
     Name NVARCHAR(100),
     RegistrationDate DATE,
-    AverageRating DECIMAL(3,2)
+    AverageRating DECIMAL(3,2),
+	Password NVARCHAR(100)
 );
 GO
 
 -- Создание таблицы Categories без ограничений
 CREATE TABLE Categories (
-    CategoryID INT IDENTITY(1,1),
+    CategoryID UNIQUEIDENTIFIER,
     Name NVARCHAR(50),
     Description NVARCHAR(255)
 );
@@ -45,21 +39,21 @@ GO
 
 -- Создание таблицы Games без ограничений
 CREATE TABLE Games (
-    GameID INT IDENTITY(1,1),
-    CategoryID INT,
+    GameID UNIQUEIDENTIFIER,
+    CategoryID UNIQUEIDENTIFIER,
     Title NVARCHAR(100),
     Price DECIMAL(10,2),
     ReleaseDate DATE,
     Description NVARCHAR(MAX),
-    OriginalPublisher NVARCHAR(100),  -- Новый столбец
-    IsForSale BIT  -- Новый столбец
+    OriginalPublisher NVARCHAR(100),
+    IsForSale BIT
 );
 GO
 
 -- Создание таблицы Orders без ограничений
 CREATE TABLE Orders (
-    OrderID INT IDENTITY(1,1),
-    UserID INT,
+    OrderID UNIQUEIDENTIFIER,
+    UserID UNIQUEIDENTIFIER,
     OrderDate DATETIME,
     TotalPrice DECIMAL(10,2),
     IsCompleted BIT,  -- 0: в обработке, 1: выполнен
@@ -69,28 +63,21 @@ GO
 
 -- Создание таблицы OrderItems без ограничений
 CREATE TABLE OrderItems (
-    OrderItemID INT IDENTITY(1,1),
-    OrderID INT,
-    GameID INT,
-    SellerID INT,  -- Новый столбец
+    OrderItemID UNIQUEIDENTIFIER,
+    OrderID UNIQUEIDENTIFIER,
+    GameID UNIQUEIDENTIFIER,
+    SellerID UNIQUEIDENTIFIER,
     KeyText NVARCHAR(50)
 );
 GO
 
---COLLATE Latin1_General_BIN2 
-  --      ENCRYPTED WITH (
-    --        COLUMN_ENCRYPTION_KEY = CEK_AutoP3,
-      --      ENCRYPTION_TYPE = Deterministic,
-        --    ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
-        --)
-
 -- Создание таблицы Reviews без ограничений
 CREATE TABLE Reviews (
-    ReviewID INT IDENTITY(1,1),
-    UserID INT,
-    GameID INT,
+    ReviewID UNIQUEIDENTIFIER,
+    UserID UNIQUEIDENTIFIER,
+    GameID UNIQUEIDENTIFIER,
     Comment NVARCHAR(MAX),
     StarRating INT,
-    CreationDate DATETIME  -- Новый столбец
+    CreationDate DATETIME
 );
 GO

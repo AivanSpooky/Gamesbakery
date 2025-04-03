@@ -1,4 +1,4 @@
-﻿// GameRepository.cs
+﻿using Gamesbakery.Core;
 using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +14,7 @@ namespace Gamesbakery.DataAccess.Repositories
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task<Game> AddAsync(Game game)
+        public async Task<Game> AddAsync(Game game, UserRole role)
         {
             try
             {
@@ -28,19 +28,23 @@ namespace Gamesbakery.DataAccess.Repositories
             }
         }
 
-        public async Task<Game> GetByIdAsync(Guid id)
+        public async Task<Game> GetByIdAsync(Guid id, UserRole role)
         {
-            //if (id <= 0)
-            //    throw new ArgumentException("Id must be positive.", nameof(id));
+            try
+            {
+                var game = await _context.Games.FindAsync(id);
+                if (game == null)
+                    throw new KeyNotFoundException($"Game with ID {id} not found.");
 
-            var game = await _context.Games.FindAsync(id);
-            if (game == null)
-                throw new KeyNotFoundException($"Game with ID {id} not found.");
-
-            return game;
+                return game;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to retrieve game with ID {id}: {ex.Message}", ex);
+            }
         }
 
-        public async Task<List<Game>> GetAllAsync()
+        public async Task<List<Game>> GetAllAsync(UserRole role)
         {
             try
             {
@@ -48,20 +52,32 @@ namespace Gamesbakery.DataAccess.Repositories
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Detailed error in GameRepository.GetAllAsync: {ex}");
                 throw new InvalidOperationException("Failed to retrieve games from the database.", ex);
             }
         }
 
-        public async Task<Game> UpdateAsync(Game game)
+        public async Task<Game> UpdateAsync(Game game, UserRole role)
         {
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
 
             try
             {
-                _context.Games.Update(game);
+                var existingGame = await _context.Games.FindAsync(game.Id);
+                if (existingGame == null)
+                    throw new KeyNotFoundException($"Game with ID {game.Id} not found.");
+
+                existingGame.SetCategoryId(game.CategoryId);
+                existingGame.SetTitle(game.Title);
+                existingGame.SetPrice(game.Price);
+                existingGame.SetReleaseDate(game.ReleaseDate);
+                existingGame.SetDescription(game.Description);
+                existingGame.SetForSale(game.IsForSale);
+                existingGame.SetOriginalPublisher(game.OriginalPublisher);
+
                 await _context.SaveChangesAsync();
-                return await _context.Games.FindAsync(game.Id);
+                return existingGame;
             }
             catch (DbUpdateException ex)
             {

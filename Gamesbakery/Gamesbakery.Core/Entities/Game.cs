@@ -4,13 +4,19 @@
     {
         public Guid Id { get; private set; }
         public Guid CategoryId { get; private set; }
+        public void SetCategoryId(Guid categoryId) => CategoryId = categoryId;
         public string Title { get; private set; }
+        public void SetTitle(string title) => Title = title;
         public decimal Price { get; private set; }
+        public void SetPrice(decimal price) => Price = price;
         public DateTime ReleaseDate { get; private set; }
+        public void SetReleaseDate(DateTime rd) => ReleaseDate = rd;
         public string Description { get; private set; }
+        public void SetDescription(string desc) => Description = desc;
         public bool IsForSale { get; private set; }
         public void SetForSale(bool isForSale) => IsForSale = isForSale;
         public string OriginalPublisher { get; private set; }
+        public void SetOriginalPublisher(string op) => OriginalPublisher = op;
 
         public Game()
         {

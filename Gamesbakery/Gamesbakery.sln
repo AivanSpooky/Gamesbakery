@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.DataSeeder", "G
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.DataAccess.Tests", "Gamesbakery.DataAccess.Tests\Gamesbakery.DataAccess.Tests.csproj", "{0BB89497-6C92-4C43-B3EB-B7F3CD60BACF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.ConsoleUI", "Gamesbakery.ConsoleUI\Gamesbakery.ConsoleUI.csproj", "{049E8D02-D926-4417-ACB1-9F83BF01F0FF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.Infrastructure", "Gamesbakery.Infrastructure\Gamesbakery.Infrastructure.csproj", "{CE6E4C31-4C84-462C-9166-00889F639D99}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +55,14 @@ Global
 		{0BB89497-6C92-4C43-B3EB-B7F3CD60BACF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0BB89497-6C92-4C43-B3EB-B7F3CD60BACF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0BB89497-6C92-4C43-B3EB-B7F3CD60BACF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{049E8D02-D926-4417-ACB1-9F83BF01F0FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{049E8D02-D926-4417-ACB1-9F83BF01F0FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{049E8D02-D926-4417-ACB1-9F83BF01F0FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{049E8D02-D926-4417-ACB1-9F83BF01F0FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE6E4C31-4C84-462C-9166-00889F639D99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE6E4C31-4C84-462C-9166-00889F639D99}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE6E4C31-4C84-462C-9166-00889F639D99}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE6E4C31-4C84-462C-9166-00889F639D99}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

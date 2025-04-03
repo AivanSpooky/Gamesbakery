@@ -4,9 +4,9 @@ namespace Gamesbakery.Core.Repositories
 {
     public interface IOrderRepository
     {
-        Task<Order> AddAsync(Order order);
-        Task<Order> GetByIdAsync(Guid id);
-        Task<List<Order>> GetByUserIdAsync(Guid userId);
-        Task<Order> UpdateAsync(Order order);
+        Task<List<Order>> GetByUserIdAsync(Guid userId, UserRole role);
+        Task<Order> AddAsync(Order order, UserRole role);
+        Task<Order> GetByIdAsync(Guid orderId, UserRole role);
+        Task<Order> UpdateAsync(Order order, UserRole role);
     }
 }

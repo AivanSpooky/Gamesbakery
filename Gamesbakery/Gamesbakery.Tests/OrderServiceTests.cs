@@ -37,7 +37,7 @@ namespace Gamesbakery.Tests
             var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 200);
             var game1 = new Game(gameId1, categoryId, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
             var game2 = new Game(gameId2, categoryId, "Game 2", 50, DateTime.UtcNow, "Desc 2", true, "Valve");
-            var seller = new Seller(sellerId, "Seller1", DateTime.UtcNow, 4.5);
+            var seller = new Seller(sellerId, "Seller1", DateTime.UtcNow, 4.5, "pass");
             var order = new Order(Guid.NewGuid(), userId, DateTime.UtcNow, 100, false, false);
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
@@ -68,7 +68,7 @@ namespace Gamesbakery.Tests
             var sellerId = Guid.NewGuid();
             var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 20);
             var game = new Game(gameId, categoryId, "Game 1", 50, DateTime.UtcNow, "Desc 1", true, "Bethesda");
-            var seller = new Seller(sellerId, "Seller1", DateTime.UtcNow, 4.5);
+            var seller = new Seller(sellerId, "Seller1", DateTime.UtcNow, 4.5, "pass");
 
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId)).ReturnsAsync(game);

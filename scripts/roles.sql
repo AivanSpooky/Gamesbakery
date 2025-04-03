@@ -11,6 +11,61 @@ GO
 -- Назначение прав для роли Guest
 GRANT SELECT ON Games TO GuestRole;
 GRANT SELECT ON Categories TO GuestRole;
+GRANT SELECT ON Reviews TO GuestRole;
+ALTER SERVER ROLE securityadmin ADD MEMBER AdminUser;
+GO
+
+USE Gamesbakery;
+GO
+
+-- 1. Создаем сертификат
+CREATE CERTIFICATE RegistrationCert
+   ENCRYPTION BY PASSWORD = 'INSERTCert'
+   WITH SUBJECT = 'Certificate for Registration Procedures',
+   EXPIRY_DATE = '20261231';
+GO
+-- 2. Создаем пользователя, связанного с сертификатом
+CREATE USER RegistrationCertUser FROM CERTIFICATE RegistrationCert;
+GO
+-- 3. Даем пользователю сертификата права на INSERT в таблицы Users и Sellers
+GRANT INSERT ON Users TO RegistrationCertUser;
+GRANT INSERT ON Sellers TO RegistrationCertUser;
+GO
+-- 4. Подписываем хранимую процедуру sp_RegisterUser сертификатом
+ADD SIGNATURE TO sp_RegisterUser
+   BY CERTIFICATE RegistrationCert
+   WITH PASSWORD = 'INSERTCert';
+GO
+-- 5. Подписываем хранимую процедуру sp_RegisterSeller сертификатом
+ADD SIGNATURE TO sp_RegisterSeller
+   BY CERTIFICATE RegistrationCert
+   WITH PASSWORD = 'INSERTCert';
+GO
+USE Gamesbakery;
+GO
+-- Подписываем процедуру сертификатом
+ADD SIGNATURE TO sp_ManageSqlLogin
+   BY CERTIFICATE RegistrationCert
+   WITH PASSWORD = 'INSERTCert';
+GO
+-- Даем GuestRole права на выполнение процедуры
+GRANT EXECUTE ON sp_ManageSqlLogin TO GuestRole;
+GRANT EXECUTE ON sp_RegisterUser TO GuestRole;
+GRANT EXECUTE ON sp_RegisterSeller TO GuestRole;
+GO
+SELECT 
+    p.name AS principal_name,
+    perm.permission_name,
+    perm.state_desc,
+    obj.name AS object_name
+FROM sys.database_permissions perm
+JOIN sys.database_principals p ON perm.grantee_principal_id = p.principal_id
+JOIN sys.objects obj ON perm.major_id = obj.object_id
+WHERE p.name = 'GuestRole' AND obj.name IN ('sp_RegisterUser', 'sp_RegisterSeller');
+GO
+
+REVOKE INSERT ON Users TO GuestRole;
+REVOKE INSERT ON Sellers TO GuestRole;
 GO
 
 -- Назначение прав для роли User
@@ -25,36 +80,41 @@ GO
 
 -- Ограничение: Покупатель может видеть и редактировать только свои данные
 -- Создаём представления и политики для ограничения доступа
-CREATE VIEW UserOrders AS
+USE Gamesbakery;
+GO
+CREATE OR ALTER VIEW UserOrders AS
 SELECT o.*
 FROM Orders o
-WHERE o.UserID = CURRENT_USER; -- Предполагается, что UserID совпадает с именем пользователя в SQL Server
+JOIN Users u ON o.UserID = u.UserID
+WHERE u.Name = CURRENT_USER;
 GO
 
-CREATE VIEW UserOrderItems AS
+CREATE OR ALTER VIEW UserOrderItems AS
 SELECT oi.*
 FROM OrderItems oi
 JOIN Orders o ON oi.OrderID = o.OrderID
-WHERE o.UserID = CURRENT_USER;
+JOIN Users u ON o.UserID = u.UserID
+WHERE u.Name = CURRENT_USER;
 GO
 
-CREATE VIEW UserReviews AS
+CREATE OR ALTER VIEW UserReviews AS
 SELECT r.*
 FROM Reviews r
-WHERE r.UserID = CURRENT_USER;
+JOIN Users u ON r.UserID = u.UserID
+WHERE u.Name = CURRENT_USER;
 GO
 
-CREATE VIEW UserProfile AS
+CREATE OR ALTER VIEW UserProfile AS
 SELECT u.*
 FROM Users u
-WHERE u.UserID = CURRENT_USER;
+WHERE u.Name = CURRENT_USER;
 GO
 
 -- Переопределяем права для UserRole через представления
 REVOKE SELECT, INSERT ON Orders FROM UserRole;
 REVOKE SELECT ON OrderItems FROM UserRole;
-REVOKE SELECT, UPDATE ON Reviews FROM UserRole;
-REVOKE SELECT, UPDATE ON Users FROM UserRole;
+REVOKE UPDATE ON Reviews FROM UserRole;
+REVOKE UPDATE ON Users FROM UserRole;
 GO
 
 GRANT SELECT, INSERT ON UserOrders TO UserRole;
@@ -63,25 +123,27 @@ GRANT SELECT, INSERT, UPDATE ON UserReviews TO UserRole;
 GRANT SELECT, UPDATE ON UserProfile TO UserRole;
 GO
 
+CREATE OR ALTER VIEW SellerOrderItems AS
+SELECT oi.*
+FROM OrderItems oi
+JOIN Sellers s ON oi.SellerID = s.SellerID
+WHERE s.Name = CURRENT_USER;
+GO
+
+CREATE OR ALTER VIEW SellerProfile AS
+SELECT s.*
+FROM Sellers s
+WHERE s.Name = CURRENT_USER;
+GO
+
 -- Назначение прав для роли Seller
+GRANT SELECT ON Users TO SellerRole;
 GRANT SELECT, INSERT ON Games TO SellerRole;
 GRANT SELECT ON Categories TO SellerRole;
 GRANT SELECT ON Orders TO SellerRole;
 GRANT SELECT, UPDATE ON OrderItems TO SellerRole;
 GRANT SELECT, UPDATE ON Sellers TO SellerRole;
-GO
-
--- Ограничение: Продавец может видеть и редактировать только свои данные
-CREATE VIEW SellerOrderItems AS
-SELECT oi.*
-FROM OrderItems oi
-WHERE oi.SellerID = CURRENT_USER; -- Предполагается, что SellerID совпадает с именем пользователя в SQL Server
-GO
-
-CREATE VIEW SellerProfile AS
-SELECT s.*
-FROM Sellers s
-WHERE s.SellerID = CURRENT_USER;
+GRANT SELECT ON UserProfile TO SellerRole;
 GO
 
 -- Переопределяем права для SellerRole через представления
@@ -101,6 +163,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON Sellers TO AdminRole;
 GRANT SELECT, INSERT, UPDATE, DELETE ON Orders TO AdminRole;
 GRANT SELECT, INSERT, UPDATE, DELETE ON OrderItems TO AdminRole;
 GRANT SELECT, INSERT, UPDATE, DELETE ON Reviews TO AdminRole;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON UserProfile TO AdminRole;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON UserReviews TO AdminRole;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON UserOrderItems TO AdminRole;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON UserOrders TO AdminRole;
 GO
 
 -- Создание тестовых пользователей и назначение ролей
