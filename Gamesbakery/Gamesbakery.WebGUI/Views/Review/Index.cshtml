@@ -1,0 +1,44 @@
+﻿@model List<Gamesbakery.Core.DTOs.ReviewDTO>
+
+<h2>Отзывы</h2>
+
+@if (ViewBag.ErrorMessage != null)
+{
+    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+}
+
+@if (Model != null && Model.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Пользователь</th>
+                <th>Комментарий</th>
+                <th>Оценка</th>
+                <th>Дата</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var review in Model)
+            {
+                <tr>
+                    <td>@review.UserId</td>
+                    <td>@review.Text</td>
+                    <td>@review.Rating</td>
+                    <td>@review.CreationDate.ToShortDateString()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Отзывы не найдены.</p>
+}
+
+@if (User.Identity.IsAuthenticated && !User.IsInRole("Admin"))
+{
+    <a asp-action="Create" asp-route-gameId="@ViewBag.GameId" class="btn btn-primary">Добавить отзыв</a>
+}
+
+<a asp-controller="Game" asp-action="Details" asp-route-id="@ViewBag.GameId" class="btn btn-secondary">Назад к игре</a>

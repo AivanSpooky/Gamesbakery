@@ -2,18 +2,22 @@ using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
 using Gamesbakery.BusinessLogic.Services;
 using Moq;
+using Xunit;
+using Gamesbakery.Core;
 
 namespace Gamesbakery.Tests
 {
     public class UserServiceTests
     {
         private readonly Mock<IUserRepository> _userRepositoryMock;
+        private readonly Mock<IAuthenticationService> _authServiceMock;
         private readonly UserService _userService;
 
         public UserServiceTests()
         {
             _userRepositoryMock = new Mock<IUserRepository>();
-            _userService = new UserService(_userRepositoryMock.Object);
+            _authServiceMock = new Mock<IAuthenticationService>();
+            _userService = new UserService(_userRepositoryMock.Object, _authServiceMock.Object);
         }
 
         [Fact(DisplayName = "Регистрация пользователя с корректными данными - успех")]
@@ -26,7 +30,9 @@ namespace Gamesbakery.Tests
             var country = "United States";
             var userId = Guid.NewGuid();
             var user = new User(userId, username, email, DateTime.UtcNow, country, password, false, 0);
-            _userRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<User>())).ReturnsAsync(user);
+
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
+            _userRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<User>(), UserRole.User)).ReturnsAsync(user);
 
             // Act
             var result = await _userService.RegisterUserAsync(username, email, password, country);
@@ -46,6 +52,8 @@ namespace Gamesbakery.Tests
             var password = "password123";
             var country = "United States";
 
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
+
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => _userService.RegisterUserAsync(username, email, password, country));
         }
@@ -59,6 +67,8 @@ namespace Gamesbakery.Tests
             var password = new string('a', 101); // Длина > 100
             var country = "United States";
 
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
+
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => _userService.RegisterUserAsync(username, email, password, country));
         }
@@ -69,7 +79,10 @@ namespace Gamesbakery.Tests
             // Arrange
             var userId = Guid.NewGuid();
             var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
-            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
+
+            _authServiceMock.Setup(auth => auth.GetCurrentUserId()).Returns(userId);
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.User)).ReturnsAsync(user);
 
             // Act
             var result = await _userService.GetUserByIdAsync(userId);
@@ -84,7 +97,10 @@ namespace Gamesbakery.Tests
         {
             // Arrange
             var userId = Guid.NewGuid();
-            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync((User)null);
+
+            _authServiceMock.Setup(auth => auth.GetCurrentUserId()).Returns(userId);
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.User)).ReturnsAsync((User)null);
 
             // Act & Assert
             await Assert.ThrowsAsync<KeyNotFoundException>(() => _userService.GetUserByIdAsync(userId));
@@ -97,8 +113,11 @@ namespace Gamesbakery.Tests
             var userId = Guid.NewGuid();
             var newBalance = 200m;
             var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
-            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
-            _userRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<User>())).ReturnsAsync(user);
+
+            _authServiceMock.Setup(auth => auth.GetCurrentUserId()).Returns(userId);
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.User)).ReturnsAsync(user);
+            _userRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<User>(), UserRole.User)).ReturnsAsync(user);
 
             // Act
             var result = await _userService.UpdateBalanceAsync(userId, newBalance);
@@ -109,13 +128,16 @@ namespace Gamesbakery.Tests
         }
 
         [Fact(DisplayName = "Обновление баланса с отрицательным значением - исключение")]
-        public async Task UpdateBalanceAsync_NegativeBalance_ThrowsArgumentException()
+        public async Task UpdateBalanceAsync_NegativeBalance_ThrowsUnauthorizedAccessException()
         {
             // Arrange
             var userId = Guid.NewGuid();
             var newBalance = -50m;
             var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
-            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
+
+            _authServiceMock.Setup(auth => auth.GetCurrentUserId()).Returns(userId);
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.User)).ReturnsAsync(user);
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => _userService.UpdateBalanceAsync(userId, newBalance));
@@ -127,8 +149,10 @@ namespace Gamesbakery.Tests
             // Arrange
             var userId = Guid.NewGuid();
             var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
-            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync(user);
-            _userRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<User>())).ReturnsAsync(user);
+
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.Admin);
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.Admin)).ReturnsAsync(user);
+            _userRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<User>(), UserRole.Admin)).ReturnsAsync(user);
 
             // Act
             await _userService.BlockUserAsync(userId);
@@ -142,7 +166,9 @@ namespace Gamesbakery.Tests
         {
             // Arrange
             var userId = Guid.NewGuid();
-            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId)).ReturnsAsync((User)null);
+
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.Admin);
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.Admin)).ReturnsAsync((User)null);
 
             // Act & Assert
             await Assert.ThrowsAsync<KeyNotFoundException>(() => _userService.BlockUserAsync(userId));

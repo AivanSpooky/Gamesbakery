@@ -1,0 +1,28 @@
+﻿@model Gamesbakery.Core.Entities.Seller
+
+<h2>Профиль продавца</h2>
+
+@if (ViewBag.ErrorMessage != null)
+{
+    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+}
+
+@if (Model != null)
+{
+    <dl>
+        <dt>Имя продавца</dt>
+        <dd>@Model.SellerName</dd>
+        <dt>Дата регистрации</dt>
+        <dd>@Model.RegistrationDate.ToShortDateString()</dd>
+        <dt>Средний рейтинг</dt>
+        <dd>@Model.AvgRating</dd>
+    </dl>
+
+    <a asp-action="OrderItems" class="btn btn-primary">Мои элементы заказа</a>
+}
+else
+{
+    <p>Профиль не найден.</p>
+}
+
+<a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Назад</a>

@@ -1,0 +1,28 @@
+﻿@model Gamesbakery.Core.DTOs.OrderDTO.OrderListDTO
+
+<h2>Подробности заказа</h2>
+
+@if (ViewBag.ErrorMessage != null)
+{
+    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+}
+
+@if (Model != null)
+{
+    <dl>
+        <dt>Номер заказа</dt>
+        <dd>@Model.Id</dd>
+        <dt>Дата заказа</dt>
+        <dd>@Model.OrderDate.ToShortDateString()</dd>
+        <dt>Сумма</dt>
+        <dd>@Model.Price</dd>
+        <dt>Статус</dt>
+        <dd>@(Model.IsCompleted ? "Завершён" : Model.IsOverdue ? "Просрочен" : "В обработке")</dd>
+    </dl>
+}
+else
+{
+    <p>Заказ не найден.</p>
+}
+
+<a asp-action="Index" class="btn btn-secondary">Назад</a>

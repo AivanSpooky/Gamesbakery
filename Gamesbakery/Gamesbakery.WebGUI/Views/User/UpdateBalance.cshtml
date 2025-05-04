@@ -1,0 +1,14 @@
+﻿<h2>Пополнить баланс</h2>
+
+<form asp-action="UpdateBalance" method="post">
+    <div class="form-group">
+        <label for="newBalance">Новый баланс</label>
+        <input name="newBalance" class="form-control" type="number" step="0.01" />
+    </div>
+    <button type="submit" class="btn btn-primary">Пополнить</button>
+    <a asp-action="Profile" class="btn btn-secondary">Отмена</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -90,7 +90,8 @@ namespace Gamesbakery.BusinessLogic.Services
                 Id = game.Id,
                 Title = game.Title,
                 Price = game.Price,
-                IsForSale = game.IsForSale
+                IsForSale = game.IsForSale,
+                CategoryId = game.CategoryId
             };
         }
     }

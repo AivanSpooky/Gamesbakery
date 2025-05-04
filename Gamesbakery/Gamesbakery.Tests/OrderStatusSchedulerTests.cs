@@ -2,6 +2,8 @@
 using Gamesbakery.Core.Repositories;
 using Gamesbakery.BusinessLogic.Schedulers;
 using Moq;
+using Xunit;
+using Gamesbakery.Core;
 
 namespace Gamesbakery.Tests
 {
@@ -9,13 +11,15 @@ namespace Gamesbakery.Tests
     {
         private readonly Mock<IOrderRepository> _orderRepositoryMock;
         private readonly Mock<IOrderItemRepository> _orderItemRepositoryMock;
+        private readonly Mock<IAuthenticationService> _authServiceMock;
         private readonly OrderStatusScheduler _scheduler;
 
         public OrderStatusSchedulerTests()
         {
             _orderRepositoryMock = new Mock<IOrderRepository>();
             _orderItemRepositoryMock = new Mock<IOrderItemRepository>();
-            _scheduler = new OrderStatusScheduler(_orderRepositoryMock.Object, _orderItemRepositoryMock.Object);
+            _authServiceMock = new Mock<IAuthenticationService>();
+            _scheduler = new OrderStatusScheduler(_orderRepositoryMock.Object, _orderItemRepositoryMock.Object, _authServiceMock.Object);
         }
 
         [Fact(DisplayName = "Обновление статуса заказа - все ключи сгенерированы, заказ выполнен")]
@@ -35,9 +39,10 @@ namespace Gamesbakery.Tests
                 new OrderItem(Guid.NewGuid(), orderId, gameId2, sellerId, "KEY-456")
             };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(orderId)).ReturnsAsync(orderItems);
-            _orderRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Order>())).ReturnsAsync(order);
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.Admin);
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty, UserRole.Admin)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(orderId, UserRole.Admin)).ReturnsAsync(orderItems);
+            _orderRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Order>(), UserRole.Admin)).ReturnsAsync(order);
 
             // Act
             await _scheduler.UpdateOrderStatusesAsync();
@@ -64,9 +69,10 @@ namespace Gamesbakery.Tests
                 new OrderItem(Guid.NewGuid(), orderId, gameId2, sellerId, "KEY-456")
             };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(orderId)).ReturnsAsync(orderItems);
-            _orderRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Order>())).ReturnsAsync(order);
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.Admin);
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty, UserRole.Admin)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(orderId, UserRole.Admin)).ReturnsAsync(orderItems);
+            _orderRepositoryMock.Setup(repo => repo.UpdateAsync(It.IsAny<Order>(), UserRole.Admin)).ReturnsAsync(order);
 
             // Act
             await _scheduler.UpdateOrderStatusesAsync();
@@ -85,8 +91,9 @@ namespace Gamesbakery.Tests
             var order = new Order(orderId, userId, DateTime.UtcNow.AddDays(-5), 100, true, false);
             var orders = new List<Order> { order };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(It.IsAny<Guid>())).ReturnsAsync(new List<OrderItem>());
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.Admin);
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty, UserRole.Admin)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(It.IsAny<Guid>(), UserRole.Admin)).ReturnsAsync(new List<OrderItem>());
 
             // Act
             await _scheduler.UpdateOrderStatusesAsync();
@@ -94,7 +101,7 @@ namespace Gamesbakery.Tests
             // Assert
             Assert.True(order.IsCompleted);
             Assert.False(order.IsOverdue);
-            _orderRepositoryMock.Verify(repo => repo.UpdateAsync(It.IsAny<Order>()), Times.Never());
+            _orderRepositoryMock.Verify(repo => repo.UpdateAsync(It.IsAny<Order>(), UserRole.Admin), Times.Never());
         }
 
         [Fact(DisplayName = "Обновление статуса заказа - заказ уже просрочен, изменений нет")]
@@ -106,8 +113,9 @@ namespace Gamesbakery.Tests
             var order = new Order(orderId, userId, DateTime.UtcNow.AddDays(-15), 100, false, true);
             var orders = new List<Order> { order };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(It.IsAny<Guid>())).ReturnsAsync(new List<OrderItem>());
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.Admin);
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty, UserRole.Admin)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(It.IsAny<Guid>(), UserRole.Admin)).ReturnsAsync(new List<OrderItem>());
 
             // Act
             await _scheduler.UpdateOrderStatusesAsync();
@@ -115,7 +123,7 @@ namespace Gamesbakery.Tests
             // Assert
             Assert.False(order.IsCompleted);
             Assert.True(order.IsOverdue);
-            _orderRepositoryMock.Verify(repo => repo.UpdateAsync(It.IsAny<Order>()), Times.Never());
+            _orderRepositoryMock.Verify(repo => repo.UpdateAsync(It.IsAny<Order>(), UserRole.Admin), Times.Never());
         }
 
         [Fact(DisplayName = "Обновление статуса заказа - ключи не сгенерированы, 14 дней не прошло, изменений нет")]
@@ -135,8 +143,9 @@ namespace Gamesbakery.Tests
                 new OrderItem(Guid.NewGuid(), orderId, gameId2, sellerId, "KEY-456")
             };
 
-            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty)).ReturnsAsync(orders);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(orderId)).ReturnsAsync(orderItems);
+            _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.Admin);
+            _orderRepositoryMock.Setup(repo => repo.GetByUserIdAsync(Guid.Empty, UserRole.Admin)).ReturnsAsync(orders);
+            _orderItemRepositoryMock.Setup(repo => repo.GetByOrderIdAsync(orderId, UserRole.Admin)).ReturnsAsync(orderItems);
 
             // Act
             await _scheduler.UpdateOrderStatusesAsync();
@@ -144,7 +153,7 @@ namespace Gamesbakery.Tests
             // Assert
             Assert.False(order.IsCompleted);
             Assert.False(order.IsOverdue);
-            _orderRepositoryMock.Verify(repo => repo.UpdateAsync(It.IsAny<Order>()), Times.Never());
+            _orderRepositoryMock.Verify(repo => repo.UpdateAsync(It.IsAny<Order>(), UserRole.Admin), Times.Never());
         }
     }
 }

@@ -1,0 +1,54 @@
+﻿@model Gamesbakery.Core.DTOs.GameDTO.GameDetailsDTO
+
+<h2>Добавить игру</h2>
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label asp-for="CategoryId">Категория</label>
+        @{
+            var categories = ViewBag.Categories as IEnumerable<dynamic>;
+        }
+        <select asp-for="CategoryId" class="form-control">
+            <option value="">Выберите категорию</option>
+            @if (categories != null)
+            {
+                @foreach (var category in categories)
+                {
+                    <option value="@category.Id">@category.GenreName</option>
+                }
+            }
+        </select>
+        <span asp-validation-for="CategoryId" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Title">Название</label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Price">Цена</label>
+        <input asp-for="Price" class="form-control" type="number" step="0.01" />
+        <span asp-validation-for="Price" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="ReleaseDate">Дата выпуска</label>
+        <input asp-for="ReleaseDate" class="form-control" type="date" />
+        <span asp-validation-for="ReleaseDate" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Description">Описание</label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="OriginalPublisher">Издатель</label>
+        <input asp-for="OriginalPublisher" class="form-control" />
+        <span asp-validation-for="OriginalPublisher" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+    <a asp-action="Index" class="btn btn-secondary">Отмена</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

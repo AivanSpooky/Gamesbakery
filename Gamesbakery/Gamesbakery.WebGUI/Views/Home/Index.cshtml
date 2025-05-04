@@ -1,0 +1,34 @@
+﻿@model Gamesbakery.WebGUI.Models.HomeIndexViewModel
+@using System.Linq
+
+<h2>Добро пожаловать в Gamesbakery!</h2>
+
+<div class="button-container">
+    @if (User.Identity.IsAuthenticated)
+    {
+        <p>Вы вошли как @User.Identity.Name (Роль: @Model.Role)</p>
+        <a asp-controller="Game" asp-action="Index" class="btn btn-primary m-2">Перейти к играм</a>
+    }
+    else
+    {
+        <p>Пожалуйста, <a asp-controller="Account" asp-action="Login">войдите</a> или <a asp-controller="User" asp-action="Register">зарегистрируйтесь</a> для доступа к функциям.</p>
+        <a asp-controller="Game" asp-action="Index" class="btn btn-primary m-2">Перейти к играм</a>
+        <a asp-controller="Account" asp-action="Login" class="btn btn-secondary m-2">Вход</a>
+        <a asp-controller="User" asp-action="Register" class="btn btn-secondary m-2">Регистрация</a>
+    }
+</div>
+
+<h3>Категории игр</h3>
+@if (Model.Categories != null && Model.Categories.Any())
+{
+    <ul>
+        @foreach (var category in Model.Categories)
+        {
+            <li><a asp-controller="Game" asp-action="Index" asp-route-genre="@category.GenreName">@category.GenreName</a></li>
+        }
+    </ul>
+}
+else
+{
+    <p>Категории не найдены.</p>
+}

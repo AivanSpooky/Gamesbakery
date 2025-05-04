@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.Web", "Gamesbakery\Gamesbakery.Web.csproj", "{CE11045B-089B-4E26-BB39-AB181C624D29}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.Core", "Gamesbakery.Core\Gamesbakery.Core.csproj", "{9215C106-35B0-4DDC-89AA-4472EA9AF579}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.BusinessLogic", "Gamesbakery.BusinessLogic\Gamesbakery.BusinessLogic.csproj", "{8259CE07-027B-475C-BA35-2CA3B6E26137}"
@@ -21,16 +19,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.ConsoleUI", "Ga
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.Infrastructure", "Gamesbakery.Infrastructure\Gamesbakery.Infrastructure.csproj", "{CE6E4C31-4C84-462C-9166-00889F639D99}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.WebGUI", "Gamesbakery.WebGUI\Gamesbakery.WebGUI.csproj", "{8B0282C1-DC71-4621-BAF3-62CD306DA68F}"
+EndProject
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{04CF537C-C299-407E-B852-F158C53A8106}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{CE11045B-089B-4E26-BB39-AB181C624D29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CE11045B-089B-4E26-BB39-AB181C624D29}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CE11045B-089B-4E26-BB39-AB181C624D29}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CE11045B-089B-4E26-BB39-AB181C624D29}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9215C106-35B0-4DDC-89AA-4472EA9AF579}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9215C106-35B0-4DDC-89AA-4472EA9AF579}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9215C106-35B0-4DDC-89AA-4472EA9AF579}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -63,6 +61,14 @@ Global
 		{CE6E4C31-4C84-462C-9166-00889F639D99}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CE6E4C31-4C84-462C-9166-00889F639D99}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CE6E4C31-4C84-462C-9166-00889F639D99}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B0282C1-DC71-4621-BAF3-62CD306DA68F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B0282C1-DC71-4621-BAF3-62CD306DA68F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B0282C1-DC71-4621-BAF3-62CD306DA68F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B0282C1-DC71-4621-BAF3-62CD306DA68F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04CF537C-C299-407E-B852-F158C53A8106}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04CF537C-C299-407E-B852-F158C53A8106}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04CF537C-C299-407E-B852-F158C53A8106}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04CF537C-C299-407E-B852-F158C53A8106}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

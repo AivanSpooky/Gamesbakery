@@ -1,12 +1,11 @@
-﻿using Gamesbakery.Core.Repositories;
-using Gamesbakery.Core;
-using Gamesbakery.DataAccess;
-using Gamesbakery.DataAccess.Repositories;
-using Gamesbakery.BusinessLogic.Schedulers;
+﻿using Gamesbakery.BusinessLogic.Schedulers;
 using Gamesbakery.BusinessLogic.Services;
-using Microsoft.EntityFrameworkCore;
+using Gamesbakery.Core.Repositories;
+using Gamesbakery.Core;
+using Gamesbakery.DataAccess.Repositories;
+using Gamesbakery.DataAccess;
 using Microsoft.Extensions.DependencyInjection;
-using Gamesbakery.BusinessLogic;
+using Microsoft.EntityFrameworkCore;
 
 namespace Gamesbakery.Infrastructure
 {
@@ -32,6 +31,7 @@ namespace Gamesbakery.Infrastructure
             services.AddScoped<IGameService, GameService>();
             services.AddScoped<IOrderService, OrderService>();
             services.AddScoped<IReviewService, ReviewService>();
+            services.AddScoped<ICategoryService, CategoryService>();
             services.AddScoped<IAuthenticationService, AuthenticationService>();
 
             return services.BuildServiceProvider();

@@ -1,0 +1,91 @@
+﻿@model List<Gamesbakery.Core.DTOs.GameDTO.GameListDTO>
+
+<h2>Список игр</h2>
+
+<form asp-action="Index" method="get">
+    <div class="form-group">
+        <label for="genre">Жанр</label>
+        @{
+            var categories = ViewBag.Categories as IEnumerable<dynamic>;
+        }
+        <select name="genre" id="genre" class="form-control">
+            <option value="">Все жанры</option>
+            @if (categories != null)
+            {
+                @foreach (var category in categories)
+                {
+                    <option value="@category.GenreName" selected="@(ViewBag.Genre == category.GenreName ? "selected" : "")">@category.GenreName</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="minPrice">Минимальная цена</label>
+        <input type="number" name="minPrice" id="minPrice" class="form-control" step="0.01" value="@ViewBag.MinPrice" />
+    </div>
+    <div class="form-group">
+        <label for="maxPrice">Максимальная цена</label>
+        <input type="number" name="maxPrice" id="maxPrice" class="form-control" step="0.01" value="@ViewBag.MaxPrice" />
+    </div>
+    <button type="submit" class="btn btn-primary">Фильтровать</button>
+</form>
+
+@if (ViewBag.ErrorMessage != null)
+{
+    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+}
+
+<!-- Пагинация -->
+@{
+    int page = ViewBag.Page;
+    int pageSize = ViewBag.PageSize;
+    int totalCount = ViewBag.TotalCount;
+    int totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+}
+
+@if (Model != null && Model.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th>Цена</th>
+                <th>В продаже</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var game in Model)
+            {
+                <tr>
+                    <td>@game.Title</td>
+                    <td>@game.Price.ToString("C")</td>
+                    <td>@(game.IsForSale ? "Да" : "Нет")</td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@game.Id">Подробности</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <nav>
+        <ul class="pagination">
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == page ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { page = i, pageSize, genre = ViewBag.Genre, minPrice = ViewBag.MinPrice, maxPrice = ViewBag.MaxPrice })">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+else
+{
+    <p>Игры не найдены.</p>
+}
+
+@if (User.IsInRole("Admin"))
+{
+    <a asp-action="Create" class="btn btn-primary">Добавить игру</a>
+}

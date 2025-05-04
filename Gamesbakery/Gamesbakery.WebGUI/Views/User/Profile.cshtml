@@ -1,0 +1,53 @@
+﻿@model Gamesbakery.Core.DTOs.UserDTO.UserProfileDTO
+
+<h2>Профиль пользователя</h2>
+
+@if (ViewBag.ErrorMessage != null)
+{
+    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+} 
+
+@if (Model != null)
+{
+    <dl class="row">
+        <dt class="col-sm-2">Имя пользователя</dt>
+        <dd class="col-sm-10">@Model.Username</dd>
+        <dt class="col-sm-2">Электронная почта</dt>
+        <dd class="col-sm-10">@Model.Email</dd>
+        <dt class="col-sm-2">Страна</dt>
+        <dd class="col-sm-10">@Model.Country</dd>
+        <dt class="col-sm-2">Баланс</dt>
+        <dd class="col-sm-10">@Model.Balance.ToString("C")</dd>
+        <dt class="col-sm-2">Статус</dt>
+        <dd class="col-sm-10">@(Model.IsBlocked ? "Заблокирован" : "Активен")</dd>
+    </dl>
+
+    @if (!User.IsInRole("Admin"))
+    {
+        <a asp-action="UpdateBalance" class="btn btn-primary">Пополнить баланс</a>
+    }
+
+    @if (User.IsInRole("Admin"))
+    {
+        @if (Model.IsBlocked)
+        {
+            <form asp-action="Unblock" method="post">
+                <input type="hidden" name="userId" value="@Model.Id" />
+                <button type="submit" class="btn btn-success">Разблокировать</button>
+            </form>
+        }
+        else
+        {
+            <form asp-action="Block" method="post">
+                <input type="hidden" name="userId" value="@Model.Id" />
+                <button type="submit" class="btn btn-danger">Заблокировать</button>
+            </form>
+        }
+    }
+}
+else
+{
+    <p>Профиль не найден.</p>
+}
+
+<a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Назад</a>

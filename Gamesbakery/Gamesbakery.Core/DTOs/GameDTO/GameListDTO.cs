@@ -3,6 +3,7 @@
     public class GameListDTO // (для списка игр)
     {
         public Guid Id { get; set; }
+        public Guid CategoryId { get; set; }
         public string Title { get; set; }
         public decimal Price { get; set; }
         public bool IsForSale { get; set; }

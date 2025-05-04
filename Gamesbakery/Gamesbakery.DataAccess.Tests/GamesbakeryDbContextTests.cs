@@ -1,4 +1,5 @@
 ﻿using Gamesbakery.Core.Entities;
+using Gamesbakery.Core;
 using Gamesbakery.DataAccess.Tests.Fixtures;
 
 namespace Gamesbakery.DataAccess.Tests

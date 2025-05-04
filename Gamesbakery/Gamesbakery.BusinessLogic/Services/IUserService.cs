@@ -1,4 +1,5 @@
 ﻿using Gamesbakery.Core.DTOs;
+using Gamesbakery.Core.DTOs.UserDTO;
 using Gamesbakery.Core.Entities;
 
 namespace Gamesbakery.BusinessLogic.Services

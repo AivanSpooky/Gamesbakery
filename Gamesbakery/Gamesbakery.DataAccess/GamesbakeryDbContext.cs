@@ -29,6 +29,8 @@ namespace Gamesbakery.DataAccess
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<User>().ToTable("Users");
+            modelBuilder.Entity<Seller>().ToTable("Sellers");
             // User
             modelBuilder.Entity<User>(entity =>
             {

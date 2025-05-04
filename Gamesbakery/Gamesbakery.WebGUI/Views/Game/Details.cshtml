@@ -1,0 +1,55 @@
+﻿@model Gamesbakery.Core.DTOs.GameDTO.GameDetailsDTO
+
+<h2>Подробности об игре</h2>
+
+@if (ViewBag.ErrorMessage != null)
+{
+    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+}
+
+@if (Model != null)
+{
+    <dl>
+        <dt>Название</dt>
+        <dd>@Model.Title</dd>
+        <dt>Категория</dt>
+        <dd>
+            @{
+                var categories = ViewBag.Categories as IEnumerable<Gamesbakery.Core.Entities.Category>;
+                var category = categories != null ? categories.FirstOrDefault(c => c.Id == Model.CategoryId) : null;
+            }
+            @(category != null ? category.GenreName : "Не указана")
+        </dd>
+        <dt>Цена</dt>
+        <dd>@Model.Price.ToString("C")</dd>
+        <dt>Дата выпуска</dt>
+        <dd>@Model.ReleaseDate.ToShortDateString()</dd>
+        <dt>Описание</dt>
+        <dd>@Model.Description</dd>
+        <dt>Издатель</dt>
+        <dd>@Model.OriginalPublisher</dd>
+        <dt>В продаже</dt>
+        <dd>@(Model.IsForSale ? "Да" : "Нет")</dd>
+    </dl>
+
+    @if (User.IsInRole("Admin"))
+    {
+        <form asp-action="SetForSale" method="post">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="form-group">
+                <label>Статус продажи</label>
+                <select name="isForSale" class="form-control">
+                    <option value="true" selected="@(Model.IsForSale ? "selected" : "")">В продаже</option>
+                    <option value="false" selected="@(!Model.IsForSale ? "selected" : "")">Не в продаже</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Обновить статус</button>
+        </form>
+    }
+}
+else
+{
+    <p>Игра не найдена.</p>
+}
+
+<a asp-action="Index" class="btn btn-secondary">Назад</a>

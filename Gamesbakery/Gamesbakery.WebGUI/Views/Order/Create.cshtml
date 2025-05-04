@@ -1,0 +1,57 @@
+﻿@model List<Guid>
+
+<h2>Создать заказ</h2>
+
+@if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
+{
+    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+}
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label>Выберите игры</label>
+        @{
+            var games = ViewBag.Games as IEnumerable<dynamic>;
+        }
+        @if (games != null && games.Any())
+        {
+            <div class="checkbox-list">
+                @foreach (var game in games)
+                {
+                    if (game.IsForSale)
+                    {
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" name="gameIds" value="@game.Id" />
+                            <label class="form-check-label">@game.Title (Цена: @game.Price.ToString("C"))</label>
+                        </div>
+                    }
+                }
+            </div>
+        }
+        else
+        {
+            <p>Нет доступных игр для заказа.</p>
+        }
+    </div>
+    @{
+        bool hasGamesForSale = games != null && games.Any(game => game.IsForSale);
+    }
+    @if (hasGamesForSale)
+    {
+        <button type="submit" class="btn btn-primary m-2">Создать заказ</button>
+    }
+    <a asp-controller="Game" asp-action="Index" class="btn btn-secondary m-2">Отмена</a>
+</form>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('form').on('submit', function (e) {
+                if ($('input[name="gameIds"]:checked').length === 0) {
+                    e.preventDefault();
+                    alert('Пожалуйста, выберите хотя бы одну игру.');
+                }
+            });
+        });
+    </script>
+}

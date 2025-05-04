@@ -1,0 +1,52 @@
+﻿@model List<Gamesbakery.Core.DTOs.OrderItemDTO>
+
+<h2>Элементы заказа</h2>
+
+@if (ViewBag.ErrorMessage != null)
+{
+    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+}
+
+@if (Model.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Номер элемента</th>
+                <th>Заказ</th>
+                <th>Игра</th>
+                <th>Ключ</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Id</td>
+                    <td>@item.OrderId</td>
+                    <td>@item.GameId</td>
+                    <td>@(item.Key ?? "Не установлен")</td>
+                    <td>
+                        @if (string.IsNullOrEmpty(item.Key))
+                        {
+                            <form asp-action="SetOrderItemKey" method="post">
+                                <input type="hidden" name="orderItemId" value="@item.Id" />
+                                <div class="form-group">
+                                    <input name="key" class="form-control" placeholder="Введите ключ" />
+                                </div>
+                                <button type="submit" class="btn btn-primary">Установить ключ</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Элементы заказа не найдены.</p>
+}
+
+<a asp-action="Profile" class="btn btn-secondary">Назад</a>
