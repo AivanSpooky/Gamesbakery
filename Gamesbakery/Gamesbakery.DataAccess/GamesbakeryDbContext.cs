@@ -1,5 +1,7 @@
 ﻿using Gamesbakery.Core.Entities;
+using Gamesbakery.Core.DTOs.GiftDTO;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace Gamesbakery.DataAccess
 {
@@ -12,25 +14,40 @@ namespace Gamesbakery.DataAccess
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<Gift> Gifts { get; set; }
         // VIEWS
         public DbSet<User> UserProfiles { get; set; }
         public DbSet<Order> UserOrders { get; set; }
         public DbSet<OrderItem> UserOrderItems { get; set; }
         public DbSet<Review> UserReviews { get; set; }
-        public DbSet<OrderItem> SellerOrderItems { get; set; }
         public DbSet<Seller> SellerProfiles { get; set; }
-
+        public DbSet<SentGift> UserSentGifts { get; set; }
+        public DbSet<ReceivedGift> UserReceivedGifts { get; set; }
 
         public GamesbakeryDbContext(DbContextOptions<GamesbakeryDbContext> options)
             : base(options)
         {
-            //this.ChangeTracker.LazyLoadingEnabled = false;
         }
-
+        public decimal GetUserTotalSpent(Guid userId)
+        {
+            var parameter = new SqlParameter("@UserID", userId);
+            var result = Database.SqlQueryRaw<decimal>(
+                $"SELECT dbo.fn_GetUserTotalSpent(@UserID) AS Value",
+                parameter)
+                .FirstOrDefault();
+            return result;
+        }
+        public decimal GetGameAverageRating(Guid gameId)
+        {
+            var parameter = new SqlParameter("@GameID", gameId);
+            var result = Database.SqlQueryRaw<decimal>(
+                $"SELECT dbo.fn_GetGameAverageRating(@GameID) AS Value",
+                parameter)
+                .FirstOrDefault();
+            return result;
+        }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<User>().ToTable("Users");
-            modelBuilder.Entity<Seller>().ToTable("Sellers");
             // User
             modelBuilder.Entity<User>(entity =>
             {
@@ -47,7 +64,7 @@ namespace Gamesbakery.DataAccess
                 entity.Property(u => u.Balance).HasColumnName("Balance").HasColumnType("decimal(10,2)").IsRequired();
             });
 
-            // UserProfile (представление)
+            // UserProfile (view)
             modelBuilder.Entity<User>(entity =>
             {
                 entity.ToView("UserProfile");
@@ -61,7 +78,8 @@ namespace Gamesbakery.DataAccess
                 entity.Property(u => u.IsBlocked).HasColumnName("IsBlocked");
                 entity.Property(u => u.Balance).HasColumnName("Balance");
             });
-            // UserOrders
+
+            // UserOrders (view)
             modelBuilder.Entity<Order>(entity =>
             {
                 entity.ToView("UserOrders");
@@ -73,7 +91,8 @@ namespace Gamesbakery.DataAccess
                 entity.Property(o => o.IsCompleted).HasColumnName("IsCompleted");
                 entity.Property(o => o.IsOverdue).HasColumnName("IsOverdue");
             });
-            // UserOrderItems (представление)
+
+            // UserOrderItems (view)
             modelBuilder.Entity<OrderItem>(entity =>
             {
                 entity.ToView("UserOrderItems");
@@ -84,7 +103,8 @@ namespace Gamesbakery.DataAccess
                 entity.Property(oi => oi.SellerId).HasColumnName("SellerID");
                 entity.Property(oi => oi.Key).HasColumnName("KeyText");
             });
-            // UserReviews (представление)
+
+            // UserReviews (view)
             modelBuilder.Entity<Review>(entity =>
             {
                 entity.ToView("UserReviews");
@@ -109,7 +129,7 @@ namespace Gamesbakery.DataAccess
                 entity.Property(s => s.Password).HasColumnName("Password").HasMaxLength(100).IsRequired();
             });
 
-            // SellerProfile (представление)
+            // SellerProfile (view)
             modelBuilder.Entity<Seller>(entity =>
             {
                 entity.ToView("SellerProfile");
@@ -121,7 +141,7 @@ namespace Gamesbakery.DataAccess
                 entity.Property(s => s.Password).HasColumnName("Password");
             });
 
-            // SellerOrderItems (представление)
+            // SellerOrderItems (view)
             modelBuilder.Entity<OrderItem>(entity =>
             {
                 entity.ToView("SellerOrderItems");
@@ -133,7 +153,7 @@ namespace Gamesbakery.DataAccess
                 entity.Property(oi => oi.Key).HasColumnName("KeyText");
             });
 
-            // Остальные маппинги
+            // Category
             modelBuilder.Entity<Category>(entity =>
             {
                 entity.ToTable("Categories");
@@ -143,6 +163,7 @@ namespace Gamesbakery.DataAccess
                 entity.Property(c => c.Description).HasColumnName("Description").IsRequired();
             });
 
+            // Game
             modelBuilder.Entity<Game>(entity =>
             {
                 entity.ToTable("Games");
@@ -158,6 +179,7 @@ namespace Gamesbakery.DataAccess
                 entity.HasOne<Category>().WithMany().HasForeignKey(g => g.CategoryId).OnDelete(DeleteBehavior.Cascade);
             });
 
+            // Order
             modelBuilder.Entity<Order>(entity =>
             {
                 entity.ToTable("Orders");
@@ -171,20 +193,23 @@ namespace Gamesbakery.DataAccess
                 entity.HasOne<User>().WithMany().HasForeignKey(o => o.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
+            // OrderItem
             modelBuilder.Entity<OrderItem>(entity =>
             {
                 entity.ToTable("OrderItems");
                 entity.HasKey(oi => oi.Id);
                 entity.Property(oi => oi.Id).HasColumnName("OrderItemID").ValueGeneratedOnAdd();
-                entity.Property(oi => oi.OrderId).HasColumnName("OrderID").IsRequired();
+                entity.Property(oi => oi.OrderId).HasColumnName("OrderID");
                 entity.Property(oi => oi.GameId).HasColumnName("GameID").IsRequired();
                 entity.Property(oi => oi.SellerId).HasColumnName("SellerID").IsRequired();
                 entity.Property(oi => oi.Key).HasColumnName("KeyText").HasMaxLength(50);
+                entity.Property(oi => oi.IsGifted).HasColumnName("IsGifted").HasDefaultValue(false);
                 entity.HasOne<Order>().WithMany().HasForeignKey(oi => oi.OrderId).OnDelete(DeleteBehavior.Cascade);
                 entity.HasOne<Game>().WithMany().HasForeignKey(oi => oi.GameId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne<Seller>().WithMany().HasForeignKey(oi => oi.SellerId).OnDelete(DeleteBehavior.Restrict);
             });
 
+            // Review
             modelBuilder.Entity<Review>(entity =>
             {
                 entity.ToTable("Reviews");
@@ -197,6 +222,54 @@ namespace Gamesbakery.DataAccess
                 entity.Property(r => r.CreationDate).HasColumnName("CreationDate").IsRequired();
                 entity.HasOne<User>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
                 entity.HasOne<Game>().WithMany().HasForeignKey(r => r.GameId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Gift
+            modelBuilder.Entity<Gift>(entity =>
+            {
+                entity.ToTable("Gifts");
+                entity.HasKey(g => g.Id);
+                entity.Property(g => g.Id).HasColumnName("GiftID").ValueGeneratedOnAdd();
+                entity.Property(g => g.SenderId).HasColumnName("SenderID").IsRequired();
+                entity.Property(g => g.RecipientId).HasColumnName("RecipientID").IsRequired();
+                entity.Property(g => g.OrderItemId).HasColumnName("OrderItemID").IsRequired();
+                entity.Property(g => g.GiftDate).HasColumnName("GiftDate").IsRequired();
+                entity.HasOne(g => g.OrderItem)
+                      .WithMany()
+                      .HasForeignKey(g => g.OrderItemId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne<User>()
+                      .WithMany()
+                      .HasForeignKey(g => g.SenderId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne<User>()
+                      .WithMany()
+                      .HasForeignKey(g => g.RecipientId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // UserSentGifts (view)
+            modelBuilder.Entity<SentGift>(entity =>
+            {
+                entity.ToView("UserSentGifts");
+                entity.HasKey(g => g.Id);
+                entity.Property(g => g.Id).HasColumnName("GiftID");
+                entity.Property(g => g.SenderId).HasColumnName("SenderID");
+                entity.Property(g => g.RecipientId).HasColumnName("RecipientID");
+                entity.Property(g => g.OrderItemId).HasColumnName("OrderItemID");
+                entity.Property(g => g.GiftDate).HasColumnName("GiftDate");
+            });
+
+            // UserReceivedGifts (view)
+            modelBuilder.Entity<ReceivedGift>(entity =>
+            {
+                entity.ToView("UserReceivedGifts");
+                entity.HasKey(g => g.Id);
+                entity.Property(g => g.Id).HasColumnName("GiftID");
+                entity.Property(g => g.SenderId).HasColumnName("SenderID");
+                entity.Property(g => g.RecipientId).HasColumnName("RecipientID");
+                entity.Property(g => g.OrderItemId).HasColumnName("OrderItemID");
+                entity.Property(g => g.GiftDate).HasColumnName("GiftDate");
             });
         }
     }

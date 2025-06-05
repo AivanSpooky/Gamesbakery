@@ -1,28 +1,90 @@
-﻿@model Gamesbakery.Core.DTOs.OrderDTO.OrderListDTO
+﻿@model Gamesbakery.Core.DTOs.OrderDTO.OrderDetailsDTO
+@{
+    ViewData["Title"] = "Order Details";
+    var orderItems = ViewBag.OrderItems as List<Gamesbakery.Core.Entities.OrderItem>;
+}
 
-<h2>Подробности заказа</h2>
+<h2>Детали заказа</h2>
 
-@if (ViewBag.ErrorMessage != null)
+@if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
 {
     <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
 }
 
-@if (Model != null)
+@if (Model == null)
 {
-    <dl>
-        <dt>Номер заказа</dt>
-        <dd>@Model.Id</dd>
-        <dt>Дата заказа</dt>
-        <dd>@Model.OrderDate.ToShortDateString()</dd>
-        <dt>Сумма</dt>
-        <dd>@Model.Price</dd>
-        <dt>Статус</dt>
-        <dd>@(Model.IsCompleted ? "Завершён" : Model.IsOverdue ? "Просрочен" : "В обработке")</dd>
-    </dl>
+    <p>Не удалось загрузить детали заказа.</p>
 }
 else
 {
-    <p>Заказ не найден.</p>
+    <div>
+        <h4>Заказ</h4>
+        <hr />
+        <dl class="row">
+            <dt class="col-sm-2">
+                ID заказа
+            </dt>
+            <dd class="col-sm-10">
+                @Model.Id
+            </dd>
+            <dt class="col-sm-2">
+                Дата заказа
+            </dt>
+            <dd class="col-sm-10">
+                @Model.OrderDate.ToString("dd.MM.yyyy")
+            </dd>
+            <dt class="col-sm-2">
+                Общая сумма
+            </dt>
+            <dd class="col-sm-10">
+                @Model.TotalPrice.ToString("C")
+            </dd>
+            <dt class="col-sm-2">
+                Завершен
+            </dt>
+            <dd class="col-sm-10">
+                @Model.IsCompleted
+            </dd>
+            <dt class="col-sm-2">
+                Просрочен
+            </dt>
+            <dd class="col-sm-10">
+                @Model.IsOverdue
+            </dd>
+        </dl>
+    </div>
+
+    <h4>Товары в заказе</h4>
+    @if (orderItems == null || !orderItems.Any())
+    {
+        <p>В заказе нет товаров.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID игры</th>
+                    <th>ID продавца</th>
+                    <th>Ключ</th>
+                    <th>Подарено</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in orderItems)
+                {
+                    <tr>
+                        <td>@item.GameId</td>
+                        <td>@item.SellerId</td>
+                        <td>@(item.Key ?? "Ключ не предоставлен")</td>
+                        <td>@item.IsGifted</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
 }
 
-<a asp-action="Index" class="btn btn-secondary">Назад</a>
+<div>
+    <a asp-action="Index" class="btn btn-secondary">Вернуться к заказам</a>
+</div>

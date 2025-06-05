@@ -1,10 +1,51 @@
 ﻿@model List<Gamesbakery.Core.DTOs.OrderItemDTO>
+@using Gamesbakery.Core
+@{
+    ViewData["Title"] = "Мои ключи";
+    var games = ViewBag.Games as List<Gamesbakery.Core.DTOs.GameDTO.GameListDTO>;
+    var role = Context.Session.GetString("Role");
+}
 
-<h2>Элементы заказа</h2>
+<h2>Мои ключи</h2>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
 
 @if (ViewBag.ErrorMessage != null)
 {
     <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+}
+
+@if (role == "Seller")
+{
+    <h4>Добавить новый ключ</h4>
+    <form asp-action="CreateKey" method="post">
+        <div class="form-group">
+            <label for="gameId">Игра</label>
+            <select name="gameId" class="form-control" required>
+                <option value="">Выберите игру</option>
+                @if (games != null && games.Any())
+                {
+                    @foreach (var game in games)
+                    {
+                        <option value="@game.Id">@game.Title</option>
+                    }
+                }
+                else
+                {
+                    <option value="" disabled>Нет доступных игр</option>
+                }
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="key">Ключ</label>
+            <input name="key" class="form-control" placeholder="Введите ключ" required />
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Добавить ключ</button>
+    </form>
+    <hr />
 }
 
 @if (Model.Any())
@@ -24,11 +65,11 @@
             {
                 <tr>
                     <td>@item.Id</td>
-                    <td>@item.OrderId</td>
+                    <td>@(item.OrderId == null ? "Не привязан" : item.OrderId.ToString())</td>
                     <td>@item.GameId</td>
                     <td>@(item.Key ?? "Не установлен")</td>
                     <td>
-                        @if (string.IsNullOrEmpty(item.Key))
+                        @if (string.IsNullOrEmpty(item.Key) && role == "Seller")
                         {
                             <form asp-action="SetOrderItemKey" method="post">
                                 <input type="hidden" name="orderItemId" value="@item.Id" />
@@ -46,7 +87,7 @@
 }
 else
 {
-    <p>Элементы заказа не найдены.</p>
+    <p>Ключи не найдены.</p>
 }
 
 <a asp-action="Profile" class="btn btn-secondary">Назад</a>

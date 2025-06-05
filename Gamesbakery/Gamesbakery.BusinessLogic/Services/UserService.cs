@@ -24,6 +24,37 @@ namespace Gamesbakery.BusinessLogic.Services
             return MapToProfileDTO(createdUser);
         }
 
+        public async Task<IEnumerable<UserListDTO>> GetAllUsersExceptAsync(Guid excludedUserId)
+        {
+            if (excludedUserId == Guid.Empty)
+                throw new ArgumentException("ExcludedUserId cannot be empty.", nameof(excludedUserId));
+
+            var users = await _userRepository.GetAllAsync();
+            return users
+                .Where(u => u.Id != excludedUserId)
+                .Select(u => new UserListDTO
+                {
+                    Id = u.Id,
+                    Username = u.Username
+                });
+        }
+
+        public async Task<UserListDTO> GetByUsernameAsync(string username, UserRole role)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                throw new ArgumentException("Username cannot be empty.", nameof(username));
+
+            var user = await _userRepository.GetByUsernameAsync(username, role);
+            if (user == null)
+                return null;
+
+            return new UserListDTO
+            {
+                Id = user.Id,
+                Username = user.Username
+            };
+        }
+
         public async Task<UserProfileDTO> RegisterUserAsync(string username, string email, string password, string country, bool proc)
         {
             var currentRole = _authService.GetCurrentRole();
@@ -44,7 +75,12 @@ namespace Gamesbakery.BusinessLogic.Services
             if (user == null)
                 throw new KeyNotFoundException($"User with ID {userId} not found.");
 
-            return MapToProfileDTO(user);
+            // Получаем TotalSpent через репозиторий
+            var totalSpent = _userRepository.GetUserTotalSpent(userId);
+
+            var userProfile = MapToProfileDTO(user);
+            userProfile.TotalSpent = totalSpent; // Добавляем TotalSpent
+            return userProfile;
         }
 
         public async Task<UserProfileDTO> GetUserByEmailAsync(string email)
@@ -59,7 +95,12 @@ namespace Gamesbakery.BusinessLogic.Services
             if (currentRole != UserRole.Admin && user.Id != currentUserId)
                 throw new UnauthorizedAccessException("You can only view your own profile.");
 
-            return MapToProfileDTO(user);
+            // Получаем TotalSpent через репозиторий
+            var totalSpent = _userRepository.GetUserTotalSpent(user.Id);
+
+            var userProfile = MapToProfileDTO(user);
+            userProfile.TotalSpent = totalSpent; // Добавляем TotalSpent
+            return userProfile;
         }
 
         public async Task<UserProfileDTO> UpdateBalanceAsync(Guid userId, decimal newBalance)
@@ -77,7 +118,13 @@ namespace Gamesbakery.BusinessLogic.Services
 
             user.UpdateBalance(newBalance);
             var updatedUser = await _userRepository.UpdateAsync(user, currentRole);
-            return MapToProfileDTO(updatedUser);
+
+            // Получаем TotalSpent через репозиторий
+            var totalSpent = _userRepository.GetUserTotalSpent(userId);
+
+            var userProfile = MapToProfileDTO(updatedUser);
+            userProfile.TotalSpent = totalSpent; // Добавляем TotalSpent
+            return userProfile;
         }
 
         public async Task<UserProfileDTO> BlockUserAsync(Guid userId)
@@ -92,7 +139,13 @@ namespace Gamesbakery.BusinessLogic.Services
 
             user.Block();
             var updatedUser = await _userRepository.UpdateAsync(user, currentRole);
-            return MapToProfileDTO(updatedUser);
+
+            // Получаем TotalSpent через репозиторий
+            var totalSpent = _userRepository.GetUserTotalSpent(userId);
+
+            var userProfile = MapToProfileDTO(updatedUser);
+            userProfile.TotalSpent = totalSpent; // Добавляем TotalSpent
+            return userProfile;
         }
 
         public async Task<UserProfileDTO> UnblockUserAsync(Guid userId)
@@ -107,7 +160,13 @@ namespace Gamesbakery.BusinessLogic.Services
 
             user.Unblock();
             var updatedUser = await _userRepository.UpdateAsync(user, currentRole);
-            return MapToProfileDTO(updatedUser);
+
+            // Получаем TotalSpent через репозиторий
+            var totalSpent = _userRepository.GetUserTotalSpent(userId);
+
+            var userProfile = MapToProfileDTO(updatedUser);
+            userProfile.TotalSpent = totalSpent; // Добавляем TotalSpent
+            return userProfile;
         }
 
         private UserProfileDTO MapToProfileDTO(User user)
@@ -120,7 +179,8 @@ namespace Gamesbakery.BusinessLogic.Services
                 RegistrationDate = user.RegistrationDate,
                 Country = user.Country,
                 IsBlocked = user.IsBlocked,
-                Balance = user.Balance
+                Balance = user.Balance,
+                TotalSpent = 0 // Значение будет перезаписано в методах
             };
         }
 

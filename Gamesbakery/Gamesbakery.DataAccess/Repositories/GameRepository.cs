@@ -1,6 +1,7 @@
 ﻿using Gamesbakery.Core;
 using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gamesbakery.DataAccess.Repositories
@@ -18,11 +19,20 @@ namespace Gamesbakery.DataAccess.Repositories
         {
             try
             {
-                await _context.Games.AddAsync(game);
-                await _context.SaveChangesAsync();
+                await _context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO Games (GameID, CategoryID, Title, Price, ReleaseDate, Description, IsForSale, OriginalPublisher) " +
+                    "VALUES (@GameID, @CategoryID, @Title, @Price, @ReleaseDate, @Description, @IsForSale, @OriginalPublisher)",
+                    new SqlParameter("@GameID", game.Id),
+                    new SqlParameter("@CategoryID", game.CategoryId),
+                    new SqlParameter("@Title", game.Title),
+                    new SqlParameter("@Price", game.Price),
+                    new SqlParameter("@ReleaseDate", game.ReleaseDate),
+                    new SqlParameter("@Description", game.Description),
+                    new SqlParameter("@IsForSale", game.IsForSale),
+                    new SqlParameter("@OriginalPublisher", game.OriginalPublisher));
                 return game;
             }
-            catch (DbUpdateException ex)
+            catch (Exception ex)
             {
                 throw new InvalidOperationException("Failed to add game to the database.", ex);
             }
@@ -32,10 +42,14 @@ namespace Gamesbakery.DataAccess.Repositories
         {
             try
             {
-                var game = await _context.Games.FindAsync(id);
+                var games = await _context.Games
+                    .FromSqlRaw("SELECT GameID, CategoryID, Title, Price, ReleaseDate, Description, IsForSale, OriginalPublisher " +
+                                "FROM Games WHERE GameID = @GameID",
+                        new SqlParameter("@GameID", id))
+                    .ToListAsync();
+                var game = games.FirstOrDefault();
                 if (game == null)
                     throw new KeyNotFoundException($"Game with ID {id} not found.");
-
                 return game;
             }
             catch (Exception ex)
@@ -48,11 +62,12 @@ namespace Gamesbakery.DataAccess.Repositories
         {
             try
             {
-                return await _context.Games.ToListAsync();
+                return await _context.Games
+                    .FromSqlRaw("SELECT GameID, CategoryID, Title, Price, ReleaseDate, Description, IsForSale, OriginalPublisher FROM Games")
+                    .ToListAsync();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Detailed error in GameRepository.GetAllAsync: {ex}");
                 throw new InvalidOperationException("Failed to retrieve games from the database.", ex);
             }
         }
@@ -64,25 +79,32 @@ namespace Gamesbakery.DataAccess.Repositories
 
             try
             {
-                var existingGame = await _context.Games.FindAsync(game.Id);
-                if (existingGame == null)
+                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
+                    "UPDATE Games SET CategoryID = @CategoryID, Title = @Title, Price = @Price, ReleaseDate = @ReleaseDate, " +
+                    "Description = @Description, IsForSale = @IsForSale, OriginalPublisher = @OriginalPublisher " +
+                    "WHERE GameID = @GameID",
+                    new SqlParameter("@GameID", game.Id),
+                    new SqlParameter("@CategoryID", game.CategoryId),
+                    new SqlParameter("@Title", game.Title),
+                    new SqlParameter("@Price", game.Price),
+                    new SqlParameter("@ReleaseDate", game.ReleaseDate),
+                    new SqlParameter("@Description", game.Description),
+                    new SqlParameter("@IsForSale", game.IsForSale),
+                    new SqlParameter("@OriginalPublisher", game.OriginalPublisher));
+
+                if (rowsAffected == 0)
                     throw new KeyNotFoundException($"Game with ID {game.Id} not found.");
 
-                existingGame.SetCategoryId(game.CategoryId);
-                existingGame.SetTitle(game.Title);
-                existingGame.SetPrice(game.Price);
-                existingGame.SetReleaseDate(game.ReleaseDate);
-                existingGame.SetDescription(game.Description);
-                existingGame.SetForSale(game.IsForSale);
-                existingGame.SetOriginalPublisher(game.OriginalPublisher);
-
-                await _context.SaveChangesAsync();
-                return existingGame;
+                return await GetByIdAsync(game.Id, role);
             }
-            catch (DbUpdateException ex)
+            catch (Exception ex)
             {
                 throw new InvalidOperationException("Failed to update game in the database.", ex);
             }
+        }
+        public decimal GetGameAverageRating(Guid gameId)
+        {
+            return _context.GetGameAverageRating(gameId);
         }
     }
 }

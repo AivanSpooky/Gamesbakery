@@ -1,0 +1,30 @@
+﻿@model Gamesbakery.WebGUI.Models.GiftCreateViewModel
+
+@{
+    ViewData["Title"] = "Send Gift";
+}
+
+<h1>Send Gift</h1>
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label for="RecipientId">Recipient</label>
+        <select asp-for="RecipientId" class="form-control" asp-items="ViewBag.Recipients" required>
+            <option value="">Select a recipient</option>
+        </select>
+        <span asp-validation-for="RecipientId" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="OrderItemId">Game Key</label>
+        <select asp-for="OrderItemId" class="form-control" asp-items="ViewBag.OrderItems" required>
+            <option value="">Select a game key</option>
+        </select>
+        <span asp-validation-for="OrderItemId" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Send Gift</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

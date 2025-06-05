@@ -83,7 +83,7 @@ namespace Gamesbakery.BusinessLogic.Services
                     }
 
                     // Check Sellers table
-                    using (var command = new SqlCommand("SELECT SellerID, SellerName, Password FROM Sellers WHERE Name = @username", connection))
+                    using (var command = new SqlCommand("SELECT SellerID, Name, Password FROM Sellers WHERE Name = @username", connection))
                     {
                         command.Parameters.AddWithValue("@username", username);
                         using (var reader = await command.ExecuteReaderAsync())

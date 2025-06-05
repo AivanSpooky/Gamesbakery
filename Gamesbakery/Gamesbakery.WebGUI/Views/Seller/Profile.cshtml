@@ -1,4 +1,7 @@
 ﻿@model Gamesbakery.Core.Entities.Seller
+@{
+    ViewData["Title"] = "Профиль продавца";
+}
 
 <h2>Профиль продавца</h2>
 
@@ -15,10 +18,10 @@
         <dt>Дата регистрации</dt>
         <dd>@Model.RegistrationDate.ToShortDateString()</dd>
         <dt>Средний рейтинг</dt>
-        <dd>@Model.AvgRating</dd>
+        <dd>@(Model.AvgRating.ToString("F2"))</dd>
     </dl>
 
-    <a asp-action="OrderItems" class="btn btn-primary">Мои элементы заказа</a>
+    <a asp-action="OrderItems" asp-controller="Seller" class="btn btn-primary">Мои ключи</a>
 }
 else
 {

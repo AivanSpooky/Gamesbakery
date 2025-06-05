@@ -10,5 +10,6 @@
         public string Description { get; set; }
         public bool IsForSale { get; set; }
         public string OriginalPublisher { get; set; }
+        public decimal AverageRating { get; set; }
     }
 }

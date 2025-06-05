@@ -7,4 +7,10 @@
         Seller,
         Admin
     }
+    public enum GiftSource
+    {
+        All,
+        Sent,
+        Received
+    }
 }

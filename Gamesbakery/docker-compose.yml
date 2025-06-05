@@ -8,8 +8,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
+      - ClickHouse__Host=clickhouse-server
     depends_on:
       - db
+      - clickhouse-server
     volumes:
       - dataprotection-keys:/root/.aspnet/DataProtection-Keys
       - ./logs:/app/logs
@@ -25,6 +27,24 @@ services:
     volumes:
       - sql-data:/var/opt/mssql
 
+  clickhouse-server:
+      image: clickhouse/clickhouse-server:latest
+      ports:
+        - "8123:8123"
+        - "9000:9000"
+      volumes:
+        - clickhouse-data:/var/lib/clickhouse
+        - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/custom.xml
+      environment:
+        - CLICKHOUSE_USER=default
+        - CLICKHOUSE_PASSWORD=1
+      ulimits:
+        nofile:
+          soft: 262144
+          hard: 262144
+      command: ["--", "--transparent_hugepage_enabled=never"]
+
 volumes:
   sql-data:
   dataprotection-keys:
+  clickhouse-data:  

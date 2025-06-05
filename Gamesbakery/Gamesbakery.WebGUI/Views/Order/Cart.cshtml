@@ -1,0 +1,63 @@
+﻿@model List<Gamesbakery.Core.DTOs.OrderItemGDTO>
+@{
+    ViewData["Title"] = "Shopping Cart";
+    var total = ViewBag.Total as decimal?;
+}
+
+<h2>Корзина</h2>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+@if (Model == null || !Model.Any())
+{
+    <p>Корзина пуста</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Игра</th>
+                <th>Цена</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.GameTitle</td>
+                    <td>@item.GamePrice.ToString("C")</td>
+                    <td>
+                        <form asp-action="RemoveFromCart" method="post">
+                            <input type="hidden" name="orderItemId" value="@item.Id" />
+                            <button type="submit" class="btn btn-danger btn-sm">Убрать</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <h4>Всего: @total?.ToString("C")</h4>
+    <div class="mb-2">
+        <form asp-action="ClearCart" method="post">
+            <button type="submit" class="btn btn-warning">Очистить корзину</button>
+        </form>
+    </div>
+    <form asp-action="Checkout" method="post">
+        <button type="submit" class="btn btn-primary">Оформить заказ</button>
+    </form>
+}
+<a asp-action="Index" asp-controller="Game" class="btn btn-secondary mt-2">Продолжить покупки</a>

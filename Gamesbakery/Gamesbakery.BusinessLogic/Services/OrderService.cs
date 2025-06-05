@@ -31,7 +31,7 @@ namespace Gamesbakery.BusinessLogic.Services
             _authService = authService;
         }
 
-        public async Task<OrderListDTO> CreateOrderAsync(Guid userId, List<Guid> gameIds)
+        public async Task<OrderListDTO> CreateOrderAsync(Guid userId, List<Guid> orderItemIds)
         {
             var currentRole = _authService.GetCurrentRole();
             var currentUserId = _authService.GetCurrentUserId();
@@ -47,62 +47,106 @@ namespace Gamesbakery.BusinessLogic.Services
             if (user.IsBlocked)
                 throw new InvalidOperationException("Cannot create order for a blocked user.");
 
-            // Проверка игр
+            // Проверка элементов заказа
             decimal totalPrice = 0;
-            var games = new List<(Game Game, Guid SellerId)>();
-            foreach (var gameId in gameIds)
+            var orderItems = new List<OrderItem>();
+            foreach (var orderItemId in orderItemIds)
             {
-                var game = await _gameRepository.GetByIdAsync(gameId, currentRole);
-                if (game == null)
-                    throw new KeyNotFoundException($"Game with ID {gameId} not found.");
-                if (!game.IsForSale)
-                    throw new InvalidOperationException($"Game with ID {gameId} is not for sale.");
+                var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, currentRole, currentUserId);
+                if (orderItem == null)
+                    throw new KeyNotFoundException($"OrderItem with ID {orderItemId} not found.");
+                if (orderItem.OrderId != null && orderItem.OrderId != Guid.Empty)
+                    throw new InvalidOperationException($"OrderItem with ID {orderItemId} is already part of an order.");
 
-                var sellers = await _sellerRepository.GetAllAsync(currentRole);
-                var seller = sellers?.FirstOrDefault();
-                if (seller == null)
-                    throw new InvalidOperationException("No sellers available.");
+                var game = await _gameRepository.GetByIdAsync(orderItem.GameId, currentRole);
+                if (game == null)
+                    throw new KeyNotFoundException($"Game with ID {orderItem.GameId} not found.");
+                if (!game.IsForSale)
+                    throw new InvalidOperationException($"Game with ID {orderItem.GameId} is not for sale.");
 
                 totalPrice += game.Price;
-                games.Add((game, seller.Id));
+                orderItems.Add(orderItem);
             }
 
             // Проверка баланса
             if (user.Balance < totalPrice)
-                throw new InvalidOperationException("Insufficient balance to complete the order.");
+                throw new InvalidOperationException($"Insufficient balance to complete the order. Required: {totalPrice}, Available: {user.Balance}");
 
-            // Создание заказа
+            // Создание заказа и обновление элементов в транзакции
             var order = new Order(Guid.NewGuid(), userId, DateTime.UtcNow, totalPrice, false, false);
-            var createdOrder = await _orderRepository.AddAsync(order, currentRole);
-
-            // Создание элементов заказа
-            foreach (var (game, sellerId) in games)
+            try
             {
-                var orderItem = new OrderItem(Guid.NewGuid(), createdOrder.Id, game.Id, sellerId, null);
-                await _orderItemRepository.AddAsync(orderItem, currentRole);
+                // Создать заказ
+                var createdOrder = await _orderRepository.AddAsync(order, currentRole);
+
+                // Обновить OrderId в существующих OrderItems
+                foreach (var orderItem in orderItems)
+                {
+                    orderItem.SetOrderId(createdOrder.Id);
+                    await _orderItemRepository.UpdateAsync(orderItem, UserRole.Admin); // Use Admin role to allow OrderID update
+                }
+
+                // Обновить баланс пользователя
+                user.UpdateBalance(user.Balance - totalPrice);
+                await _userRepository.UpdateAsync(user, currentRole);
+                //await transaction.CommitAsync();
+                return MapToListDTO(createdOrder);
             }
-
-            // Обновление баланса пользователя
-            user.UpdateBalance(user.Balance - totalPrice);
-            await _userRepository.UpdateAsync(user, currentRole);
-
-            return MapToListDTO(createdOrder);
+            catch (Exception ex)
+            {
+                //await transaction.RollbackAsync();
+                throw new InvalidOperationException("Failed to create order.", ex);
+            }
         }
 
-        public async Task<OrderListDTO> GetOrderByIdAsync(Guid id)
+        public async Task<OrderDetailsDTO> GetOrderByIdAsync(Guid orderId)
         {
-            var currentRole = _authService.GetCurrentRole();
-            var currentUserId = _authService.GetCurrentUserId();
+            try
+            {
+                //_logger.Information("Retrieving order with OrderId: {OrderId}", orderId);
+                var role = _authService.GetCurrentRole();
+                var currentUserId = role == UserRole.Admin ? (Guid?)null : _authService.GetCurrentUserId();
+                if (role != UserRole.Admin && currentUserId == null)
+                {
+                    //_logger.Error("CurrentUserId is null for non-admin role when retrieving OrderId: {OrderId}", orderId);
+                    throw new UnauthorizedAccessException("User is not authenticated.");
+                }
 
-            var order = await _orderRepository.GetByIdAsync(id, currentRole);
-            if (order == null)
-                throw new KeyNotFoundException($"Order with ID {id} not found.");
+                var order = await _orderRepository.GetByIdAsync(orderId, role, currentUserId);
+                if (order == null)
+                {
+                    //_logger.Warning("Order with ID {OrderId} not found", orderId);
+                    throw new KeyNotFoundException($"Order with ID {orderId} not found.");
+                }
 
-            // Проверяем, что пользователь запрашивает свой заказ, если он не администратор
-            if (currentRole != UserRole.Admin && order.UserId != currentUserId)
-                throw new UnauthorizedAccessException("You can only view your own orders.");
+                var orderItems = await _orderItemRepository.GetByOrderIdAsync(orderId, role);
+                var orderItemDTOs = orderItems.Select(oi => new OrderItemDTO
+                {
+                    Id = oi.Id,
+                    OrderId = oi.OrderId,
+                    GameId = oi.GameId,
+                    SellerId = oi.SellerId,
+                    Key = oi.Key
+                }).ToList();
 
-            return MapToListDTO(order);
+                var orderDTO = new OrderDetailsDTO
+                {
+                    Id = order.Id,
+                    UserId = order.UserId,
+                    OrderDate = order.OrderDate,
+                    TotalPrice = order.Price,
+                    IsCompleted = order.IsCompleted,
+                    IsOverdue = order.IsOverdue,
+                    OrderItems = orderItemDTOs
+                };
+                //_logger.Information("Successfully retrieved order with OrderId: {OrderId}", orderId);
+                return orderDTO;
+            }
+            catch (Exception ex)
+            {
+                //_logger.Error(ex, "Failed to retrieve order with OrderId: {OrderId}", orderId);
+                throw;
+            }
         }
 
         public async Task<List<OrderListDTO>> GetOrdersByUserIdAsync(Guid userId)
@@ -120,9 +164,10 @@ namespace Gamesbakery.BusinessLogic.Services
 
         public async Task SetOrderItemKeyAsync(Guid orderItemId, string key, Guid sellerId)
         {
+            var curUserId = _authService.GetCurrentUserId();
             var currentRole = _authService.GetCurrentRole();
 
-            var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, currentRole);
+            var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, currentRole, curUserId);
             if (orderItem == null)
                 throw new KeyNotFoundException($"OrderItem with ID {orderItemId} not found.");
 

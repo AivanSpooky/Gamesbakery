@@ -92,6 +92,42 @@ namespace Gamesbakery.DataAccess.Migrations
                     b.ToTable("Games", (string)null);
                 });
 
+            modelBuilder.Entity("Gamesbakery.Core.Entities.Gift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("GiftID");
+
+                    b.Property<DateTime>("GiftDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("GiftDate");
+
+                    b.Property<Guid>("OrderItemId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("OrderItemID");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("RecipientID");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("SenderID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderItemId");
+
+                    b.HasIndex("RecipientId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("Gifts", (string)null);
+
+                    b.ToView("UserReceivedGifts", (string)null);
+                });
+
             modelBuilder.Entity("Gamesbakery.Core.Entities.Order", b =>
                 {
                     b.Property<Guid>("Id")
@@ -138,6 +174,12 @@ namespace Gamesbakery.DataAccess.Migrations
                     b.Property<Guid>("GameId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("GameID");
+
+                    b.Property<bool>("IsGifted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsGifted");
 
                     b.Property<string>("Key")
                         .HasMaxLength(50)
@@ -297,6 +339,27 @@ namespace Gamesbakery.DataAccess.Migrations
                         .WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Gamesbakery.Core.Entities.Gift", b =>
+                {
+                    b.HasOne("Gamesbakery.Core.Entities.OrderItem", null)
+                        .WithMany()
+                        .HasForeignKey("OrderItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Gamesbakery.Core.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Gamesbakery.Core.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

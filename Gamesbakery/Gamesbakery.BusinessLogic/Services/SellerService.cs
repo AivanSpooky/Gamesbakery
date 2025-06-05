@@ -8,11 +8,13 @@ namespace Gamesbakery.BusinessLogic.Services
     {
         private readonly ISellerRepository _sellerRepository;
         private readonly IAuthenticationService _authService;
+        private readonly IOrderItemRepository _orderItemRepository;
 
-        public SellerService(ISellerRepository sellerRepository, IAuthenticationService authService)
+        public SellerService(ISellerRepository sellerRepository, IAuthenticationService authService, IOrderItemRepository orderItemRepository)
         {
             _sellerRepository = sellerRepository ?? throw new ArgumentNullException(nameof(sellerRepository));
             _authService = authService;
+            _orderItemRepository = orderItemRepository;
         }
 
         public async Task<Seller> RegisterSellerAsync(string sellerName, string password)
@@ -39,6 +41,22 @@ namespace Gamesbakery.BusinessLogic.Services
                 throw new UnauthorizedAccessException("Only administrators can register sellers.");
 
             return await _sellerRepository.AddAsync(Guid.NewGuid(), sellerName, password, DateTime.UtcNow, 0, currentRole);
+        }
+
+        public async Task<OrderItem> CreateKeyAsync(Guid gameId, string key)
+        {
+            var sellerId = _authService.GetCurrentSellerId();
+            if (!sellerId.HasValue)
+                throw new UnauthorizedAccessException("Only authenticated sellers can create keys.");
+
+            var role = _authService.GetCurrentRole();
+            if (role != UserRole.Seller)
+                throw new UnauthorizedAccessException("Only sellers can create keys.");
+
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("Key cannot be empty.", nameof(key));
+
+            return await _orderItemRepository.CreateKeyAsync(gameId, sellerId.Value, key, role);
         }
 
         public async Task<Seller> GetSellerByIdAsync(Guid id)

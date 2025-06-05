@@ -9,5 +9,6 @@
         public string Country { get; set; }
         public bool IsBlocked { get; set; }
         public decimal Balance { get; set; }
+        public decimal TotalSpent { get; set; }
     }
 }

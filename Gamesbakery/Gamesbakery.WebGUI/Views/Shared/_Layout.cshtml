@@ -22,7 +22,9 @@
                     @if (User.IsInRole("User"))
                     {
                         <a class="nav-item nav-link" asp-controller="Order" asp-action="Index">Мои заказы</a>
+                        <a class="nav-item nav-link" asp-controller="Gift" asp-action="Index">Подарки</a>
                         <a class="nav-item nav-link" asp-controller="User" asp-action="Profile">Профиль</a>
+                        <a class="nav-link text-dark" asp-area="" asp-controller="Order" asp-action="Cart">Корзина</a>
                     }
                     @if (User.IsInRole("Seller"))
                     {

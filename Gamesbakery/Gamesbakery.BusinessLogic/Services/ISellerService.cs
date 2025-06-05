@@ -7,6 +7,7 @@ namespace Gamesbakery.BusinessLogic.Services
         Task<Seller> RegisterSellerAsync(string sellerName, string password);
         Task<Seller> RegisterSellerAsync(string sellerName, string password, bool proc);
         Task<Seller> GetSellerByIdAsync(Guid id);
+        Task<OrderItem> CreateKeyAsync(Guid gameId, string key);
         Task<List<Seller>> GetAllSellersAsync();
         Task UpdateSellerRatingAsync(Guid sellerId, double newRating);
     }

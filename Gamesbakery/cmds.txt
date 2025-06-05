@@ -1,0 +1,21 @@
+cd C:\Users\User\Desktop\учеба\бауманка\6-sem\ppo+DB_CP\Gamesbakery
+
+// docker-compose down
+
+docker-compose up -d db
+
+docker logs gamesbakery-db-1
+
+docker-compose exec db /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -C -Q "DROP DATABASE IF EXISTS Gamesbakery;"
+
+docker-compose exec db /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -C -Q "CREATE DATABASE Gamesbakery;"
+
+docker cp data.sql gamesbakery-db-1:/data.sql
+
+docker-compose exec db /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -C -d Gamesbakery -i /data.sql
+
+docker-compose exec db /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -C -d Gamesbakery -Q "SELECT * FROM Users;"
+
+docker-compose up -d
+
+curl http://localhost:5000

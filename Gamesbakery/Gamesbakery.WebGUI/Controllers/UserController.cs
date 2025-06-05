@@ -60,7 +60,7 @@ namespace Gamesbakery.Controllers
                         var user = await _userService.RegisterUserAsync(
                             model.Username,
                             model.Email,
-                            "UserPass123",
+                            model.Password,
                             model.Country);
                         LogInformation("Successfully registered user Username={Username}", model.Username);
                         return RedirectToAction("Login", "Account");

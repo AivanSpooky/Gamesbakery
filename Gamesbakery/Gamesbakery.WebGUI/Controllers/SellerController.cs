@@ -9,157 +9,120 @@ using Gamesbakery.Core.DTOs;
 using Serilog;
 using System;
 using System.Threading.Tasks;
+using Gamesbakery.Core.Repositories;
 
 namespace Gamesbakery.Controllers
 {
     public class SellerController : BaseController
     {
         private readonly ISellerService _sellerService;
-        private readonly IOrderService _orderService;
+        private readonly IOrderItemRepository _orderItemRepository;
+        private readonly IGameService _gameService;
         private readonly IAuthenticationService _authService;
-        private readonly IDatabaseConnectionChecker _dbChecker;
 
         public SellerController(
-            ISellerService sellerService,
-            IOrderService orderService,
-            IAuthenticationService authService,
-            IDatabaseConnectionChecker dbChecker,
-            IConfiguration configuration)
-            : base(Log.ForContext<SellerController>(), configuration)
+        ISellerService sellerService,
+        IOrderItemRepository orderItemRepository,
+        IGameService gameService,
+        IAuthenticationService authService,
+        IConfiguration configuration)
+        : base(Log.ForContext<SellerController>(), configuration)
         {
             _sellerService = sellerService;
-            _orderService = orderService;
+            _orderItemRepository = orderItemRepository;
+            _gameService = gameService;
             _authService = authService;
-            _dbChecker = dbChecker;
         }
 
         [HttpGet]
-        public IActionResult Register()
-        {
-            using (PushLogContext())
-            {
-                try
-                {
-                    LogInformation("User accessed seller registration page");
-                    if (_authService.GetCurrentRole() != UserRole.Admin)
-                    {
-                        LogWarning("Unauthorized access to seller registration by Role={Role}", HttpContext.Session.GetString("Role"));
-                        return Unauthorized("Только администраторы могут регистрировать продавцов.");
-                    }
-                    return View();
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, "Error accessing seller registration page");
-                    throw;
-                }
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Register(SellerRegisterViewModel model)
-        {
-            using (PushLogContext())
-            {
-                try
-                {
-                    LogInformation("User attempted to register seller with SellerName={SellerName}", model.SellerName);
-                    if (_authService.GetCurrentRole() != UserRole.Admin)
-                    {
-                        LogWarning("Unauthorized attempt to register seller by Role={Role}", HttpContext.Session.GetString("Role"));
-                        return Unauthorized("Только администраторы могут регистрировать продавцов.");
-                    }
-
-                    if (!await _dbChecker.CanConnectAsync())
-                    {
-                        LogError("Database unavailable");
-                        ModelState.AddModelError("", "База данных недоступна.");
-                        return View(model);
-                    }
-
-                    if (ModelState.IsValid)
-                    {
-                        await _sellerService.RegisterSellerAsync(model.SellerName, model.Password);
-                        LogInformation("Successfully registered seller SellerName={SellerName}", model.SellerName);
-                        return RedirectToAction("Index", "Home");
-                    }
-
-                    LogWarning("Invalid model state for seller registration");
-                    return View(model);
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, "Error registering seller SellerName={SellerName}", model.SellerName);
-                    ModelState.AddModelError("", $"Ошибка при регистрации продавца: {ex.Message}");
-                    return View(model);
-                }
-            }
-        }
-
         public async Task<IActionResult> Profile()
         {
             using (PushLogContext())
             {
                 try
                 {
-                    LogInformation("User accessed seller profile");
-                    if (!await _dbChecker.CanConnectAsync())
-                    {
-                        LogError("Database unavailable");
-                        ViewBag.ErrorMessage = "База данных недоступна.";
-                        return View();
-                    }
-
                     var sellerId = _authService.GetCurrentSellerId();
-                    if (sellerId == null)
+                    if (!sellerId.HasValue || _authService.GetCurrentRole() != UserRole.Seller)
                     {
                         LogWarning("Unauthorized access to seller profile");
-                        return Unauthorized("Требуется авторизация продавца.");
+                        return Unauthorized("Only sellers can access this page.");
                     }
 
                     var seller = await _sellerService.GetSellerByIdAsync(sellerId.Value);
-                    LogInformation("Successfully retrieved seller profile for SellerId={SellerId}", sellerId);
+                    LogInformation("Retrieved profile for seller ID: {SellerId}", sellerId);
                     return View(seller);
                 }
                 catch (Exception ex)
                 {
                     LogError(ex, "Error retrieving seller profile");
-                    ViewBag.ErrorMessage = $"Ошибка при загрузке профиля: {ex.Message}";
+                    ViewBag.ErrorMessage = "Произошла ошибка при загрузке профиля.";
                     return View();
                 }
             }
         }
 
+        [HttpGet]
         public async Task<IActionResult> OrderItems()
         {
             using (PushLogContext())
             {
                 try
                 {
-                    LogInformation("User accessed seller order items");
-                    if (!await _dbChecker.CanConnectAsync())
-                    {
-                        LogError("Database unavailable");
-                        ViewBag.ErrorMessage = "База данных недоступна.";
-                        return View(new List<OrderItemDTO>());
-                    }
-
                     var sellerId = _authService.GetCurrentSellerId();
-                    if (sellerId == null)
+                    if (!sellerId.HasValue || _authService.GetCurrentRole() != UserRole.Seller)
                     {
-                        LogWarning("Unauthorized access to order items");
-                        return Unauthorized("Требуется авторизация продавца.");
+                        LogWarning("Unauthorized access to seller order items");
+                        return Unauthorized("Only sellers can access this page.");
                     }
+                    ViewBag.Games = await _gameService.GetAllGamesAsync();
 
-                    var orderItems = await _orderService.GetOrderItemsBySellerIdAsync(sellerId.Value);
-                    LogInformation("Successfully retrieved order items for SellerId={SellerId}", sellerId);
-                    return View(orderItems);
+                    
+                    var orderItems = await _orderItemRepository.GetBySellerIdAsync(sellerId.Value, UserRole.Seller);
+                    var orderItemDTOs = orderItems.Select(oi => new OrderItemDTO
+                    {
+                        Id = oi.Id,
+                        OrderId = oi.OrderId,
+                        GameId = oi.GameId,
+                        SellerId = oi.SellerId,
+                        Key = oi.Key
+                    }).ToList();
+
+                    
+                    LogInformation("Retrieved {Count} order items and {GameCount} games for seller ID: {SellerId}", orderItemDTOs.Count, ViewBag.Games?.Count ?? 0, sellerId);
+                    return View(orderItemDTOs);
                 }
                 catch (Exception ex)
                 {
-                    LogError(ex, "Error retrieving order items");
-                    ViewBag.ErrorMessage = $"Ошибка при загрузке элементов заказа: {ex.Message}";
+                    LogError(ex, "Error retrieving order items or games for seller");
+                    ViewBag.ErrorMessage = "Произошла ошибка при загрузке элементов заказа или списка игр.";
                     return View(new List<OrderItemDTO>());
+                }
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateKey(Guid gameId, string key)
+        {
+            using (PushLogContext())
+            {
+                try
+                {
+                    var sellerId = _authService.GetCurrentSellerId();
+                    if (!sellerId.HasValue || _authService.GetCurrentRole() != UserRole.Seller)
+                    {
+                        LogWarning("Unauthorized attempt to create key");
+                        return Unauthorized("Only sellers can create keys.");
+                    }
+
+                    await _sellerService.CreateKeyAsync(gameId, key);
+                    LogInformation("Key created for game ID: {GameId} by seller ID: {SellerId}", gameId, sellerId);
+                    return RedirectToAction("OrderItems");
+                }
+                catch (Exception ex)
+                {
+                    LogError(ex, "Error creating key for game ID: {GameId}", gameId);
+                    TempData["ErrorMessage"] = $"Произошла ошибка при создании ключа: {ex.Message}";
+                    return RedirectToAction("OrderItems");
                 }
             }
         }
@@ -171,28 +134,30 @@ namespace Gamesbakery.Controllers
             {
                 try
                 {
-                    LogInformation("User attempted to set order item key with OrderItemId={OrderItemId}, Key={Key}", orderItemId, key);
-                    if (_authService.GetCurrentSellerId() == null)
+                    var sellerId = _authService.GetCurrentSellerId();
+                    if (!sellerId.HasValue || _authService.GetCurrentRole() != UserRole.Seller)
                     {
                         LogWarning("Unauthorized attempt to set order item key");
-                        return Unauthorized("Требуется авторизация продавца.");
+                        return Unauthorized("Only sellers can set keys.");
                     }
 
-                    if (!await _dbChecker.CanConnectAsync())
+                    var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, UserRole.Seller, _authService.GetCurrentUserId());
+                    if (orderItem.SellerId != sellerId.Value)
                     {
-                        LogError("Database unavailable");
-                        return StatusCode(503, "База данных недоступна.");
+                        LogWarning("Seller {SellerId} attempted to set key for unauthorized order item {OrderItemId}", sellerId, orderItemId);
+                        return Unauthorized("You can only set keys for your own order items.");
                     }
 
-                    var sellerId = _authService.GetCurrentSellerId().Value;
-                    await _orderService.SetOrderItemKeyAsync(orderItemId, key, sellerId);
-                    LogInformation("Successfully set order item key for OrderItemId={OrderItemId} by SellerId={SellerId}", orderItemId, sellerId);
-                    return RedirectToAction(nameof(OrderItems));
+                    orderItem.SetKey(key);
+                    await _orderItemRepository.UpdateAsync(orderItem, UserRole.Seller);
+                    LogInformation("Key set for order item ID: {OrderItemId} by seller ID: {SellerId}", orderItemId, sellerId);
+                    return RedirectToAction("OrderItems");
                 }
                 catch (Exception ex)
                 {
-                    LogError(ex, "Error setting order item key for OrderItemId={OrderItemId}", orderItemId);
-                    return StatusCode(500, $"Ошибка при установке ключа: {ex.Message}");
+                    LogError(ex, "Error setting key for order item ID: {OrderItemId}", orderItemId);
+                    TempData["ErrorMessage"] = $"Произошла ошибка при установке ключа: {ex.Message}";
+                    return RedirectToAction("OrderItems");
                 }
             }
         }

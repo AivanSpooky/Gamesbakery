@@ -29,6 +29,10 @@ namespace Gamesbakery.DataAccess.Repositories
                     new SqlParameter("@Description", category.Description ?? (object)DBNull.Value));
                 return category;
             }
+            catch (SqlException ex)
+            {
+                throw new InvalidOperationException($"Database error while adding category: {ex.Message}", ex);
+            }
             catch (Exception ex)
             {
                 throw new InvalidOperationException("Failed to add category to the database.", ex);
@@ -48,6 +52,10 @@ namespace Gamesbakery.DataAccess.Repositories
                     throw new KeyNotFoundException($"Category with ID {id} not found.");
                 return category;
             }
+            catch (SqlException ex)
+            {
+                throw new InvalidOperationException($"Database error while retrieving category with ID {id}: {ex.Message}", ex);
+            }
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"Failed to retrieve category with ID {id}: {ex.Message}", ex);
@@ -61,6 +69,10 @@ namespace Gamesbakery.DataAccess.Repositories
                 return await _context.Categories
                     .FromSqlRaw("SELECT CategoryID, Name, Description FROM Categories")
                     .ToListAsync();
+            }
+            catch (SqlException ex)
+            {
+                throw new InvalidOperationException($"Database connection error while retrieving categories: {ex.Message}", ex);
             }
             catch (Exception ex)
             {

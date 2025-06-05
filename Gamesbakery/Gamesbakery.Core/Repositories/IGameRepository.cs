@@ -8,5 +8,6 @@ namespace Gamesbakery.Core.Repositories
         Task<Game> GetByIdAsync(Guid id, UserRole role);
         Task<List<Game>> GetAllAsync(UserRole role);
         Task<Game> UpdateAsync(Game game, UserRole role);
+        decimal GetGameAverageRating(Guid gameId);
     }
 }

@@ -34,7 +34,13 @@ namespace Gamesbakery.BusinessLogic.Services
 
             var game = new Game(Guid.NewGuid(), categoryId, title, price, releaseDate, description, true, originalPublisher);
             var createdGame = await _gameRepository.AddAsync(game, currentRole);
-            return MapToDetailsDTO(createdGame);
+
+            // Получаем AverageRating
+            var averageRating = _gameRepository.GetGameAverageRating(createdGame.Id);
+
+            var gameDetails = MapToDetailsDTO(createdGame);
+            gameDetails.AverageRating = averageRating;
+            return gameDetails;
         }
 
         public async Task<GameDetailsDTO> GetGameByIdAsync(Guid id)
@@ -43,7 +49,13 @@ namespace Gamesbakery.BusinessLogic.Services
             var game = await _gameRepository.GetByIdAsync(id, currentRole);
             if (game == null)
                 throw new KeyNotFoundException($"Game with ID {id} not found.");
-            return MapToDetailsDTO(game);
+
+            // Получаем AverageRating
+            var averageRating = _gameRepository.GetGameAverageRating(id);
+
+            var gameDetails = MapToDetailsDTO(game);
+            gameDetails.AverageRating = averageRating;
+            return gameDetails;
         }
 
         public async Task<List<GameListDTO>> GetAllGamesAsync()
@@ -65,7 +77,13 @@ namespace Gamesbakery.BusinessLogic.Services
 
             game.SetForSale(isForSale);
             var updatedGame = await _gameRepository.UpdateAsync(game, currentRole);
-            return MapToDetailsDTO(updatedGame);
+
+            // Получаем AverageRating
+            var averageRating = _gameRepository.GetGameAverageRating(updatedGame.Id);
+
+            var gameDetails = MapToDetailsDTO(updatedGame);
+            gameDetails.AverageRating = averageRating;
+            return gameDetails;
         }
 
         private GameDetailsDTO MapToDetailsDTO(Game game)
@@ -79,7 +97,8 @@ namespace Gamesbakery.BusinessLogic.Services
                 ReleaseDate = game.ReleaseDate,
                 Description = game.Description,
                 IsForSale = game.IsForSale,
-                OriginalPublisher = game.OriginalPublisher
+                OriginalPublisher = game.OriginalPublisher,
+                AverageRating = 0 
             };
         }
 

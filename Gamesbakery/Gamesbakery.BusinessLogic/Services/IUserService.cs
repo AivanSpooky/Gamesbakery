@@ -1,4 +1,5 @@
-﻿using Gamesbakery.Core.DTOs;
+﻿using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs;
 using Gamesbakery.Core.DTOs.UserDTO;
 using Gamesbakery.Core.Entities;
 
@@ -13,5 +14,7 @@ namespace Gamesbakery.BusinessLogic.Services
         Task<UserProfileDTO> UpdateBalanceAsync(Guid userId, decimal newBalance);
         Task<UserProfileDTO> BlockUserAsync(Guid userId);
         Task<UserProfileDTO> UnblockUserAsync(Guid userId);
+        Task<IEnumerable<UserListDTO>> GetAllUsersExceptAsync(Guid excludedUserId);
+        Task<UserListDTO> GetByUsernameAsync(string username, UserRole role);
     }
 }

@@ -19,26 +19,16 @@ namespace Gamesbakery.DataAccess.Repositories
         {
             try
             {
-                if (role == UserRole.Admin)
-                {
-                    await _context.Reviews.AddAsync(review);
-                    await _context.SaveChangesAsync();
-                    return review;
-                }
-                else
-                {
-                    await _context.Database.ExecuteSqlRawAsync(
-                        "INSERT INTO UserReviews (ReviewID, UserID, GameID, Comment, StarRating, CreationDate) " +
-                        "VALUES (@ReviewID, @UserID, @GameID, @Comment, @StarRating, @CreationDate)",
-                        new SqlParameter("@ReviewID", review.Id),
-                        new SqlParameter("@UserID", review.UserId),
-                        new SqlParameter("@GameID", review.GameId),
-                        new SqlParameter("@Comment", review.Text),
-                        new SqlParameter("@StarRating", review.Rating),
-                        new SqlParameter("@CreationDate", review.CreationDate));
-
-                    return review;
-                }
+                await _context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO Reviews (ReviewID, UserID, GameID, Comment, StarRating, CreationDate) " +
+                    "VALUES (@ReviewID, @UserID, @GameID, @Comment, @StarRating, @CreationDate)",
+                    new SqlParameter("@ReviewID", review.Id),
+                    new SqlParameter("@UserID", review.UserId),
+                    new SqlParameter("@GameID", review.GameId),
+                    new SqlParameter("@Comment", review.Text),
+                    new SqlParameter("@StarRating", review.Rating),
+                    new SqlParameter("@CreationDate", review.CreationDate));
+                return review;
             }
             catch (Exception ex)
             {
@@ -51,7 +41,9 @@ namespace Gamesbakery.DataAccess.Repositories
             try
             {
                 return await _context.Reviews
-                    .Where(r => r.GameId == gameId)
+                    .FromSqlRaw("SELECT ReviewID, UserID, GameID, Comment, StarRating, CreationDate " +
+                                "FROM Reviews WHERE GameID = @GameID",
+                        new SqlParameter("@GameID", gameId))
                     .ToListAsync();
             }
             catch (Exception ex)
