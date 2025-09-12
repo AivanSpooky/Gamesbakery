@@ -1,84 +1,32 @@
 name: CI/CD Pipeline
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+on: [push, pull_request]
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
-
+    
     services:
-      db:
+      sql-server:
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
-          ACCEPT_EULA: Y
-          SA_PASSWORD: YourStrong@Pass
-          MSSQL_PID: Express
-        ports:
-          - "1434:1433"
-        volumes:
-          - sql-data:/var/opt/mssql
-          - ./init.sql:/init.sql
-        command: /bin/bash -c "/opt/mssql/bin/sqlservr & sleep 30 && /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -Q 'IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = \"GamesbakeryTest\") BEGIN CREATE DATABASE GamesbakeryTest END' && /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -d GamesbakeryTest -i /init.sql && wait"
+          ACCEPT_EULA: "Y"
+          SA_PASSWORD: " YourStrong@Pass"
+        ports: [1434:1433]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Run Docker Compose
-        run: |
-          docker-compose up --build -d db
-          sleep 60  # Задержка для готовности базы
-          docker-compose up --build tests
-
-      - name: Run Unit Tests
-        run: |
-          docker exec -it $(docker ps -q -f name=tests) dotnet test /app/build-bl/Gamesbakery.BusinessLogic.Tests.dll --filter "Category=Unit" --logger "allure" --results-directory /app/allure-results/bl
-        continue-on-error: false
-
-      - name: Run Integration Tests
-        if: success()
-        run: |
-          docker exec -it $(docker ps -q -f name=tests) dotnet test /app/build-da/Gamesbakery.DataAccess.Tests.dll --filter "Category=Integration" --logger "allure" --results-directory /app/allure-results/da
-        continue-on-error: false
-
-      - name: Run E2E Tests
-        if: success()
-        run: |
-          docker exec -it $(docker ps -q -f name=tests) dotnet test /app/build-e2e/Gamesbakery.E2E.Tests.dll --filter "Category=E2E" --logger "allure" --results-directory /app/allure-results/e2e
-        continue-on-error: false
-
-      - name: Generate Allure Report
-        if: always()
-        run: |
-          docker cp $(docker ps -q -f name=tests):/app/allure-results ./allure-results
-          docker run -v $(pwd)/allure-results:/app/allure-results -v $(pwd)/allure-report:/app/allure-report node:20 sh -c "npm install -g allure-commandline && allure generate /app/allure-results -o /app/allure-report --clean"
-        continue-on-error: false
-
-      - name: Upload Allure Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-report
-          path: allure-report
-
-      - name: Clean Up
-        if: always()
-        run: |
-          docker-compose down -v
-
-volumes:
-  sql-data:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with: { dotnet-version: '8.0.x' }
+    
+    - name: Init DB
+      run: |
+        sleep 10
+        /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P "YourStrong@Pass" -Q "CREATE DATABASE GamesbakeryTest;"
+    
+    - name: Run tests
+      run: dotnet test --filter "Category=Unit|Category=Integration|Category=E2E"
+      env:
+        ConnectionStrings__DefaultConnection: "Server=localhost;Database=GamesbakeryTest;User Id=SA;Password=YourStrong@Pass;TrustServerCertificate=true;"
