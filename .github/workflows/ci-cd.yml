@@ -21,11 +21,6 @@ jobs:
           MSSQL_PID: Express
         ports:
           - "1434:1433"
-        options: >-
-          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -Q 'SELECT 1'"
-          --health-interval 10s
-          --health-timeout 3s
-          --health-retries 10
         volumes:
           - sql-data:/var/opt/mssql
           - ./init.sql:/init.sql
@@ -46,7 +41,7 @@ jobs:
       - name: Run Docker Compose
         run: |
           docker-compose up --build -d db
-          sleep 60  # Увеличена задержка для полной готовности базы
+          sleep 60  # Задержка для готовности базы
           docker-compose up --build tests
 
       - name: Run Unit Tests
