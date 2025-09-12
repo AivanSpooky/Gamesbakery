@@ -9,21 +9,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Clean migration duplicates
-      run: |
-        # Удаляем дубликаты миграций
-        find . -name "*Migration*.cs" -exec grep -l "Duplicate" {} \; | xargs rm -f
-        find . -name "*Migration*.Designer.cs" -exec grep -l "Duplicate" {} \; | xargs rm -f
-        
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with: { dotnet-version: '8.0.x' }
     
-    # - name: Clean and restore
-    #   run: |
-    #     cd Gamesbakery
-    #     dotnet clean
-    #     dotnet restore
+    - name: Start SQL Server
+      run: |
+        docker run -d --name sql-server \
+          -e ACCEPT_EULA=Y \
+          -e SA_PASSWORD=YourStrong@Pass \
+          -e MSSQL_PID=Express \
+          -p 1433:1433 \
+          mcr.microsoft.com/mssql/server:2022-latest
+        sleep 20
     
     - name: Run Unit Tests
       run: |
@@ -33,12 +31,16 @@ jobs:
     - name: Run Integration Tests
       run: |
         cd Gamesbakery
+        export TEST_DB_CONNECTION="Server=localhost;Database=master;User Id=SA;Password=YourStrong@Pass;TrustServerCertificate=true;"
         dotnet test Gamesbakery.DataAccess.Tests/Gamesbakery.DataAccess.Tests.csproj || true
     
     - name: Run E2E Tests
       run: |
         cd Gamesbakery
-        # Копируем appsettings.json для E2E тестов
         cp Gamesbakery.E2E.Tests/appsettings.json Gamesbakery.E2E.Tests/bin/Debug/net8.0/ || true
         cp Gamesbakery.E2E.Tests/appsettings.json Gamesbakery.E2E.Tests/bin/Release/net8.0/ || true
         dotnet test Gamesbakery.E2E.Tests/Gamesbakery.E2E.Tests.csproj || true
+    
+    - name: Cleanup
+      if: always()
+      run: docker rm -f sql-server
