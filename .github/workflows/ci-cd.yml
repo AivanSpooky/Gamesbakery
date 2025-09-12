@@ -2,286 +2,100 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - main
   pull_request:
-    branches: [ main, develop ]
-
-env:
-  DOTNET_VERSION: '8.0.x'
-  SQL_SERVER_IMAGE: 'mcr.microsoft.com/mssql/server:2022-latest'
-  ALLURE_VERSION: '2.27.0'
+    branches:
+      - main
 
 jobs:
-  unit-tests:
-    name: Unit Tests
+  build-and-test:
     runs-on: ubuntu-latest
     services:
-      sql-server:
-        image: ${{ env.SQL_SERVER_IMAGE }}
+      db:
+        image: mcr.microsoft.com/mssql/server:2022-latest
         env:
-          ACCEPT_EULA: 'Y'
-          SA_PASSWORD: 'YourStrong@Passw0rd'
-          MSSQL_PID: 'Express'
-        options: >-
-          --health-cmd="/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' -Q 'SELECT 1'" 
-          --health-interval=10s 
-          --health-timeout=5s 
-          --health-retries=5
+          ACCEPT_EULA: Y
+          SA_PASSWORD: YourStrong@Pass
+          MSSQL_PID: Express
         ports:
-          - 1433:1433
+          - "1434:1433"
+        volumes:
+          - sql-data:/var/opt/mssql
+        command: /bin/bash -c "\
+          /opt/mssql/bin/sqlservr & \
+          sleep 30 && \
+          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -Q 'IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = \"GamesbakeryTest\") BEGIN CREATE DATABASE GamesbakeryTest END' && \
+          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -d GamesbakeryTest -i /init.sql && \
+          wait"
+        volumes:
+          - ./init.sql:/init.sql
+        healthcheck:
+          test: ["/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "YourStrong@Pass", "-Q", "SELECT 1"]
+          interval: 10s
+          timeout: 3s
+          retries: 10
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      # Checkout репозитория
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+      # Настройка Docker
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Restore dependencies
-      run: dotnet restore
+      # Построение и запуск docker-compose
+      - name: Run Docker Compose
+        run: |
+          docker-compose up --build -d db
+          sleep 40  # Дополнительная задержка для гарантированного запуска базы
+          docker-compose up --build tests
 
-    - name: Build
-      run: dotnet build --no-restore -c Release
+      # Unit Tests
+      - name: Run Unit Tests
+        run: |
+          docker exec tests_container dotnet test /app/build-bl/Gamesbakery.BusinessLogic.Tests.dll --filter "Category=Unit" --logger "allure" --results-directory /app/allure-results/bl
+        continue-on-error: false
 
-    - name: Run unit tests
-      run: |
-        dotnet test --no-build -c Release --filter "Category=Unit" \
-          --logger "trx;LogFileName=unit-test-results.trx" \
-          --logger "html;LogFileName=unit-test-results.html" \
-          --results-directory TestResults/Unit
-      env:
-        ConnectionStrings__DefaultConnection: "Server=localhost;Database=GamesbakeryTest;User Id=SA;Password=YourStrong@Passw0rd;TrustServerCertificate=true;"
+      # Integration Tests
+      - name: Run Integration Tests
+        run: |
+          docker exec tests_container dotnet test /app/build-da/Gamesbakery.DataAccess.Tests.dll --filter "Category=Integration" --logger "allure" --results-directory /app/allure-results/da
+        continue-on-error: false
+        if: success()
 
-    - name: Upload unit test results
-      uses: actions/upload-artifact@v4
-      with:
-        name: unit-test-results
-        path: TestResults/Unit/
+      # E2E Tests
+      - name: Run E2E Tests
+        run: |
+          docker exec tests_container dotnet test /app/build-e2e/Gamesbakery.E2E.Tests.dll --filter "Category=E2E" --logger "allure" --results-directory /app/allure-results/e2e
+        continue-on-error: false
+        if: success()
 
-    - name: Setup Allure
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '17'
+      # Генерация отчёта Allure
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          docker cp tests_container:/app/allure-results ./allure-results
+          docker run -v $(pwd)/allure-results:/app/allure-results -v $(pwd)/allure-report:/app/allure-report node:20 sh -c "npm install -g allure-commandline && allure generate /app/allure-results -o /app/allure-report --clean"
+        continue-on-error: false
 
-    - name: Download Allure
-      run: |
-        wget https://github.com/allure-framework/allure2/releases/download/${{ env.ALLURE_VERSION }}/allure-${{ env.ALLURE_VERSION }}.tgz
-        tar -xzf allure-${{ env.ALLURE_VERSION }}.tgz
-        sudo mv allure-${{ env.ALLURE_VERSION }} /opt/allure
-        sudo ln -s /opt/allure/bin/allure /usr/local/bin/allure
+      # Сохранение артефактов
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
 
-    - name: Generate Allure report
-      run: |
-        allure generate TestResults/Unit/ -o allure-report-unit --clean
+      # Остановка и очистка контейнеров
+      - name: Clean Up
+        if: always()
+        run: |
+          docker-compose down -v
 
-    - name: Upload Allure report
-      uses: actions/upload-artifact@v4
-      with:
-        name: allure-report-unit
-        path: allure-report-unit/
+    volumes:
+      sql-data:
 
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    needs: unit-tests
-    services:
-      sql-server:
-        image: ${{ env.SQL_SERVER_IMAGE }}
-        env:
-          ACCEPT_EULA: 'Y'
-          SA_PASSWORD: 'YourStrong@Passw0rd'
-          MSSQL_PID: 'Express'
-        options: >-
-          --health-cmd="/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' -Q 'SELECT 1'" 
-          --health-interval=10s 
-          --health-timeout=5s 
-          --health-retries=5
-        ports:
-          - 1433:1433
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-
-    - name: Initialize test database
-      run: |
-        # Wait for SQL Server to be ready
-        sleep 30
-        /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' -Q "CREATE DATABASE GamesbakeryTest;"
-        /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' -d GamesbakeryTest -i scripts/init-database.sql
-
-    - name: Restore dependencies
-      run: dotnet restore
-
-    - name: Build
-      run: dotnet build --no-restore -c Release
-
-    - name: Run integration tests
-      run: |
-        dotnet test --no-build -c Release --filter "Category=Integration" \
-          --logger "trx;LogFileName=integration-test-results.trx" \
-          --logger "html;LogFileName=integration-test-results.html" \
-          --results-directory TestResults/Integration
-      env:
-        ConnectionStrings__DefaultConnection: "Server=localhost;Database=GamesbakeryTest;User Id=SA;Password=YourStrong@Passw0rd;TrustServerCertificate=true;"
-
-    - name: Upload integration test results
-      uses: actions/upload-artifact@v4
-      with:
-        name: integration-test-results
-        path: TestResults/Integration/
-
-    - name: Generate Allure report
-      run: |
-        allure generate TestResults/Integration/ -o allure-report-integration --clean
-
-    - name: Upload Allure report
-      uses: actions/upload-artifact@v4
-      with:
-        name: allure-report-integration
-        path: allure-report-integration/
-
-    - name: Cleanup database
-      if: always()
-      run: |
-        /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' -Q "DROP DATABASE IF EXISTS GamesbakeryTest;"
-
-  e2e-tests:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    needs: integration-tests
-    services:
-      sql-server:
-        image: ${{ env.SQL_SERVER_IMAGE }}
-        env:
-          ACCEPT_EULA: 'Y'
-          SA_PASSWORD: 'YourStrong@Passw0rd'
-          MSSQL_PID: 'Express'
-        options: >-
-          --health-cmd="/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' -Q 'SELECT 1'" 
-          --health-interval=10s 
-          --health-timeout=5s 
-          --health-retries=5
-        ports:
-          - 1433:1433
-
-      web-app:
-        image: your-web-app-image:latest
-        env:
-          ConnectionStrings__DefaultConnection: "Server=sql-server;Database=GamesbakeryTest;User Id=SA;Password=YourStrong@Passw0rd;TrustServerCertificate=true;"
-        ports:
-          - 8080:80
-        depends_on:
-          - sql-server
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-
-    - name: Initialize test database
-      run: |
-        sleep 30
-        docker run --network host mcr.microsoft.com/mssql-tools:latest \
-          /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' \
-          -Q "CREATE DATABASE GamesbakeryTest;"
-        docker run --network host -v $(pwd)/scripts:/scripts mcr.microsoft.com/mssql-tools:latest \
-          /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' \
-          -d GamesbakeryTest -i /scripts/init-database.sql
-
-    - name: Run E2E tests
-      run: |
-        dotnet test --no-build -c Release --filter "Category=E2E" \
-          --logger "trx;LogFileName=e2e-test-results.trx" \
-          --logger "html;LogFileName=e2e-test-results.html" \
-          --results-directory TestResults/E2E
-      env:
-        ConnectionStrings__DefaultConnection: "Server=localhost;Database=GamesbakeryTest;User Id=SA;Password=YourStrong@Passw0rd;TrustServerCertificate=true;"
-        WEB_APP_URL: "http://localhost:8080"
-
-    - name: Upload E2E test results
-      uses: actions/upload-artifact@v4
-      with:
-        name: e2e-test-results
-        path: TestResults/E2E/
-
-    - name: Generate Allure report
-      run: |
-        allure generate TestResults/E2E/ -o allure-report-e2e --clean
-
-    - name: Upload Allure report
-      uses: actions/upload-artifact@v4
-      with:
-        name: allure-report-e2e
-        path: allure-report-e2e/
-
-    - name: Cleanup database
-      if: always()
-      run: |
-        docker run --network host mcr.microsoft.com/mssql-tools:latest \
-          /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' \
-          -Q "DROP DATABASE IF EXISTS GamesbakeryTest;"
-
-  allure-report:
-    name: Generate Allure Report
-    runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests, e2e-tests]
-    if: always()
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download test results
-      uses: actions/download-artifact@v4
-      with:
-        path: all-test-results
-
-    - name: Setup Allure
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Generate combined Allure report
-      run: |
-        mkdir -p combined-results
-        find all-test-results -name "*.trx" -exec cp {} combined-results/ \;
-        allure generate combined-results/ -o allure-report --clean
-
-    - name: Upload Allure report
-      uses: actions/upload-artifact@v4
-      with:
-        name: allure-combined-report
-        path: allure-report/
-
-  deploy-report:
-    name: Deploy Allure Report
-    runs-on: ubuntu-latest
-    needs: allure-report
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-    - name: Download Allure report
-      uses: actions/download-artifact@v4
-      with:
-        name: allure-combined-report
-        path: allure-report
-
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: allure-report
+env:
+  DOCKER_BUILDKIT: 1
