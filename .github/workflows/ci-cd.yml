@@ -11,8 +11,8 @@ jobs:
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
           ACCEPT_EULA: "Y"
-          SA_PASSWORD: " YourStrong@Pass"
-        ports: [1434:1433]
+          SA_PASSWORD: "Passw0rd!"
+        ports: [1433:1433]
 
     steps:
     - uses: actions/checkout@v4
@@ -21,12 +21,10 @@ jobs:
       uses: actions/setup-dotnet@v3
       with: { dotnet-version: '8.0.x' }
     
-    - name: Init DB
-      run: |
-        sleep 10
-        /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P "YourStrong@Pass" -Q "CREATE DATABASE GamesbakeryTest;"
+    - name: Wait for DB
+      run: sleep 20
     
     - name: Run tests
-      run: dotnet test --filter "Category=Unit|Category=Integration|Category=E2E"
+      run: dotnet test
       env:
-        ConnectionStrings__DefaultConnection: "Server=localhost;Database=GamesbakeryTest;User Id=SA;Password=YourStrong@Pass;TrustServerCertificate=true;"
+        ConnectionStrings__DefaultConnection: "Server=localhost;Database=master;User Id=SA;Password=Passw0rd!;TrustServerCertificate=true;"
