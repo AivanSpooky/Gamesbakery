@@ -19,11 +19,11 @@ jobs:
       uses: actions/setup-dotnet@v3
       with: { dotnet-version: '8.0.x' }
     
-    - name: Clean and restore
-      run: |
-        cd Gamesbakery
-        dotnet clean
-        dotnet restore
+    # - name: Clean and restore
+    #   run: |
+    #     cd Gamesbakery
+    #     dotnet clean
+    #     dotnet restore
     
     - name: Run Unit Tests
       run: |
