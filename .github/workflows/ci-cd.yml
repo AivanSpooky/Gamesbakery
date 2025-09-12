@@ -9,24 +9,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Start SQL Server
-      run: |
-        docker run -d --name sql-server \
-          -e ACCEPT_EULA=Y \
-          -e SA_PASSWORD=YourStrong@Pass \
-          -e MSSQL_PID=Express \
-          -p 1433:1433 \
-          mcr.microsoft.com/mssql/server:2022-latest
-        sleep 20
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with: { dotnet-version: '8.0.x' }
     
-    - name: Run tests
+    - name: Find and run test projects
       run: |
-        dotnet test Gamesbakery.BusinessLogic.Tests/Gamesbakery.BusinessLogic.Tests.csproj
-        dotnet test Gamesbakery.DataAccess.Tests/Gamesbakery.DataAccess.Tests.csproj
-        dotnet test Gamesbakery.E2E.Tests/Gamesbakery.E2E.Tests.csproj
-      env:
-        ConnectionStrings__DefaultConnection: "Server=localhost;Database=master;User Id=SA;Password=YourStrong@Pass;TrustServerCertificate=true;"
-        
-    - name: Cleanup
-      if: always()
-      run: docker rm -f sql-server
+        for testproj in $(find . -name "*Tests.csproj"); do
+          echo "Running tests for: $testproj"
+          dotnet test $testproj
+        done
