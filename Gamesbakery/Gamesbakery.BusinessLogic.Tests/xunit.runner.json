@@ -1,0 +1,8 @@
+{
+    "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+    "showLiveOutput": true,
+    "parallelizeTestCollections": true,
+    "parallelizeAssembly": false,
+    "maxParallelThreads": 0,
+    "randomizeTestOrder": false
+}

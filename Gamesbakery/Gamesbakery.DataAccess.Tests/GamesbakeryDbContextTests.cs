@@ -1,5 +1,4 @@
 ﻿using Gamesbakery.Core.Entities;
-using Gamesbakery.Core;
 using Gamesbakery.DataAccess.Tests.Fixtures;
 
 namespace Gamesbakery.DataAccess.Tests
@@ -15,6 +14,7 @@ namespace Gamesbakery.DataAccess.Tests
         }
 
         [Fact(DisplayName = "ИГРА: ДОБАВЛЕНИЕ и ВЫБОР (InMemory)")]
+        [Trait("Category", "Integration")]
         public async Task CanAddAndRetrieveGame()
         {
             // Arrange
@@ -43,6 +43,7 @@ namespace Gamesbakery.DataAccess.Tests
         }
 
         [Fact(DisplayName = "ИГРА: ОБНОВЛЕНИЕ (InMemory)")]
+        [Trait("Category", "Integration")]
         public async Task CanUpdateGame()
         {
             // Arrange
@@ -77,6 +78,7 @@ namespace Gamesbakery.DataAccess.Tests
         }
 
         [Fact(DisplayName = "ИГРА: УДАЛЕНИЕ (InMemory)")]
+        [Trait("Category", "Integration")]
         public async Task CanDeleteGame()
         {
             // Arrange

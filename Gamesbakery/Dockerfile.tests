@@ -1,0 +1,43 @@
+# Dockerfile.tests (simplified)
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+RUN apt-get update && \
+    apt-get install -y openjdk-17-jre-headless && \
+    wget https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.tgz && \
+    tar -zxvf allure-2.27.0.tgz -C /opt/ && \
+    ln -s /opt/allure-2.27.0/bin/allure /usr/bin/allure && \
+    rm allure-2.27.0.tgz
+
+WORKDIR /app
+
+# Copy only test projects and their dependencies
+COPY Gamesbakery.BusinessLogic.Tests/ ./Gamesbakery.BusinessLogic.Tests/
+COPY Gamesbakery.DataAccess.Tests/ ./Gamesbakery.DataAccess.Tests/
+COPY Gamesbakery.E2E.Tests/ ./Gamesbakery.E2E.Tests/
+COPY Gamesbakery.Core/ ./Gamesbakery.Core/
+COPY Gamesbakery.BusinessLogic/ ./Gamesbakery.BusinessLogic/
+COPY Gamesbakery.DataAccess/ ./Gamesbakery.DataAccess/
+COPY Gamesbakery.Infrastructure/ ./Gamesbakery.Infrastructure/
+
+RUN dotnet tool install --global dotnet-ef
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+COPY Gamesbakery.BusinessLogic.Tests/allureConfig.json /app/
+COPY Gamesbakery.BusinessLogic.Tests/allureConfig.json /app/build-bl/
+COPY Gamesbakery.DataAccess.Tests/allureConfig.json /app/build-da/ 
+COPY Gamesbakery.E2E.Tests/allureConfig.json /app/build-e2e/
+COPY Gamesbakery.E2E.Tests/appsettings.json /app/build-e2e/
+
+# Restore and build each test project individually
+RUN dotnet restore Gamesbakery.BusinessLogic.Tests/Gamesbakery.BusinessLogic.Tests.csproj
+RUN dotnet restore Gamesbakery.DataAccess.Tests/Gamesbakery.DataAccess.Tests.csproj
+RUN dotnet restore Gamesbakery.E2E.Tests/Gamesbakery.E2E.Tests.csproj
+
+RUN dotnet build Gamesbakery.BusinessLogic.Tests -c Debug -o ./build-bl
+RUN dotnet build Gamesbakery.DataAccess.Tests -c Debug -o ./build-da
+RUN dotnet build Gamesbakery.E2E.Tests -c Debug -o ./build-e2e
+
+CMD ["sh", "-c", \
+    "dotnet test ./build-bl/Gamesbakery.BusinessLogic.Tests.dll --results-directory ./allure-results/bl && " \
+    "dotnet test ./build-da/Gamesbakery.DataAccess.Tests.dll --results-directory ./allure-results/da && " \
+    "dotnet test ./build-e2e/Gamesbakery.E2E.Tests.dll --results-directory ./allure-results/e2e"]

@@ -555,7 +555,7 @@ namespace Gamesbakery.ConsoleUI
 
             var order = await _orderService.GetOrderByIdAsync(orderId);
             Console.WriteLine("Order found:");
-            DisplayOrder(order);
+            //DisplayOrder(order);
         }
 
         private async Task GetOrdersByUserIdAsync()

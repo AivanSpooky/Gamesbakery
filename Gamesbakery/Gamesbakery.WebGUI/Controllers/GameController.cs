@@ -184,7 +184,8 @@ namespace Gamesbakery.Controllers
                             game.Price,
                             game.ReleaseDate,
                             game.Description,
-                            game.OriginalPublisher);
+                            game.OriginalPublisher,
+                            false);
 
                         LogInformation("Successfully created game with Title={Title}", game.Title);
                         return RedirectToAction("Index");

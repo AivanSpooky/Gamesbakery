@@ -11,7 +11,7 @@ services:
       - ClickHouse__Host=clickhouse-server
     depends_on:
       - db
-      - clickhouse-server
+      # - clickhouse-server
     volumes:
       - dataprotection-keys:/root/.aspnet/DataProtection-Keys
       - ./logs:/app/logs
@@ -27,24 +27,75 @@ services:
     volumes:
       - sql-data:/var/opt/mssql
 
-  clickhouse-server:
-      image: clickhouse/clickhouse-server:latest
-      ports:
-        - "8123:8123"
-        - "9000:9000"
-      volumes:
-        - clickhouse-data:/var/lib/clickhouse
-        - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/custom.xml
-      environment:
-        - CLICKHOUSE_USER=default
-        - CLICKHOUSE_PASSWORD=1
-      ulimits:
-        nofile:
-          soft: 262144
-          hard: 262144
-      command: ["--", "--transparent_hugepage_enabled=never"]
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.tests
+    depends_on:
+      - db
+    environment:
+      - TEST_DB_CONNECTION=Server=db;Database=GamesbakeryTest;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;
+      - ALLURE_CONFIG=/app/allureConfig.json
+      - ALLURE_OUTPUT_DIR=/app/allure-results
+      - ALLURE_ALLOW_EMPTY_SUITES=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+    volumes:
+        - ./allure-results:/app/allure-results
+        - ./allure-results-bl:/app/build-bl/allure-results
+        - ./allure-results-da:/app/build-da/allure-results  
+        - ./allure-results-e2e:/app/build-e2e/allure-results
+        - ./logs:/app/logs
+    command: >
+        sh -c "
+        ln -sf /app/allure-results /app/build-bl/allure-results &&
+        ln -sf /app/allure-results /app/build-da/allure-results &&
+        ln -sf /app/allure-results /app/build-e2e/allure-results
+
+        dotnet test /app/build-bl/Gamesbakery.BusinessLogic.Tests.dll || true &&
+        dotnet test /app/build-da/Gamesbakery.DataAccess.Tests.dll || true &&
+        dotnet test /app/build-e2e/Gamesbakery.E2E.Tests.dll || true
+  
+        echo 'Files generated:'
+
+        ls -la /app/allure-results/
+        "
+
+    # clickhouse-server:
+  #     image: clickhouse/clickhouse-server:latest
+  #     ports:
+  #       - "8123:8123"
+  #       - "9000:9000"
+  #     volumes:
+  #       - clickhouse-data:/var/lib/clickhouse
+  #       - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/custom.xml
+  #     environment:
+  #       - CLICKHOUSE_USER=default
+  #       - CLICKHOUSE_PASSWORD=1
+  #     ulimits:
+  #       nofile:
+  #         soft: 262144
+  #         hard: 262144
+  #     command: ["--", "--transparent_hugepage_enabled=never"]
+    # db:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   environment:
+  #     - ACCEPT_EULA=Y
+  #     - SA_PASSWORD=YourStrong@Pass
+  #     - MSSQL_PID=Express
+  #   ports:
+  #     - "1434:1433"
+  #   volumes:
+  #     - sql-data:/var/opt/mssql
+  #   command: /bin/bash -c "\
+  #     /opt/mssql/bin/sqlservr & \
+  #     sleep 30 && \
+  #     /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -Q 'IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = \"GamesbakeryTest\") BEGIN CREATE DATABASE GamesbakeryTest END' && \
+  #     /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -d GamesbakeryTest -i /init.sql && \
+  #     wait"
+  #   volumes:
+  #     - ./init.sql:/init.sql
 
 volumes:
   sql-data:
   dataprotection-keys:
-  clickhouse-data:  
+  # clickhouse-data:  

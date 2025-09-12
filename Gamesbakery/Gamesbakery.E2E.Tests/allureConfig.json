@@ -1,0 +1,11 @@
+{
+    "$schema": "https://raw.githubusercontent.com/allure-framework/allure-csharp/2.12.1/Allure.Net.Commons/Schemas/allureConfig.schema.json",
+    "allure": {
+        "directory": "allure-results",
+        "links": [],
+        "allowEmptySuites": true,
+        "enableParameters": true,
+        "brokenTestData": "ALL",
+        "failedTestData": "ALL"
+    }
+}

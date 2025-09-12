@@ -1,0 +1,51 @@
+stages:
+  - unit
+  - integration
+  - e2e
+
+unit_tests:
+  stage: unit
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - dotnet restore
+    - dotnet build --no-restore -c Debug
+    - dotnet test --no-build -c Debug --filter "Category=Unit" --logger "allure" --results-directory allure-results
+  artifacts:
+    paths:
+      - allure-results
+  allow_failure: false
+
+integration_tests:
+  stage: integration
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - dotnet restore
+    - dotnet build --no-restore -c Debug
+    - dotnet test --no-build -c Debug --filter "Category=Integration" --logger "allure" --results-directory allure-results
+  artifacts:
+    paths:
+      - allure-results
+  when: on_success
+
+e2e_tests:
+  stage: e2e
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - dotnet restore
+    - dotnet build --no-restore -c Debug
+    - dotnet test --no-build -c Debug --filter "Category=E2E" --logger "allure" --results-directory allure-results
+  artifacts:
+    paths:
+      - allure-results
+  when: on_success
+
+report:
+  stage: e2e
+  image: node:20
+  script:
+    - npm install -g allure-commandline
+    - allure generate allure-results -o allure-report --clean
+  artifacts:
+    paths:
+      - allure-report
+  when: always

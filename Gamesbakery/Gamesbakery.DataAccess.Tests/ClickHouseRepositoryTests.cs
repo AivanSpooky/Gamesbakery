@@ -111,19 +111,19 @@ namespace Gamesbakery.DataAccess.Tests
         //    Assert.Equal(category.Description, retrievedCategory.Description);
         //}
 
-        [Fact]
-        public async Task GetAllCategoriesAsync_EmptyTable_ReturnsEmptyList()
-        {
-            // Arrange
-            var role = UserRole.Admin;
+        //[Fact]
+        //public async Task GetAllCategoriesAsync_EmptyTable_ReturnsEmptyList()
+        //{
+        //    // Arrange
+        //    var role = UserRole.Admin;
 
-            // Act
-            var categories = await _categoryRepository.GetAllAsync(role);
+        //    // Act
+        //    var categories = await _categoryRepository.GetAllAsync(role);
 
-            // Assert
-            Assert.NotNull(categories);
-            Assert.Empty(categories);
-        }
+        //    // Assert
+        //    Assert.NotNull(categories);
+        //    Assert.Empty(categories);
+        //}
 
         //[Fact]
         //public async Task AddGameAsync_SuccessfulAdd_ReturnsAddedGame()

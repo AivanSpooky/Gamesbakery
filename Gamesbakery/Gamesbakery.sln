@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.Core", "Gamesba
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.BusinessLogic", "Gamesbakery.BusinessLogic\Gamesbakery.BusinessLogic.csproj", "{8259CE07-027B-475C-BA35-2CA3B6E26137}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.BusinessLogic.Tests", "Gamesbakery.Tests\Gamesbakery.BusinessLogic.Tests.csproj", "{E2828902-803B-4E6D-92CD-2313F2D0BBE1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.BusinessLogic.Tests", "Gamesbakery.BusinessLogic.Tests\Gamesbakery.BusinessLogic.Tests.csproj", "{E2828902-803B-4E6D-92CD-2313F2D0BBE1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.DataAccess", "Gamesbakery.DataAccess\Gamesbakery.DataAccess.csproj", "{4042691C-C658-4006-9056-2A38E3CE103A}"
 EndProject
@@ -25,8 +25,13 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-co
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решения", "Элементы решения", "{7EA853B8-481C-477D-B777-F805A133E07F}"
 	ProjectSection(SolutionItems) = preProject
+		.dockerignore = .dockerignore
+		.gitlab-ci.yml = .gitlab-ci.yml
 		clickhouse-config.xml = clickhouse-config.xml
+		Dockerfile.tests = Dockerfile.tests
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamesbakery.E2E.Tests", "Gamesbakery.E2E.Tests\Gamesbakery.E2E.Tests.csproj", "{E342ECB4-CBA2-8B72-1681-7EE443C77A80}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -74,8 +79,15 @@ Global
 		{04CF537C-C299-407E-B852-F158C53A8106}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{04CF537C-C299-407E-B852-F158C53A8106}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{04CF537C-C299-407E-B852-F158C53A8106}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E342ECB4-CBA2-8B72-1681-7EE443C77A80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E342ECB4-CBA2-8B72-1681-7EE443C77A80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E342ECB4-CBA2-8B72-1681-7EE443C77A80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E342ECB4-CBA2-8B72-1681-7EE443C77A80}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {34093BC7-193A-4FC8-AF4E-B9FAE4D7AE81}
 	EndGlobalSection
 EndGlobal
