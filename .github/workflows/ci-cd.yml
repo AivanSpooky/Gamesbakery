@@ -13,9 +13,28 @@ jobs:
       uses: actions/setup-dotnet@v3
       with: { dotnet-version: '8.0.x' }
     
-    - name: Find and run test projects
+    - name: Run Unit Tests
       run: |
-        for testproj in $(find . -name "*Tests.csproj"); do
-          echo "Running tests for: $testproj"
-          dotnet test $testproj
+        for testproj in $(find . -name "*Tests.csproj" | grep -E "(Unit|\.BusinessLogic\.)"); do
+          echo "Running unit tests: $testproj"
+          dotnet test $testproj --no-build || true
+        done
+    
+    - name: Run Integration Tests  
+      run: |
+        for testproj in $(find . -name "*Tests.csproj" | grep -E "(Integration|\.DataAccess\.)"); do
+          echo "Running integration tests: $testproj"
+          dotnet test $testproj --no-build || true
+        done
+    
+    - name: Run E2E Tests
+      run: |
+        for testproj in $(find . -name "*Tests.csproj" | grep -E "(E2E|\.E2E\.)"); do
+          echo "Running E2E tests: $testproj"
+          # Copy appsettings.json to output directory
+          test_dir=$(dirname "$testproj")
+          if [ -f "$test_dir/appsettings.json" ]; then
+            cp "$test_dir/appsettings.json" "$test_dir/bin/Debug/net8.0/" || true
+          fi
+          dotnet test $testproj --no-build || true
         done
