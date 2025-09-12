@@ -21,65 +21,51 @@ jobs:
           MSSQL_PID: Express
         ports:
           - "1434:1433"
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 10
         volumes:
           - sql-data:/var/opt/mssql
-        command: /bin/bash -c "\
-          /opt/mssql/bin/sqlservr & \
-          sleep 30 && \
-          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -Q 'IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = \"GamesbakeryTest\") BEGIN CREATE DATABASE GamesbakeryTest END' && \
-          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -d GamesbakeryTest -i /init.sql && \
-          wait"
-        volumes:
           - ./init.sql:/init.sql
-        healthcheck:
-          test: ["/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "YourStrong@Pass", "-Q", "SELECT 1"]
-          interval: 10s
-          timeout: 3s
-          retries: 10
+        command: /bin/bash -c "/opt/mssql/bin/sqlservr & sleep 30 && /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -Q 'IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = \"GamesbakeryTest\") BEGIN CREATE DATABASE GamesbakeryTest END' && /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -d GamesbakeryTest -i /init.sql && wait"
 
     steps:
-      # Checkout кода
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Установка Docker
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Установка .NET SDK
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      # Запуск docker-compose (db и tests)
       - name: Run Docker Compose
         run: |
           docker-compose up --build -d db
-          sleep 40  # Ждём готовности базы
+          sleep 60  # Увеличена задержка для полной готовности базы
           docker-compose up --build tests
 
-      # Unit Tests
       - name: Run Unit Tests
         run: |
           docker exec -it $(docker ps -q -f name=tests) dotnet test /app/build-bl/Gamesbakery.BusinessLogic.Tests.dll --filter "Category=Unit" --logger "allure" --results-directory /app/allure-results/bl
         continue-on-error: false
 
-      # Integration Tests
       - name: Run Integration Tests
         if: success()
         run: |
           docker exec -it $(docker ps -q -f name=tests) dotnet test /app/build-da/Gamesbakery.DataAccess.Tests.dll --filter "Category=Integration" --logger "allure" --results-directory /app/allure-results/da
         continue-on-error: false
 
-      # E2E Tests
       - name: Run E2E Tests
         if: success()
         run: |
           docker exec -it $(docker ps -q -f name=tests) dotnet test /app/build-e2e/Gamesbakery.E2E.Tests.dll --filter "Category=E2E" --logger "allure" --results-directory /app/allure-results/e2e
         continue-on-error: false
 
-      # Генерация Allure отчёта
       - name: Generate Allure Report
         if: always()
         run: |
@@ -87,7 +73,6 @@ jobs:
           docker run -v $(pwd)/allure-results:/app/allure-results -v $(pwd)/allure-report:/app/allure-report node:20 sh -c "npm install -g allure-commandline && allure generate /app/allure-results -o /app/allure-report --clean"
         continue-on-error: false
 
-      # Загрузка артефактов
       - name: Upload Allure Report
         if: always()
         uses: actions/upload-artifact@v4
@@ -95,14 +80,10 @@ jobs:
           name: allure-report
           path: allure-report
 
-      # Очистка контейнеров (откат)
       - name: Clean Up
         if: always()
         run: |
           docker-compose down -v
 
-    volumes:
-      sql-data:
-
-env:
-  DOCKER_BUILDKIT: 1
+volumes:
+  sql-data:
