@@ -5,26 +5,22 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
-    services:
-      sql-server:
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        env:
-          ACCEPT_EULA: "Y"
-          SA_PASSWORD: "Passw0rd!"
-        ports: [1433:1433]
 
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with: { dotnet-version: '8.0.x' }
+    - name: Setup Docker Compose
+      run: docker-compose up -d db && sleep 20
     
-    - name: Wait for DB
-      run: sleep 20
-    
-    - name: Run tests
-      run: dotnet test
-      env:
-        ConnectionStrings__DefaultConnection: "Server=localhost;Database=master;User Id=SA;Password=Passw0rd!;TrustServerCertificate=true;"
+    - name: Run tests with Docker Compose
+      run: docker-compose up tests
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: allure-results
+        path: allure-results/
+        
+    - name: Cleanup
+      if: always()
+      run: docker-compose down
