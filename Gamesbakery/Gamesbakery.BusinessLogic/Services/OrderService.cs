@@ -167,7 +167,7 @@ namespace Gamesbakery.BusinessLogic.Services
             var curUserId = _authService.GetCurrentUserId();
             var currentRole = _authService.GetCurrentRole();
 
-            var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, currentRole, curUserId);
+            var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, currentRole, sellerId);
             if (orderItem == null)
                 throw new KeyNotFoundException($"OrderItem with ID {orderItemId} not found.");
 

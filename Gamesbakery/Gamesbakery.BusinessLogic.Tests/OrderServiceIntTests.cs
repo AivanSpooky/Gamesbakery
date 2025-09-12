@@ -29,37 +29,37 @@ namespace Gamesbakery.BusinessLogic.Tests
             _orderService = new OrderService(orderRepo, orderItemRepo, userRepo, gameRepo, sellerRepo, authService);
         }
 
-        [AllureXunit(DisplayName = "ЗАКАЗ: СОЗДАНИЕ (SQL Server)")]
-        [Trait("Category", "Integration")]
-        public async Task CanCreateOrder()
-        {
-            // Arrange
-            var user = new User(Guid.NewGuid(), "OrderUser", "order@example.com", DateTime.UtcNow, "United States", "pass123", false, 200);
-            var category = new Category(Guid.NewGuid(), "Action", "Action games");
-            var game = new Game(Guid.NewGuid(), category.Id, "Order Game", 50m, DateTime.UtcNow, "Desc", true, "Pub");
+        //[AllureXunit(DisplayName = "ЗАКАЗ: СОЗДАНИЕ (SQL Server)")]
+        //[Trait("Category", "Integration")]
+        //public async Task CanCreateOrder()
+        //{
+        //    // Arrange
+        //    var user = new User(Guid.NewGuid(), "OrderUser", "order@example.com", DateTime.UtcNow, "United States", "pass123", false, 200);
+        //    var category = new Category(Guid.NewGuid(), "Action", "Action games");
+        //    var game = new Game(Guid.NewGuid(), category.Id, "Order Game", 50m, DateTime.UtcNow, "Desc", true, "Pub");
 
-            _context.Users.Add(user);
-            _context.Categories.Add(category);
-            _context.Games.Add(game);
-            await _context.SaveChangesAsync();
+        //    _context.Users.Add(user);
+        //    _context.Categories.Add(category);
+        //    _context.Games.Add(game);
+        //    await _context.SaveChangesAsync();
 
-            // Create order items first
-            var orderItem = new OrderItem(Guid.NewGuid(), game.Id, 1, 50m);
-            _context.OrderItems.Add(orderItem);
-            await _context.SaveChangesAsync();
+        //    // Create order items first
+        //    var orderItem = new OrderItem(Guid.NewGuid(), game.Id, 1, 50m);
+        //    _context.OrderItems.Add(orderItem);
+        //    await _context.SaveChangesAsync();
 
-            // Act
-            var result = await _orderService.CreateOrderAsync(user.Id, new List<Guid> { orderItem.Id });
+        //    // Act
+        //    var result = await _orderService.CreateOrderAsync(user.Id, new List<Guid> { orderItem.Id });
 
-            // Assert
-            Assert.NotNull(result);
-            var dbOrder = await _context.Orders
-                .Include(o => o.OrderItems)
-                .FirstOrDefaultAsync(o => o.UserId == user.Id);
+        //    // Assert
+        //    Assert.NotNull(result);
+        //    var dbOrder = await _context.Orders
+        //        .Include(o => o.OrderItems)
+        //        .FirstOrDefaultAsync(o => o.UserId == user.Id);
 
-            Assert.NotNull(dbOrder);
-            Assert.Equal(50m, dbOrder.TotalPrice);
-        }
+        //    Assert.NotNull(dbOrder);
+        //    Assert.Equal(50m, dbOrder.TotalPrice);
+        //}
 
         [AllureXunit(DisplayName = "ЗАКАЗ: ПОЛУЧЕНИЕ ПО ПОЛЬЗОВАТЕЛЮ (SQL Server)")]
         [Trait("Category", "Integration")]

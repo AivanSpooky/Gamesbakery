@@ -22,7 +22,7 @@ namespace Gamesbakery.BusinessLogic.Services
             _authService = authService;
         }
 
-        public async Task<GameDetailsDTO> AddGameAsync(Guid categoryId, string title, decimal price, DateTime releaseDate, string description, string originalPublisher)
+        public async Task<GameDetailsDTO> AddGameAsync(Guid categoryId, string title, decimal price, DateTime releaseDate, string description, string originalPublisher, bool needAvg=true)
         {
             var currentRole = _authService.GetCurrentRole();
             if (currentRole != UserRole.Admin)
@@ -36,7 +36,7 @@ namespace Gamesbakery.BusinessLogic.Services
             var createdGame = await _gameRepository.AddAsync(game, currentRole);
 
             // Получаем AverageRating
-            var averageRating = _gameRepository.GetGameAverageRating(createdGame.Id);
+            var averageRating = !needAvg ? 0m : _gameRepository.GetGameAverageRating(createdGame.Id);
 
             var gameDetails = MapToDetailsDTO(createdGame);
             gameDetails.AverageRating = averageRating;

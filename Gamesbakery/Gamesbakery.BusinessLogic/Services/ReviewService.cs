@@ -26,9 +26,20 @@ namespace Gamesbakery.BusinessLogic.Services
 
         public async Task<ReviewDTO> AddReviewAsync(Guid userId, Guid gameId, string comment, int starRating)
         {
+            var role = _authService.GetCurrentRole();
+            var currentUserId = _authService.GetCurrentUserId();
+            if (role != UserRole.Admin && userId != currentUserId)
+                throw new UnauthorizedAccessException("You can only add reviews from your own account.");
+            var user = await _userRepository.GetByIdAsync(userId, role);
+            if (user == null)
+                throw new KeyNotFoundException($"User with ID {userId} not found.");
+            if (user.IsBlocked)
+                throw new InvalidOperationException("Blocked users cannot add reviews.");
+            var game = await _gameRepository.GetByIdAsync(gameId, role);
+            if (game == null)
+                throw new KeyNotFoundException($"Game with ID {gameId} not found.");
             if (starRating < 1 || starRating > 5)
                 throw new ArgumentException("Star rating must be between 1 and 5.", nameof(starRating));
-
             var review = new Review(
                 Guid.NewGuid(),
                 userId,
@@ -36,9 +47,7 @@ namespace Gamesbakery.BusinessLogic.Services
                 comment,
                 starRating,
                 DateTime.UtcNow);
-
             await _reviewRepository.AddAsync(review, UserRole.User);
-
             return new ReviewDTO
             {
                 Id = review.Id,
