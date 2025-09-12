@@ -21,18 +21,24 @@ jobs:
     
     - name: Clean and restore
       run: |
+        cd Gamesbakery
         dotnet clean
         dotnet restore
     
     - name: Run Unit Tests
-      run: dotnet test Gamesbakery/Gamesbakery.BusinessLogic.Tests/Gamesbakery.BusinessLogic.Tests.csproj --no-build || true
+      run: |
+        cd Gamesbakery
+        dotnet test Gamesbakery.BusinessLogic.Tests/Gamesbakery.BusinessLogic.Tests.csproj --no-build || true
     
     - name: Run Integration Tests
-      run: dotnet test Gamesbakery/Gamesbakery.DataAccess.Tests/Gamesbakery.DataAccess.Tests.csproj --no-build || true
+      run: |
+        cd Gamesbakery
+        dotnet test Gamesbakery.DataAccess.Tests/Gamesbakery.DataAccess.Tests.csproj --no-build || true
     
     - name: Run E2E Tests
       run: |
+        cd Gamesbakery
         # Копируем appsettings.json для E2E тестов
-        cp Gamesbakery/Gamesbakery.E2E.Tests/appsettings.json Gamesbakery/Gamesbakery.E2E.Tests/bin/Debug/net8.0/ || true
-        cp Gamesbakery/Gamesbakery.E2E.Tests/appsettings.json Gamesbakery/Gamesbakery.E2E.Tests/bin/Release/net8.0/ || true
-        dotnet test Gamesbakery/Gamesbakery.E2E.Tests/Gamesbakery.E2E.Tests.csproj --no-build || true
+        cp Gamesbakery.E2E.Tests/appsettings.json Gamesbakery.E2E.Tests/bin/Debug/net8.0/ || true
+        cp Gamesbakery.E2E.Tests/appsettings.json Gamesbakery.E2E.Tests/bin/Release/net8.0/ || true
+        dotnet test Gamesbakery.E2E.Tests/Gamesbakery.E2E.Tests.csproj --no-build || true
