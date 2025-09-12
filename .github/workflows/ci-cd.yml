@@ -9,9 +9,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup Docker
-      uses: docker/setup-buildx-action@v3
-    
     - name: Start SQL Server
       run: |
         docker run -d --name sql-server \
@@ -23,7 +20,10 @@ jobs:
         sleep 20
     
     - name: Run tests
-      run: dotnet test Gamesbakery.sln
+      run: |
+        dotnet test Gamesbakery.BusinessLogic.Tests/Gamesbakery.BusinessLogic.Tests.csproj
+        dotnet test Gamesbakery.DataAccess.Tests/Gamesbakery.DataAccess.Tests.csproj
+        dotnet test Gamesbakery.E2E.Tests/Gamesbakery.E2E.Tests.csproj
       env:
         ConnectionStrings__DefaultConnection: "Server=localhost;Database=master;User Id=SA;Password=YourStrong@Pass;TrustServerCertificate=true;"
         
