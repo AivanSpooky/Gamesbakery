@@ -31,11 +31,22 @@ jobs:
     - name: Start services
       run: docker compose -f ${{ env.COMPOSE_FILE }} up -d db web
 
-    - name: Wait for database
+    - name: Wait for database server
       run: |
-        echo "Waiting for database..."
+        echo "Waiting for database server..."
         timeout 300 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 2; done'
-        echo "Database is ready!"
+        echo "Database server is up!"
+
+    - name: Create database if not exists
+      run: |
+        echo "Creating database Gamesbakery if not exists..."
+        docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'Gamesbakery') CREATE DATABASE Gamesbakery" -C -N
+
+    - name: Wait for database initialization
+      run: |
+        echo "Waiting for database Gamesbakery to be ready..."
+        timeout 120 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -d Gamesbakery -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 2; done'
+        echo "Database Gamesbakery is ready!"
 
     - name: Wait for web service
       run: |
@@ -105,8 +116,8 @@ jobs:
           rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
           mkdir -p /app/allure-results/e2e
           echo 'Waiting for services in E2E tests...'
-          timeout 60 sh -c 'until nc -z db 1433; do echo \"DB not ready, waiting...\"; sleep 2; done'
-          timeout 60 sh -c 'until curl -f http://web:80/health; do echo \"Web not ready, waiting...\"; sleep 2; done'
+          timeout 120 sh -c 'until nc -z db 1433; do echo \"DB not ready, waiting...\"; sleep 2; done'
+          timeout 120 sh -c 'until curl -f http://web:80/health; do echo \"Web not ready, waiting...\"; sleep 2; done'
           echo 'Running E2E tests...'
           cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/e2e || true
           cp -r /app/allure-results/e2e/* /app/allure-results/ 2>/dev/null || true
