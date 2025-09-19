@@ -98,7 +98,7 @@ jobs:
           rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
           mkdir -p /app/allure-results/unit
           echo 'Running unit tests...'
-          cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/unit || true
+          cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --logger 'console;verbosity=minimal' --settings xunit.runner.json --results-directory /app/allure-results/unit || true
           cp -r /app/allure-results/unit/* /app/allure-results/ 2>/dev/null || true
         "
 

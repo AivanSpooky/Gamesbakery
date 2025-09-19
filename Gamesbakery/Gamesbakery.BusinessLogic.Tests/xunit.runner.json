@@ -3,6 +3,6 @@
     "showLiveOutput": true,
     "parallelizeTestCollections": true,
     "parallelizeAssembly": false,
-    "maxParallelThreads": 0,
+    "maxParallelThreads": 1,
     "randomizeTestOrder": false
 }
