@@ -28,6 +28,13 @@ jobs:
     - name: Build all services
       run: docker compose -f ${{ env.COMPOSE_FILE }} build
 
+    # Очистка volumes для принудительного выполнения init-скрипта
+    - name: Clean database volume
+      run: |
+        echo "Cleaning database volume to force init script execution..."
+        docker compose -f ${{ env.COMPOSE_FILE }} down -v
+        docker volume rm $(docker volume ls -q | grep gamesbakery_sql-data) 2>/dev/null || true
+
     - name: Start services
       run: docker compose -f ${{ env.COMPOSE_FILE }} up -d db web
 
@@ -37,26 +44,35 @@ jobs:
         timeout 300 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 2; done'
         echo "Database server is up!"
 
-    - name: Create database if not exists
+    - name: Check init script execution
       run: |
-        echo "Creating database Gamesbakery if not exists..."
-        docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'Gamesbakery') CREATE DATABASE Gamesbakery" -C -N
+        echo "Checking if init-db.sql executed..."
+        sleep 30  # Дать время на выполнение init скрипта
+        docker logs $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) --tail 100 | grep -i "init\|created\|database\|table" || echo "No init logs found"
 
     - name: Wait for database initialization
       run: |
         echo "Waiting for database Gamesbakery to be ready..."
-        timeout 120 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -d Gamesbakery -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 2; done'
+        timeout 180 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -d Gamesbakery -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 3; done'
         echo "Database Gamesbakery is ready!"
 
-    # НОВЫЙ ШАГ: Применение миграций EF Core
-    - name: Apply EF Core Migrations
+    # Проверка существования таблиц
+    - name: Verify database tables
       run: |
-        echo "Applying EF Core migrations..."
-        docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          cd /app/Gamesbakery.DataAccess && \
-          dotnet ef database update --connection 'Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=60;' --verbose || true
-        "
-        echo "Migrations applied!"
+        echo "Checking database tables..."
+        docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -d Gamesbakery -Q "
+          SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';
+          SELECT OBJECT_NAME(object_id) FROM sys.fn_listextendedproperty('Schema', default, default, default, default, default, default) WHERE value LIKE '%Gamesbakery%';
+        " -C -N -h-1 -W
+
+    # Принудительное выполнение init-скрипта, если таблицы не созданы
+    - name: Force init script execution
+      run: |
+        echo "Forcing init script execution..."
+        DB_CONTAINER=$(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db)
+        docker cp ./init-db.sql $DB_CONTAINER:/tmp/init-db.sql
+        docker exec $DB_CONTAINER /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -d Gamesbakery -i /tmp/init-db.sql -C -N
+        echo "Init script executed manually!"
 
     - name: Wait for web service
       run: |
@@ -82,7 +98,7 @@ jobs:
           ls -la /app/allure-results/ 2>/dev/null || echo 'No results found'
           cp -r /app/allure-results/* /tmp/ 2>/dev/null || true
         "
-        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/tmp ./allure-results/unit 2>/dev/null || true
+        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db):/tmp ./allure-results/unit 2>/dev/null || true
 
     - name: Upload unit test report
       if: always()
@@ -110,7 +126,7 @@ jobs:
           ls -la /app/allure-results/ 2>/dev/null || echo 'No results found'
           cp -r /app/allure-results/* /tmp/ 2>/dev/null || true
         "
-        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/tmp ./allure-results/integration 2>/dev/null || true
+        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db):/tmp ./allure-results/integration 2>/dev/null || true
 
     - name: Upload integration test report
       if: always()
@@ -141,7 +157,7 @@ jobs:
           ls -la /app/allure-results/ 2>/dev/null || echo 'No results found'
           cp -r /app/allure-results/* /tmp/ 2>/dev/null || true
         "
-        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/tmp ./allure-results/e2e 2>/dev/null || true
+        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db):/tmp ./allure-results/e2e 2>/dev/null || true
 
     - name: Upload E2E test report
       if: always()
