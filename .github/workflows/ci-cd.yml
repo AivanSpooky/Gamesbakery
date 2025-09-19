@@ -32,25 +32,43 @@ jobs:
       run: docker compose -f ${{ env.COMPOSE_FILE }} up -d db web
 
     - name: Wait for database
-      run: timeout 300 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 1; done'
+      run: |
+        echo "Waiting for database..."
+        timeout 300 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 2; done'
+        echo "Database is ready!"
 
     - name: Wait for web service
-      run: timeout 180 sh -c 'until curl -f http://localhost:8080/health >/dev/null 2>&1; do sleep 1; done'
+      run: |
+        echo "Waiting for web service..."
+        timeout 180 sh -c 'until curl -f http://localhost:8080/health >/dev/null 2>&1; do sleep 2; done'
+        echo "Web service is ready!"
 
     - name: Run unit tests
       run: |
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          export ALLURE_RESULTS_DIRECTORY=/app/allure-results/unit
-          rm -rf \$ALLURE_RESULTS_DIRECTORY 2>/dev/null || true
-          mkdir -p \$ALLURE_RESULTS_DIRECTORY
-          cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --filter 'Category=Unit' --results-directory \$ALLURE_RESULTS_DIRECTORY || true
+          # Clean all possible allure directories
+          rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
+          
+          # Create unit results directory
+          mkdir -p /app/allure-results/unit
+          
+          # Run unit tests without category filter (since none found)
+          echo 'Running unit tests...'
+          cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/unit || true
+          
+          # Copy results to main directory
+          cp -r /app/allure-results/unit/* /app/allure-results/ 2>/dev/null || true
         "
 
     - name: Copy unit test results
       if: always()
       run: |
         mkdir -p allure-results/unit
-        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/app/allure-results/unit ./allure-results/unit 2>/dev/null || true
+        docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
+          ls -la /app/allure-results/ 2>/dev/null || echo 'No results found'
+          cp -r /app/allure-results/* /tmp/ 2>/dev/null || true
+        "
+        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/tmp ./allure-results/unit 2>/dev/null || true
 
     - name: Upload unit test report
       if: always()
@@ -63,17 +81,29 @@ jobs:
       if: always()
       run: |
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          export ALLURE_RESULTS_DIRECTORY=/app/allure-results/integration
-          rm -rf \$ALLURE_RESULTS_DIRECTORY 2>/dev/null || true
-          mkdir -p \$ALLURE_RESULTS_DIRECTORY
-          cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --filter 'Category=Integration' --results-directory \$ALLURE_RESULTS_DIRECTORY || true
+          # Clean allure directories
+          rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
+          
+          # Create integration results directory
+          mkdir -p /app/allure-results/integration
+          
+          # Run integration tests without category filter
+          echo 'Running integration tests...'
+          cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/integration || true
+          
+          # Copy results to main directory
+          cp -r /app/allure-results/integration/* /app/allure-results/ 2>/dev/null || true
         "
 
     - name: Copy integration test results
       if: always()
       run: |
         mkdir -p allure-results/integration
-        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/app/allure-results/integration ./allure-results/integration 2>/dev/null || true
+        docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
+          ls -la /app/allure-results/ 2>/dev/null || echo 'No results found'
+          cp -r /app/allure-results/* /tmp/ 2>/dev/null || true
+        "
+        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/tmp ./allure-results/integration 2>/dev/null || true
 
     - name: Upload integration test report
       if: always()
@@ -86,17 +116,34 @@ jobs:
       if: always()
       run: |
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          export ALLURE_RESULTS_DIRECTORY=/app/allure-results/e2e
-          rm -rf \$ALLURE_RESULTS_DIRECTORY 2>/dev/null || true
-          mkdir -p \$ALLURE_RESULTS_DIRECTORY
-          cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --filter 'Category=E2E' --results-directory \$ALLURE_RESULTS_DIRECTORY || true
+          # Clean allure directories
+          rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
+          
+          # Create E2E results directory
+          mkdir -p /app/allure-results/e2e
+          
+          # Wait for services before E2E tests
+          echo 'Waiting for services in E2E tests...'
+          timeout 60 sh -c 'until nc -z db 1433; do echo \"DB not ready, waiting...\"; sleep 2; done'
+          timeout 60 sh -c 'until curl -f http://web:80/health; do echo \"Web not ready, waiting...\"; sleep 2; done'
+          
+          # Run E2E tests
+          echo 'Running E2E tests...'
+          cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/e2e || true
+          
+          # Copy results to main directory
+          cp -r /app/allure-results/e2e/* /app/allure-results/ 2>/dev/null || true
         "
 
     - name: Copy E2E test results
       if: always()
       run: |
         mkdir -p allure-results/e2e
-        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/app/allure-results/e2e ./allure-results/e2e 2>/dev/null || true
+        docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
+          ls -la /app/allure-results/ 2>/dev/null || echo 'No results found'
+          cp -r /app/allure-results/* /tmp/ 2>/dev/null || true
+        "
+        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/tmp ./allure-results/e2e 2>/dev/null || true
 
     - name: Upload E2E test report
       if: always()
@@ -123,19 +170,25 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: allure-results
+        pattern: *-allure-report
 
     - name: Generate combined Allure report
       run: |
         mkdir -p combined-results
+        # Copy all JSON files from all downloaded artifacts
         find allure-results -name "*.json" -type f -exec cp {} combined-results/ \; 2>/dev/null || true
+        find allure-results -name "*.xml" -type f -exec cp {} combined-results/ \; 2>/dev/null || true
+        
+        echo "Found files in combined-results:"
+        ls -la combined-results/ 2>/dev/null || echo "No files found"
         
         docker run --rm \
           -v $(pwd)/combined-results:/app/allure-results \
           -v $(pwd)/allure-report:/app/allure-report \
           --entrypoint sh node:20 -c "
             npm install -g allure-commandline && \
-            allure generate /app/allure-results -o /app/allure-report --clean
-          " || true
+            allure generate /app/allure-results -o /app/allure-report --clean || echo 'Allure generation completed'
+          "
 
     - name: Upload final Allure report
       if: always()
