@@ -46,17 +46,10 @@ jobs:
     - name: Run unit tests
       run: |
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          # Clean all possible allure directories
           rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
-          
-          # Create unit results directory
           mkdir -p /app/allure-results/unit
-          
-          # Run unit tests without category filter (since none found)
           echo 'Running unit tests...'
           cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/unit || true
-          
-          # Copy results to main directory
           cp -r /app/allure-results/unit/* /app/allure-results/ 2>/dev/null || true
         "
 
@@ -81,17 +74,10 @@ jobs:
       if: always()
       run: |
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          # Clean allure directories
           rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
-          
-          # Create integration results directory
           mkdir -p /app/allure-results/integration
-          
-          # Run integration tests without category filter
           echo 'Running integration tests...'
           cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/integration || true
-          
-          # Copy results to main directory
           cp -r /app/allure-results/integration/* /app/allure-results/ 2>/dev/null || true
         "
 
@@ -116,22 +102,13 @@ jobs:
       if: always()
       run: |
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          # Clean allure directories
           rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
-          
-          # Create E2E results directory
           mkdir -p /app/allure-results/e2e
-          
-          # Wait for services before E2E tests
           echo 'Waiting for services in E2E tests...'
           timeout 60 sh -c 'until nc -z db 1433; do echo \"DB not ready, waiting...\"; sleep 2; done'
           timeout 60 sh -c 'until curl -f http://web:80/health; do echo \"Web not ready, waiting...\"; sleep 2; done'
-          
-          # Run E2E tests
           echo 'Running E2E tests...'
           cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/e2e || true
-          
-          # Copy results to main directory
           cp -r /app/allure-results/e2e/* /app/allure-results/ 2>/dev/null || true
         "
 
@@ -170,12 +147,10 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: allure-results
-        pattern: *-allure-report
 
     - name: Generate combined Allure report
       run: |
         mkdir -p combined-results
-        # Copy all JSON files from all downloaded artifacts
         find allure-results -name "*.json" -type f -exec cp {} combined-results/ \; 2>/dev/null || true
         find allure-results -name "*.xml" -type f -exec cp {} combined-results/ \; 2>/dev/null || true
         
