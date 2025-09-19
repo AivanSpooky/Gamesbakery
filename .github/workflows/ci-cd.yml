@@ -30,77 +30,45 @@ jobs:
     - name: Start database service
       id: start-db
       run: |
-        echo "Starting database service..."
-        docker-compose up -d db
-        echo "Waiting for database to be ready..."
-        timeout=300
-        for i in $(seq 1 $timeout); do
-          if docker exec $(docker-compose ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "SELECT 1" -C -N >/dev/null 2>&1; then
-            echo "✓ Database ready after ${i}s"
-            break
-          fi
-          echo "Database not ready, attempt ${i}/${timeout}..."
-          sleep 1
-        done
-        if [ $i -eq $timeout ]; then
-          echo "❌ Database failed to start within ${timeout}s"
-          exit 1
-        fi
-        echo "db-container=$(docker-compose ps -q db)" >> $GITHUB_OUTPUT
+        docker-compose -f Gamesbakery/docker-compose.yml up -d db
+        echo "db-container=$(docker-compose -f Gamesbakery/docker-compose.yml ps -q db)" >> $GITHUB_OUTPUT
+
+    - name: Wait for database
+      run: |
+        timeout 300 sh -c 'until docker exec $(docker-compose -f Gamesbakery/docker-compose.yml ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 1; done'
 
     - name: Start web service
       id: start-web
       run: |
-        echo "Starting web service..."
-        docker-compose up -d web
-        echo "Waiting for web service to be ready..."
-        timeout=180
-        for i in $(seq 1 $timeout); do
-          if curl -f http://localhost:8080/health >/dev/null 2>&1; then
-            echo "✓ Web service ready after ${i}s"
-            break
-          fi
-          echo "Web service not ready, attempt ${i}/${timeout}..."
-          sleep 1
-        done
-        if [ $i -eq $timeout ]; then
-          echo "❌ Web service failed to start within ${timeout}s"
-          exit 1
-        fi
-        echo "web-container=$(docker-compose ps -q web)" >> $GITHUB_OUTPUT
+        docker-compose -f Gamesbakery/docker-compose.yml up -d web
+        echo "web-container=$(docker-compose -f Gamesbakery/docker-compose.yml ps -q web)" >> $GITHUB_OUTPUT
+
+    - name: Wait for web service
+      run: |
+        timeout 180 sh -c 'until curl -f http://localhost:8080/health >/dev/null 2>&1; do sleep 1; done'
 
   unit-tests:
     needs: setup
     runs-on: ubuntu-latest
-    if: always()
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build tests
+    - name: Build and run unit tests
       run: |
-        docker-compose build tests
-
-    - name: Run Unit Tests
-      run: |
-        echo "=== Running Unit Tests ==="
-        docker-compose run --rm tests sh -c "
+        docker-compose -f Gamesbakery/docker-compose.yml build tests
+        docker-compose -f Gamesbakery/docker-compose.yml run --rm tests sh -c "
           mkdir -p /app/allure-results/unit
           cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --filter 'Category=Unit' --logger 'allure' --results-directory /app/allure-results/unit || true
         "
-        echo "Unit tests completed"
 
-    - name: Copy Unit Test Results
+    - name: Copy unit test results
       if: always()
       run: |
         mkdir -p allure-results/unit
-        docker cp $(docker-compose ps -q tests):/app/allure-results/unit ./allure-results/unit 2>/dev/null || true
-        echo "Unit test results copied"
+        docker cp $(docker-compose -f Gamesbakery/docker-compose.yml ps -q tests):/app/allure-results/unit ./allure-results/unit 2>/dev/null || true
 
-    - name: Upload Unit Test Report
+    - name: Upload unit test report
       if: always()
       uses: actions/upload-artifact@v4
       with:
@@ -110,4 +78,101 @@ jobs:
   integration-tests:
     needs: [setup, unit-tests]
     runs-on: ubuntu-latest
-    if: needs.unit-tests.result
+    if: needs.unit-tests.result == 'success'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build and run integration tests
+      run: |
+        docker-compose -f Gamesbakery/docker-compose.yml build tests
+        docker-compose -f Gamesbakery/docker-compose.yml run --rm tests sh -c "
+          mkdir -p /app/allure-results/integration
+          cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --filter 'Category=Integration' --logger 'allure' --results-directory /app/allure-results/integration || true
+        "
+
+    - name: Copy integration test results
+      if: always()
+      run: |
+        mkdir -p allure-results/integration
+        docker cp $(docker-compose -f Gamesbakery/docker-compose.yml ps -q tests):/app/allure-results/integration ./allure-results/integration 2>/dev/null || true
+
+    - name: Upload integration test report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-allure-report
+        path: allure-results/integration/
+
+  e2e-tests:
+    needs: [setup, integration-tests]
+    runs-on: ubuntu-latest
+    if: needs.integration-tests.result == 'success'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build and run E2E tests
+      run: |
+        docker-compose -f Gamesbakery/docker-compose.yml build tests
+        docker-compose -f Gamesbakery/docker-compose.yml run --rm tests sh -c "
+          mkdir -p /app/allure-results/e2e
+          cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --filter 'Category=E2E' --logger 'allure' --results-directory /app/allure-results/e2e || true
+        "
+
+    - name: Copy E2E test results
+      if: always()
+      run: |
+        mkdir -p allure-results/e2e
+        docker cp $(docker-compose -f Gamesbakery/docker-compose.yml ps -q tests):/app/allure-results/e2e ./allure-results/e2e 2>/dev/null || true
+
+    - name: Upload E2E test report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-allure-report
+        path: allure-results/e2e/
+
+  generate-report:
+    needs: [unit-tests, integration-tests, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all test results
+      uses: actions/download-artifact@v4
+      with:
+        path: allure-results
+
+    - name: Generate combined Allure report
+      run: |
+        mkdir -p combined-results
+        find allure-results -name "*.xml" -type f -exec cp {} combined-results/ \; 2>/dev/null || true
+        
+        docker run --rm \
+          -v $(pwd)/combined-results:/app/allure-results \
+          -v $(pwd)/allure-report:/app/allure-report \
+          --entrypoint sh node:20 -c "
+            npm install -g allure-commandline && \
+            allure generate /app/allure-results -o /app/allure-report --clean
+          " || true
+
+    - name: Upload final Allure report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: final-allure-report
+        path: allure-report/
+
+  cleanup:
+    needs: [unit-tests, integration-tests, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Cleanup containers
+      if: always()
+      run: |
+        docker-compose -f Gamesbakery/docker-compose.yml down -v || true
+        docker system prune -f || true
