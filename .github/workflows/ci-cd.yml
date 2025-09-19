@@ -48,6 +48,16 @@ jobs:
         timeout 120 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -d Gamesbakery -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 2; done'
         echo "Database Gamesbakery is ready!"
 
+    # НОВЫЙ ШАГ: Применение миграций EF Core
+    - name: Apply EF Core Migrations
+      run: |
+        echo "Applying EF Core migrations..."
+        docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
+          cd /app/Gamesbakery.DataAccess && \
+          dotnet ef database update --connection 'Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=60;' --verbose || true
+        "
+        echo "Migrations applied!"
+
     - name: Wait for web service
       run: |
         echo "Waiting for web service..."
