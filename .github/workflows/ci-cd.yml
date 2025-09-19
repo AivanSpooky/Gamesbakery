@@ -11,11 +11,8 @@ env:
   COMPOSE_FILE: Gamesbakery/docker-compose.yml
 
 jobs:
-  setup:
+  build-and-test:
     runs-on: ubuntu-latest
-    outputs:
-      db-container: ${{ steps.start-db.outputs.db-container }}
-      web-container: ${{ steps.start-web.outputs.web-container }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -28,75 +25,32 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: Build services
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} build
+    - name: Build all services
+      run: docker compose -f ${{ env.COMPOSE_FILE }} build
 
-    - name: Start database service
-      id: start-db
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} up -d db
-        echo "db-container=$(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db)" >> $GITHUB_OUTPUT
+    - name: Start services
+      run: docker compose -f ${{ env.COMPOSE_FILE }} up -d db web
 
     - name: Wait for database
-      run: |
-        timeout 300 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 1; done'
-
-    - name: Start web service
-      id: start-web
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} up -d web
-        echo "web-container=$(docker compose -f ${{ env.COMPOSE_FILE }} ps -q web)" >> $GITHUB_OUTPUT
+      run: timeout 300 sh -c 'until docker exec $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "SELECT 1" -C -N >/dev/null 2>&1; do sleep 1; done'
 
     - name: Wait for web service
-      run: |
-        timeout 180 sh -c 'until curl -f http://localhost:8080/health >/dev/null 2>&1; do sleep 1; done'
-
-    # Сохраняем состояние контейнеров для других jobs
-    - name: Save container state
-      run: |
-        mkdir -p state
-        echo "${{ needs.setup.outputs.db-container }}" > state/db-container.txt
-        echo "${{ needs.setup.outputs.web-container }}" > state/web-container.txt
-        docker compose -f ${{ env.COMPOSE_FILE }} ps -a > state/containers.txt
-      continue-on-error: true
-
-    - name: Upload container state
-      uses: actions/upload-artifact@v4
-      with:
-        name: container-state
-        path: state/
-
-  unit-tests:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download container state
-      uses: actions/download-artifact@v4
-      with:
-        name: container-state
-        path: state/
-
-    - name: Build tests only
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} build tests
+      run: timeout 180 sh -c 'until curl -f http://localhost:8080/health >/dev/null 2>&1; do sleep 1; done'
 
     - name: Run unit tests
       run: |
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          mkdir -p /app/allure-results/unit
-          cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --filter 'Category=Unit' --results-directory /app/allure-results/unit || true
+          export ALLURE_RESULTS_DIRECTORY=/app/allure-results/unit
+          rm -rf \$ALLURE_RESULTS_DIRECTORY 2>/dev/null || true
+          mkdir -p \$ALLURE_RESULTS_DIRECTORY
+          cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --filter 'Category=Unit' --results-directory \$ALLURE_RESULTS_DIRECTORY || true
         "
 
     - name: Copy unit test results
       if: always()
       run: |
         mkdir -p allure-results/unit
-        docker cp $(cat state/db-container.txt 2>/dev/null):/app/allure-results/unit ./allure-results/unit 2>/dev/null || true
-        docker cp $(cat state/web-container.txt 2>/dev/null):/app/allure-results/unit ./allure-results/unit 2>/dev/null || true
+        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/app/allure-results/unit ./allure-results/unit 2>/dev/null || true
 
     - name: Upload unit test report
       if: always()
@@ -105,37 +59,21 @@ jobs:
         name: unit-allure-report
         path: allure-results/unit/
 
-  integration-tests:
-    needs: [setup, unit-tests]
-    runs-on: ubuntu-latest
-    if: needs.unit-tests.result == 'success'
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download container state
-      uses: actions/download-artifact@v4
-      with:
-        name: container-state
-        path: state/
-
-    - name: Build tests only
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} build tests
-
     - name: Run integration tests
+      if: always()
       run: |
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          mkdir -p /app/allure-results/integration
-          cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --filter 'Category=Integration' --results-directory /app/allure-results/integration || true
+          export ALLURE_RESULTS_DIRECTORY=/app/allure-results/integration
+          rm -rf \$ALLURE_RESULTS_DIRECTORY 2>/dev/null || true
+          mkdir -p \$ALLURE_RESULTS_DIRECTORY
+          cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --filter 'Category=Integration' --results-directory \$ALLURE_RESULTS_DIRECTORY || true
         "
 
     - name: Copy integration test results
       if: always()
       run: |
         mkdir -p allure-results/integration
-        docker cp $(cat state/db-container.txt 2>/dev/null):/app/allure-results/integration ./allure-results/integration 2>/dev/null || true
-        docker cp $(cat state/web-container.txt 2>/dev/null):/app/allure-results/integration ./allure-results/integration 2>/dev/null || true
+        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/app/allure-results/integration ./allure-results/integration 2>/dev/null || true
 
     - name: Upload integration test report
       if: always()
@@ -144,37 +82,21 @@ jobs:
         name: integration-allure-report
         path: allure-results/integration/
 
-  e2e-tests:
-    needs: [setup, integration-tests]
-    runs-on: ubuntu-latest
-    if: needs.integration-tests.result == 'success'
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download container state
-      uses: actions/download-artifact@v4
-      with:
-        name: container-state
-        path: state/
-
-    - name: Build tests only
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} build tests
-
     - name: Run E2E tests
+      if: always()
       run: |
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          mkdir -p /app/allure-results/e2e
-          cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --filter 'Category=E2E' --results-directory /app/allure-results/e2e || true
+          export ALLURE_RESULTS_DIRECTORY=/app/allure-results/e2e
+          rm -rf \$ALLURE_RESULTS_DIRECTORY 2>/dev/null || true
+          mkdir -p \$ALLURE_RESULTS_DIRECTORY
+          cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --filter 'Category=E2E' --results-directory \$ALLURE_RESULTS_DIRECTORY || true
         "
 
     - name: Copy E2E test results
       if: always()
       run: |
         mkdir -p allure-results/e2e
-        docker cp $(cat state/db-container.txt 2>/dev/null):/app/allure-results/e2e ./allure-results/e2e 2>/dev/null || true
-        docker cp $(cat state/web-container.txt 2>/dev/null):/app/allure-results/e2e ./allure-results/e2e 2>/dev/null || true
+        docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/app/allure-results/e2e ./allure-results/e2e 2>/dev/null || true
 
     - name: Upload E2E test report
       if: always()
@@ -183,8 +105,14 @@ jobs:
         name: e2e-allure-report
         path: allure-results/e2e/
 
+    - name: Cleanup containers
+      if: always()
+      run: |
+        docker compose -f ${{ env.COMPOSE_FILE }} down -v || true
+        docker system prune -f || true
+
   generate-report:
-    needs: [unit-tests, integration-tests, e2e-tests]
+    needs: build-and-test
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -199,7 +127,7 @@ jobs:
     - name: Generate combined Allure report
       run: |
         mkdir -p combined-results
-        find allure-results -name "*.xml" -type f -exec cp {} combined-results/ \; 2>/dev/null || true
+        find allure-results -name "*.json" -type f -exec cp {} combined-results/ \; 2>/dev/null || true
         
         docker run --rm \
           -v $(pwd)/combined-results:/app/allure-results \
@@ -215,21 +143,3 @@ jobs:
       with:
         name: final-allure-report
         path: allure-report/
-
-  cleanup:
-    needs: [setup, unit-tests, integration-tests, e2e-tests]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-    - name: Download container state
-      uses: actions/download-artifact@v4
-      with:
-        name: container-state
-        path: state/
-        continue-on-error: true
-
-    - name: Cleanup containers
-      if: always()
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} down -v || true
-        docker system prune -f || true
