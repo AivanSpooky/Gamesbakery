@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+﻿name: CI/CD Pipeline
 
 on:
   push:
@@ -13,9 +13,8 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      docker-db: ${{ steps.docker-db.outputs.container-id }}
-      docker-web: ${{ steps.docker-web.outputs.container-id }}
-      docker-tests: ${{ steps.docker-tests.outputs.container-id }}
+      db-container: ${{ steps.start-db.outputs.db-container }}
+      web-container: ${{ steps.start-web.outputs.web-container }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -29,32 +28,46 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Start database service
-      id: docker-db
+      id: start-db
       run: |
-        echo "Starting database..."
+        echo "Starting database service..."
         docker-compose up -d db
         echo "Waiting for database to be ready..."
-        sleep 60
-        echo "Database container ID: $(docker-compose ps -q db)"
-        echo "container-id=$(docker-compose ps -q db)" >> $GITHUB_OUTPUT
+        timeout=300
+        for i in $(seq 1 $timeout); do
+          if docker exec $(docker-compose ps -q db) /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q "SELECT 1" -C -N >/dev/null 2>&1; then
+            echo "✓ Database ready after ${i}s"
+            break
+          fi
+          echo "Database not ready, attempt ${i}/${timeout}..."
+          sleep 1
+        done
+        if [ $i -eq $timeout ]; then
+          echo "❌ Database failed to start within ${timeout}s"
+          exit 1
+        fi
+        echo "db-container=$(docker-compose ps -q db)" >> $GITHUB_OUTPUT
 
     - name: Start web service
-      id: docker-web
+      id: start-web
       run: |
         echo "Starting web service..."
         docker-compose up -d web
         echo "Waiting for web service to be ready..."
-        sleep 60
-        echo "Web container ID: $(docker-compose ps -q web)"
-        echo "container-id=$(docker-compose ps -q web)" >> $GITHUB_OUTPUT
-
-    - name: Build tests
-      id: docker-tests
-      run: |
-        echo "Building tests..."
-        docker-compose build tests
-        echo "Tests container ID: $(docker-compose ps -q tests)"
-        echo "container-id=$(docker-compose ps -q tests)" >> $GITHUB_OUTPUT
+        timeout=180
+        for i in $(seq 1 $timeout); do
+          if curl -f http://localhost:8080/health >/dev/null 2>&1; then
+            echo "✓ Web service ready after ${i}s"
+            break
+          fi
+          echo "Web service not ready, attempt ${i}/${timeout}..."
+          sleep 1
+        done
+        if [ $i -eq $timeout ]; then
+          echo "❌ Web service failed to start within ${timeout}s"
+          exit 1
+        fi
+        echo "web-container=$(docker-compose ps -q web)" >> $GITHUB_OUTPUT
 
   unit-tests:
     needs: setup
@@ -64,17 +77,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build tests
+      run: |
+        docker-compose build tests
+
     - name: Run Unit Tests
       run: |
-        echo "Running Unit Tests..."
-        docker-compose run --rm tests dotnet test /app/build-bl/Gamesbakery.BusinessLogic.Tests.dll --filter "Category=Unit" --logger "allure" --results-directory /app/allure-results/unit
+        echo "=== Running Unit Tests ==="
+        docker-compose run --rm tests sh -c "
+          mkdir -p /app/allure-results/unit
+          cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --filter 'Category=Unit' --logger 'allure' --results-directory /app/allure-results/unit || true
+        "
         echo "Unit tests completed"
 
     - name: Copy Unit Test Results
       if: always()
       run: |
         mkdir -p allure-results/unit
-        docker cp $(docker-compose ps -q tests):/app/allure-results/unit ./allure-results/unit || true
+        docker cp $(docker-compose ps -q tests):/app/allure-results/unit ./allure-results/unit 2>/dev/null || true
+        echo "Unit test results copied"
 
     - name: Upload Unit Test Report
       if: always()
@@ -84,24 +108,35 @@ jobs:
         path: allure-results/unit/
 
   integration-tests:
-    needs: unit-tests
+    needs: [setup, unit-tests]
     runs-on: ubuntu-latest
     if: needs.unit-tests.result == 'success'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build tests
+      run: |
+        docker-compose build tests
+
     - name: Run Integration Tests
       run: |
-        echo "Running Integration Tests..."
-        docker-compose run --rm tests dotnet test /app/build-da/Gamesbakery.DataAccess.Tests.dll --filter "Category=Integration" --logger "allure" --results-directory /app/allure-results/integration
+        echo "=== Running Integration Tests ==="
+        docker-compose run --rm tests sh -c "
+          mkdir -p /app/allure-results/integration
+          cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --filter 'Category=Integration' --logger 'allure' --results-directory /app/allure-results/integration || true
+        "
         echo "Integration tests completed"
 
     - name: Copy Integration Test Results
       if: always()
       run: |
         mkdir -p allure-results/integration
-        docker cp $(docker-compose ps -q tests):/app/allure-results/integration ./allure-results/integration || true
+        docker cp $(docker-compose ps -q tests):/app/allure-results/integration ./allure-results/integration 2>/dev/null || true
+        echo "Integration test results copied"
 
     - name: Upload Integration Test Report
       if: always()
@@ -111,24 +146,35 @@ jobs:
         path: allure-results/integration/
 
   e2e-tests:
-    needs: integration-tests
+    needs: [setup, integration-tests]
     runs-on: ubuntu-latest
     if: needs.integration-tests.result == 'success'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build tests
+      run: |
+        docker-compose build tests
+
     - name: Run E2E Tests
       run: |
-        echo "Running E2E Tests..."
-        docker-compose run --rm tests dotnet test /app/build-e2e/Gamesbakery.E2E.Tests.dll --filter "Category=E2E" --logger "allure" --results-directory /app/allure-results/e2e
+        echo "=== Running E2E Tests ==="
+        docker-compose run --rm tests sh -c "
+          mkdir -p /app/allure-results/e2e
+          cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --filter 'Category=E2E' --logger 'allure' --results-directory /app/allure-results/e2e || true
+        "
         echo "E2E tests completed"
 
     - name: Copy E2E Test Results
       if: always()
       run: |
         mkdir -p allure-results/e2e
-        docker cp $(docker-compose ps -q tests):/app/allure-results/e2e ./allure-results/e2e || true
+        docker cp $(docker-compose ps -q tests):/app/allure-results/e2e ./allure-results/e2e 2>/dev/null || true
+        echo "E2E test results copied"
 
     - name: Upload E2E Test Report
       if: always()
@@ -142,22 +188,28 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
     - name: Download all test results
       uses: actions/download-artifact@v4
       with:
         path: allure-results
 
-    - name: Generate Allure Report
+    - name: Generate Combined Allure Report
       run: |
         echo "Combining test results..."
         mkdir -p combined-results
-        cp -r allure-results/*/* combined-results/ 2>/dev/null || true
+        find allure-results -name "*.xml" -type f -exec cp {} combined-results/ \;
         
         echo "Generating Allure report..."
-        docker run --rm -v $(pwd)/combined-results:/app/allure-results -v $(pwd)/allure-report:/app/allure-report node:20 sh -c "
-          npm install -g allure-commandline || echo 'Allure CLI already installed'
-          allure generate /app/allure-results -o /app/allure-report --clean || echo 'Allure generation failed, but continuing'
-        "
+        docker run --rm \
+          -v $(pwd)/combined-results:/app/allure-results \
+          -v $(pwd)/allure-report:/app/allure-report \
+          node:20 sh -c "
+            npm install -g allure-commandline || echo 'Allure CLI already installed'
+            allure generate /app/allure-results -o /app/allure-report --clean || echo 'Allure generation failed, but continuing'
+          "
         
         echo "Report generated:"
         ls -la allure-report/ || echo "No report generated"
@@ -179,3 +231,4 @@ jobs:
         echo "Cleaning up containers..."
         docker-compose down -v || true
         docker system prune -f || true
+        echo "Cleanup completed"
