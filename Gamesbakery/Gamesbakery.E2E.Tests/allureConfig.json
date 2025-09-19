@@ -1,11 +1,25 @@
 {
-    "$schema": "https://raw.githubusercontent.com/allure-framework/allure-csharp/2.12.1/Allure.Net.Commons/Schemas/allureConfig.schema.json",
     "allure": {
-        "directory": "allure-results",
-        "links": [],
-        "allowEmptySuites": true,
-        "enableParameters": true,
-        "brokenTestData": "ALL",
-        "failedTestData": "ALL"
+        "directory": "./allure-results/",
+        "linkTemplate": "report/{report_name}/index.html",
+        "resultsDir": "./allure-results",
+        "reportDir": "./allure-report",
+        "version": "2.27.0"
+    },
+    "xunit": {
+        "categoryPattern": "category",
+        "severityPattern": "severity",
+        "epicPattern": "epic",
+        "featurePattern": "feature",
+        "storyPattern": "story",
+        "suitePattern": "suite",
+        "parentSuitePattern": "suite",
+        "suiteNamePattern": "suite",
+        "testNamePattern": "test",
+        "hostPattern": "host",
+        "threadPattern": "thread",
+        "packagePattern": "package",
+        "classNamePattern": "class",
+        "methodNamePattern": "method"
     }
 }

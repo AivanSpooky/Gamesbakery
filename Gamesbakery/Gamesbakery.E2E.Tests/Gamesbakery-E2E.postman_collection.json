@@ -1,0 +1,327 @@
+{
+    "info": {
+        "name": "Gamesbakery E2E Tests - FINAL SUCCESS",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080",
+            "type": "string"
+        },
+        {
+            "key": "testUsername",
+            "value": "I",
+            "type": "string"
+        },
+        {
+            "key": "testPassword",
+            "value": "I",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "E2E: Login and Balance Top-Up",
+            "item": [
+                {
+                    "name": "01. Check Home Page",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "User-Agent",
+                                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/",
+                            "host": [ "{{baseUrl}}" ],
+                            "path": [ "" ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "pm.cookies.clear();"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Home page accessible', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "02. Get Login Form",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "User-Agent",
+                                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/Account/Login",
+                            "host": [ "{{baseUrl}}" ],
+                            "path": [ "Account", "Login" ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Login form accessible', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const responseText = pm.response.text();",
+                                    "const match = responseText.match(/<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"/);",
+                                    "if (match) {",
+                                    "    pm.collectionVariables.set('__RequestVerificationToken', match[1]);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "03. Perform Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "User-Agent",
+                                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/x-www-form-urlencoded"
+                            }
+                        ],
+                        "body": {
+                            "mode": "urlencoded",
+                            "urlencoded": [
+                                {
+                                    "key": "Username",
+                                    "value": "{{testUsername}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "Password",
+                                    "value": "{{testPassword}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "__RequestVerificationToken",
+                                    "value": "{{__RequestVerificationToken}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "RememberMe",
+                                    "value": "false",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/Account/Login",
+                            "host": [ "{{baseUrl}}" ],
+                            "path": [ "Account", "Login" ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Login successful', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "04. Verify Authentication",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "User-Agent",
+                                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/User/Profile",
+                            "host": [ "{{baseUrl}}" ],
+                            "path": [ "User", "Profile" ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('User authenticated', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    pm.expect(pm.response.text()).to.include('Профиль');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "05. Get Balance Form",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "User-Agent",
+                                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/User/UpdateBalance",
+                            "host": [ "{{baseUrl}}" ],
+                            "path": [ "User", "UpdateBalance" ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Balance form accessible', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "06. Perform Balance Top-Up",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "User-Agent",
+                                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/x-www-form-urlencoded"
+                            }
+                        ],
+                        "body": {
+                            "mode": "urlencoded",
+                            "urlencoded": [
+                                {
+                                    "key": "newBalance",
+                                    "value": "150.75",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/User/UpdateBalance",
+                            "host": [ "{{baseUrl}}" ],
+                            "path": [ "User", "UpdateBalance" ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Balance top-up successful', function () {",
+                                    "    pm.response.to.be.oneOf([200, 302]);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "07. Verify Session Still Valid",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "User-Agent",
+                                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/User/Profile",
+                            "host": [ "{{baseUrl}}" ],
+                            "path": [ "User", "Profile" ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Session still valid', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    pm.expect(pm.response.text()).to.include('Профиль');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

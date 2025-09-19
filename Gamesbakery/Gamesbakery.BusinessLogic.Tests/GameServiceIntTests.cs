@@ -33,73 +33,99 @@ namespace Gamesbakery.BusinessLogic.Tests
         [Trait("Category", "Integration")]
         public async Task CanAddGameViaService()
         {
-            // Arrange
-            var categoryId = Guid.NewGuid();
-            var category = new Category(categoryId, "Action", "Action games");
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Arrange
+                var categoryId = Guid.NewGuid();
+                var category = new Category(categoryId, "Action", "Action games");
+                _context.Categories.Add(category);
+                await _context.SaveChangesAsync();
 
-            // Act
-            var result = await _gameService.AddGameAsync(categoryId, "Service Test Game", 49.99m, DateTime.UtcNow, "Service Desc", "Service Pub");
+                // Act
+                var result = await _gameService.AddGameAsync(categoryId, "Service Test Game", 49.99m, DateTime.UtcNow, "Service Desc", "Service Pub");
 
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal("Service Test Game", result.Title);
-            var dbGame = await _context.Games.FindAsync(result.Id);
-            Assert.NotNull(dbGame);
-            Assert.Equal(49.99m, dbGame.Price);
+                // Assert
+                Assert.NotNull(result);
+                Assert.Equal("Service Test Game", result.Title);
+                var dbGame = await _context.Games.FindAsync(result.Id);
+                Assert.NotNull(dbGame);
+                Assert.Equal(49.99m, dbGame.Price);
+            }
+            finally
+            {
+                await transaction.RollbackAsync();
+            }
         }
 
         [AllureXunit(DisplayName = "ИГРА: ОБНОВЛЕНИЕ СТАТУСА ПРОДАЖИ СЕРВИСОМ (SQL Server)")]
         [Trait("Category", "Integration")]
         public async Task CanSetGameForSaleViaService()
         {
-            // Arrange
-            var categoryId = Guid.NewGuid();
-            var category = new Category(categoryId, "RPG", "RPG games");
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
-            var game = new Game(Guid.NewGuid(), categoryId, "Sale Game", 39.99m, DateTime.UtcNow, "Sale Desc", true, "Sale Pub");
-            _context.Games.Add(game);
-            await _context.SaveChangesAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Arrange
+                var categoryId = Guid.NewGuid();
+                var category = new Category(categoryId, "RPG", "RPG games");
+                _context.Categories.Add(category);
+                await _context.SaveChangesAsync();
 
-            // Act
-            var result = await _gameService.SetGameForSaleAsync(game.Id, false);
+                var game = new Game(Guid.NewGuid(), categoryId, "Sale Game", 39.99m, DateTime.UtcNow, "Sale Desc", true, "Sale Pub");
+                _context.Games.Add(game);
+                await _context.SaveChangesAsync();
 
-            // Assert
-            Assert.NotNull(result);
-            Assert.False(result.IsForSale);
-            var dbGame = await _context.Games.FindAsync(game.Id);
-            Assert.NotNull(dbGame);
-            Assert.False(dbGame.IsForSale);
+                // Act
+                var result = await _gameService.SetGameForSaleAsync(game.Id, false);
+
+                // Assert
+                Assert.NotNull(result);
+                Assert.False(result.IsForSale);
+                var dbGame = await _context.Games.FindAsync(game.Id);
+                Assert.NotNull(dbGame);
+                Assert.False(dbGame.IsForSale);
+            }
+            finally
+            {
+                await transaction.RollbackAsync();
+            }
         }
 
         [AllureXunit(DisplayName = "ИГРА: ПОЛУЧЕНИЕ ВСЕХ ИГР СЕРВИСОМ (SQL Server)")]
         [Trait("Category", "Integration")]
         public async Task CanGetAllGamesViaService()
         {
-            // Очистите базу перед тестом
-            _context.Games.RemoveRange(_context.Games);
-            _context.Categories.RemoveRange(_context.Categories);
-            await _context.SaveChangesAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Очистите базу перед тестом
+                _context.Games.RemoveRange(_context.Games);
+                _context.Categories.RemoveRange(_context.Categories);
+                await _context.SaveChangesAsync();
 
-            // Arrange
-            var categoryId = Guid.NewGuid();
-            var category = new Category(categoryId, "Strategy", "Strategy games");
-            _context.Categories.Add(category);
-            var game1 = new Game(Guid.NewGuid(), categoryId, "Game 1", 29.99m, DateTime.UtcNow, "Desc 1", true, "Pub 1");
-            var game2 = new Game(Guid.NewGuid(), categoryId, "Game 2", 19.99m, DateTime.UtcNow, "Desc 2", true, "Pub 2");
-            _context.Games.AddRange(game1, game2);
-            await _context.SaveChangesAsync();
+                // Arrange
+                var categoryId = Guid.NewGuid();
+                var category = new Category(categoryId, "Strategy", "Strategy games");
+                _context.Categories.Add(category);
 
-            // Act
-            var result = await _gameService.GetAllGamesAsync();
+                var game1 = new Game(Guid.NewGuid(), categoryId, "Game 1", 29.99m, DateTime.UtcNow, "Desc 1", true, "Pub 1");
+                var game2 = new Game(Guid.NewGuid(), categoryId, "Game 2", 19.99m, DateTime.UtcNow, "Desc 2", true, "Pub 2");
+                _context.Games.AddRange(game1, game2);
+                await _context.SaveChangesAsync();
 
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(2, result.Count);
-            Assert.Contains(result, g => g.Title == "Game 1");
-            Assert.Contains(result, g => g.Title == "Game 2");
+                // Act
+                var result = await _gameService.GetAllGamesAsync();
+
+                // Assert
+                Assert.NotNull(result);
+                Assert.Equal(2, result.Count);
+                Assert.Contains(result, g => g.Title == "Game 1");
+                Assert.Contains(result, g => g.Title == "Game 2");
+            }
+            finally
+            {
+                await transaction.RollbackAsync();
+            }
         }
     }
 }

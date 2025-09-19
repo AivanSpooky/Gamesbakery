@@ -1,15 +1,17 @@
+using Gamesbakery.BusinessLogic.Services;
 using Gamesbakery.Core;
 using Gamesbakery.Core.Repositories;
 using Gamesbakery.DataAccess;
+using Gamesbakery.DataAccess.ClickHouse;
 using Gamesbakery.DataAccess.Repositories;
-using Gamesbakery.BusinessLogic.Services;
-using Microsoft.EntityFrameworkCore;
 using Gamesbakery.Infrastructure;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Formatting.Json;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
-using Gamesbakery.DataAccess.ClickHouse;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,73 +57,56 @@ builder.Services.AddAuthentication("Cookies")
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddRazorPages();
 
-// Add DbContext for SQL Server
+// В Program.cs, в секции настройки DbContext, добавьте проверку:
 builder.Services.AddDbContext<GamesbakeryDbContext>((serviceProvider, options) =>
 {
     var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
 
     string connectionString;
+
     if (EF.IsDesignTime)
     {
-        // Use DefaultConnection for design-time operations (migrations)
-        connectionString = configuration.GetConnectionString("sa");
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            Log.Error("DefaultConnection string is null for design-time operations");
-            throw new InvalidOperationException("DefaultConnection string is not configured.");
-        }
+        connectionString = configuration.GetConnectionString("DefaultConnection");
     }
     else
     {
-        // Runtime: Use role-based connection strings
-        var role = httpContextAccessor.HttpContext?.Session.GetString("Role");
-        var username = httpContextAccessor.HttpContext?.Session.GetString("Username");
+        // Проверяем, нужно ли использовать ролевую аутентификацию
+        var useRoleBasedConnections = configuration.GetValue<bool>("USE_ROLE_BASED_CONNECTIONS", true);
 
-        try
+        if (useRoleBasedConnections)
         {
+            // Ваша существующая логика с ролевой аутентификацией
+            var role = httpContextAccessor.HttpContext?.Session.GetString("Role");
+            var username = httpContextAccessor.HttpContext?.Session.GetString("Username");
+
             switch (role)
             {
                 case "Admin":
                     connectionString = configuration.GetConnectionString("AdminConnection");
                     break;
                 case "Seller":
-                    if (string.IsNullOrEmpty(username))
-                        throw new InvalidOperationException("Username is null for Seller role");
-                    connectionString = $"Server=db;Database=Gamesbakery;User Id={username};Password=SellerPass123;TrustServerCertificate=True;";
+                    connectionString = $"Server=db,1433;Database=Gamesbakery;User Id={username};Password=SellerPass123;TrustServerCertificate=True;Encrypt=False;";
                     break;
                 case "User":
-                    if (string.IsNullOrEmpty(username))
-                        throw new InvalidOperationException("Username is null for User role");
-                    connectionString = $"Server=db;Database=Gamesbakery;User Id={username};Password=UserPass123;TrustServerCertificate=True;";
+                    connectionString = $"Server=db,1433;Database=Gamesbakery;User Id={username};Password=UserPass123;TrustServerCertificate=True;Encrypt=False;";
                     break;
                 default:
                     connectionString = configuration.GetConnectionString("GuestConnection");
                     break;
             }
-
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                Log.Error("Connection string is null for role: {Role}, username: {Username}", role, username);
-                throw new InvalidOperationException("Connection string is not configured.");
-            }
-
-            Log.Information("Using connection string for role: {Role}, username: {Username}", role, username);
         }
-        catch (Exception ex)
+        else
         {
-            Log.Error(ex, "Failed to configure DbContext for role: {Role}, username: {Username}", role, username);
-            throw;
+            // Для тестов используем всегда sa пользователя
+            connectionString = configuration.GetConnectionString("DefaultConnection");
         }
     }
 
     options.UseSqlServer(connectionString, sqlOptions =>
     {
-        sqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null);
-        sqlOptions.MigrationsAssembly("Gamesbakery.DataAccess"); // Ensure migrations are in DataAccess
+        sqlOptions.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
+        sqlOptions.MigrationsAssembly("Gamesbakery.DataAccess");
     });
 });
 
@@ -173,6 +158,92 @@ Serilog.Debugging.SelfLog.Enable(msg => Console.Error.WriteLine("Serilog error: 
 Log.Information("Application started");
 
 var app = builder.Build();
+
+Log.Information("=== Application built successfully ===");
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "healthy",
+    timestamp = DateTime.UtcNow.ToString("O"),
+    version = "1.0.0"
+}));
+app.MapGet("/health/live", (IHostApplicationLifetime lifetime) =>
+{
+    return lifetime.ApplicationStarted.IsCancellationRequested
+        ? Results.Ok(new { status = "healthy", check = "liveness" })
+        : Results.StatusCode(503);
+});
+
+app.MapGet("/health/ready", async (IHostApplicationLifetime lifetime, ILogger<Program> logger) =>
+{
+    logger.LogInformation("Health check /health/ready called");
+
+    // Проверяем, что приложение запущено
+    if (!lifetime.ApplicationStarted.IsCancellationRequested)
+    {
+        logger.LogWarning("Application not started yet");
+        return Results.StatusCode(503);
+    }
+
+    // Здесь можно добавить дополнительные проверки (база данных, внешние сервисы)
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<GamesbakeryDbContext>();
+
+        logger.LogInformation("Testing database connection...");
+        var canConnect = await dbContext.Database.CanConnectAsync();
+
+        if (!canConnect)
+        {
+            logger.LogError("Database connection failed");
+            return Results.StatusCode(503);
+        }
+
+        // Проверяем, что база данных существует
+        var dbExists = await dbContext.Database.CanConnectAsync();
+        if (!dbExists)
+        {
+            logger.LogError("Database 'Gamesbakery' does not exist or inaccessible");
+            return Results.StatusCode(503);
+        }
+
+        logger.LogInformation("Health check /health/ready successful");
+        return Results.Ok(new
+        {
+            status = "healthy",
+            timestamp = DateTime.UtcNow.ToString("O"),
+            checks = new[] { "liveness", "readiness" }
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Health check /health/ready failed");
+        return Results.StatusCode(503);
+    }
+});
+app.MapGet("/debug/db", async (ILogger<Program> logger) =>
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<GamesbakeryDbContext>();
+        var canConnect = await dbContext.Database.CanConnectAsync();
+
+        return Results.Ok(new
+        {
+            connected = canConnect,
+            connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? "Not set",
+            timestamp = DateTime.UtcNow
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Debug DB endpoint failed");
+        return Results.Problem($"Database connection failed: {ex.Message}");
+    }
+});
+
+
 
 try
 {
