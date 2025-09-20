@@ -78,32 +78,34 @@ jobs:
         " -C -N -h-1 -W
 
     - name: Apply EF Core Migrations
+      id: apply-migrations
       run: |
         echo "Applying EF Core migrations..."
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
           cd /app/Gamesbakery.DataAccess && \
-          dotnet ef database update --connection 'Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=60;' --verbose || true
+          dotnet ef database update --connection 'Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=60;' --verbose
         "
         echo "Migrations applied!"
 
     - name: Wait for web service
+      id: wait-web
       run: |
         echo "Waiting for web service..."
         timeout 180 sh -c 'until curl -f http://localhost:8080/health >/dev/null 2>&1; do sleep 2; done'
         echo "Web service is ready!"
 
     - name: Run unit tests
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
-          mkdir -p /app/allure-results/unit
-          echo 'Running unit tests...'
-          cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/unit || true
-          cp -r /app/allure-results/unit/* /app/allure-results/ 2>/dev/null || true
-        "
+      id: unit-tests
+      # run: |
+      #   docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
+      #     rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
+      #     mkdir -p /app/allure-results/unit
+      #     echo 'Running unit tests...'
+      #     cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/unit
+      #     cp -r /app/allure-results/unit/* /app/allure-results/ 2>/dev/null || true
+      #   "
 
     - name: Copy unit test results
-      if: always()
       run: |
         mkdir -p allure-results/unit
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
@@ -113,25 +115,25 @@ jobs:
         docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/tmp ./allure-results/unit 2>/dev/null || true
 
     - name: Upload unit test report
-      if: always()
+      if: always() && steps.unit-tests.outcome == 'success'
       uses: actions/upload-artifact@v4
       with:
         name: unit-allure-report
         path: allure-results/unit/
 
     - name: Run integration tests
-      if: always()
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
-          mkdir -p /app/allure-results/integration
-          echo 'Running integration tests...'
-          cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/integration || true
-          cp -r /app/allure-results/integration/* /app/allure-results/ 2>/dev/null || true
-        "
+      id: integration-tests
+      if: steps.unit-tests.outcome == 'success'
+      # run: |
+      #   docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
+      #     rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
+      #     mkdir -p /app/allure-results/integration
+      #     echo 'Running integration tests...'
+      #     cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/integration
+      #     cp -r /app/allure-results/integration/* /app/allure-results/ 2>/dev/null || true
+      #   "
 
     - name: Copy integration test results
-      if: always()
       run: |
         mkdir -p allure-results/integration
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
@@ -141,28 +143,28 @@ jobs:
         docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/tmp ./allure-results/integration 2>/dev/null || true
 
     - name: Upload integration test report
-      if: always()
+      if: always() && (steps.integration-tests.outcome == 'success')
       uses: actions/upload-artifact@v4
       with:
         name: integration-allure-report
         path: allure-results/integration/
 
     - name: Run E2E tests
-      if: always()
-      run: |
-        docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
-          rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
-          mkdir -p /app/allure-results/e2e
-          echo 'Waiting for services in E2E tests...'
-          timeout 120 sh -c 'until nc -z db 1433; do echo \"DB not ready, waiting...\"; sleep 2; done'
-          timeout 120 sh -c 'until curl -f http://web:80/health; do echo \"Web not ready, waiting...\"; sleep 2; done'
-          echo 'Running E2E tests...'
-          cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/e2e || true
-          cp -r /app/allure-results/e2e/* /app/allure-results/ 2>/dev/null || true
-        "
+      id: e2e-tests
+      if: steps.integration-tests.outcome == 'success'
+      # run: |
+      #   docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
+      #     rm -rf /app/allure-results /app/build-*/allure-results 2>/dev/null || true
+      #     mkdir -p /app/allure-results/e2e
+      #     echo 'Waiting for services in E2E tests...'
+      #     timeout 120 sh -c 'until nc -z db 1433; do echo \"DB not ready, waiting...\"; sleep 2; done'
+      #     timeout 120 sh -c 'until curl -f http://web:80/health; do echo \"Web not ready, waiting...\"; sleep 2; done'
+      #     echo 'Running E2E tests...'
+      #     cd /app/build-e2e && dotnet test Gamesbakery.E2E.Tests.dll --logger 'console;verbosity=minimal' --results-directory /app/allure-results/e2e
+      #     cp -r /app/allure-results/e2e/* /app/allure-results/ 2>/dev/null || true
+      #   "
 
     - name: Copy E2E test results
-      if: always()
       run: |
         mkdir -p allure-results/e2e
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
@@ -172,7 +174,7 @@ jobs:
         docker cp $(docker compose -f ${{ env.COMPOSE_FILE }} ps -q tests):/tmp ./allure-results/e2e 2>/dev/null || true
 
     - name: Upload E2E test report
-      if: always()
+      if: always() && (steps.e2e-tests.outcome == 'success')
       uses: actions/upload-artifact@v4
       with:
         name: e2e-allure-report
