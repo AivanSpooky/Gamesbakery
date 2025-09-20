@@ -9,7 +9,7 @@ on:
 env:
   DOCKER_BUILDKIT: 1
   COMPOSE_FILE: Gamesbakery/docker-compose.yml
-  SKIP_TESTS: true  # Флаг для пропуска тестов
+  SKIP_TESTS: false  # Флаг для пропуска тестов
 
 jobs:
   build-and-test:
