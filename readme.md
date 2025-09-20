@@ -48,8 +48,8 @@ Gamesbakery
 
 # 8\. Технологический стек
 
-1. Backend: ASP.NET Core (C#), Razor Pages, Vue.js
-2. Frontend: HTML, CSS
+1. Backend: ASP.NET Core (C#), Razor Pages
+2. Frontend: HTML, CSS, Vue.js
 3. База данных: Microsoft SQL Server
 4. ORM: Entity Framework Core
 5. Логирование: Serilog
