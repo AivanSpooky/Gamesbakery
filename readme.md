@@ -55,7 +55,8 @@ Gamesbakery
 3. База данных: Microsoft SQL Server
 4. ORM: Entity Framework Core
 5. Логирование: Serilog
-6. Дополнительно: Docker, Docker Compose
+6. Тестирование: XUnit
+7. Дополнительно: Docker, Docker Compose
 
 
 # 9\. Краткое описание акторов (ролей)
