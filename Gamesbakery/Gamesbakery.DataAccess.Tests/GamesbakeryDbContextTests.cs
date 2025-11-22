@@ -1,9 +1,11 @@
-﻿using Gamesbakery.Core.Entities;
+﻿using Allure.Xunit.Attributes;
+using Gamesbakery.Core.Entities;
 using Gamesbakery.DataAccess.Tests.Fixtures;
 
 namespace Gamesbakery.DataAccess.Tests
 {
     [Collection(TestCollections.InMemory)]
+    [AllureTag("Integration")]
     public class GamesbakeryDbContextTests : IClassFixture<DbContextFixture>
     {
         private readonly GamesbakeryDbContext _context;
@@ -13,7 +15,7 @@ namespace Gamesbakery.DataAccess.Tests
             _context = fixture.Context;
         }
 
-        [Fact(DisplayName = "ИГРА: ДОБАВЛЕНИЕ и ВЫБОР (InMemory)")]
+        [AllureXunit(DisplayName = "ИГРА: ДОБАВЛЕНИЕ и ВЫБОР (InMemory)")]
         [Trait("Category", "Integration")]
         public async Task CanAddAndRetrieveGame()
         {
@@ -42,7 +44,7 @@ namespace Gamesbakery.DataAccess.Tests
             Assert.Equal(29.99m, retrievedGame.Price);
         }
 
-        [Fact(DisplayName = "ИГРА: ОБНОВЛЕНИЕ (InMemory)")]
+        [AllureXunit(DisplayName = "ИГРА: ОБНОВЛЕНИЕ (InMemory)")]
         [Trait("Category", "Integration")]
         public async Task CanUpdateGame()
         {
@@ -77,7 +79,7 @@ namespace Gamesbakery.DataAccess.Tests
             Assert.Equal(24.99m, updatedGame.Price);
         }
 
-        [Fact(DisplayName = "ИГРА: УДАЛЕНИЕ (InMemory)")]
+        [AllureXunit(DisplayName = "ИГРА: УДАЛЕНИЕ (InMemory)")]
         [Trait("Category", "Integration")]
         public async Task CanDeleteGame()
         {

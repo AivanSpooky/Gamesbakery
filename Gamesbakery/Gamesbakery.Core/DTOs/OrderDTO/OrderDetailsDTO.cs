@@ -8,6 +8,6 @@
         public decimal TotalPrice { get; set; }
         public bool IsCompleted { get; set; }
         public bool IsOverdue { get; set; }
-        public List<OrderItemDTO> OrderItems { get; set; }
+        public List<OrderItemDTO.OrderItemDTO> OrderItems { get; set; }
     }
 }

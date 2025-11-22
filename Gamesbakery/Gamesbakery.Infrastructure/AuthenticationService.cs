@@ -1,11 +1,16 @@
-﻿using Gamesbakery.Core;
+﻿using System;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.UserDTO;
 using Gamesbakery.Core.Entities;
+using Gamesbakery.Core.Repositories;
 using Gamesbakery.DataAccess;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Data.SqlClient;
 using Serilog;
 
 namespace Gamesbakery.BusinessLogic.Services
@@ -14,9 +19,11 @@ namespace Gamesbakery.BusinessLogic.Services
     {
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IUserRepository _userRepository;
 
-        public AuthenticationService(IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
+        public AuthenticationService(IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IUserRepository userRepository)
         {
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
             _configuration = configuration;
             _httpContextAccessor = httpContextAccessor;
         }
@@ -25,7 +32,9 @@ namespace Gamesbakery.BusinessLogic.Services
         {
             try
             {
-                // Check AdminUser (no DB query)
+                Log.Information("Authenticating username: {Username}", username);
+
+                // Check AdminUser
                 if (username == _configuration["AdminCredentials:Username"])
                 {
                     var adminPassword = _configuration["AdminCredentials:Password"];
@@ -34,11 +43,9 @@ namespace Gamesbakery.BusinessLogic.Services
                         Log.Information("AdminUser authenticated successfully");
                         return (UserRole.Admin, null, null);
                     }
-                    Log.Warning("Invalid password for AdminUser");
-                    return (UserRole.Guest, null, null);
                 }
 
-                // Check GuestUser (no DB query)
+                // Check GuestUser
                 if (username == _configuration["GuestCredentials:Username"])
                 {
                     var guestPassword = _configuration["GuestCredentials:Password"];
@@ -47,106 +54,86 @@ namespace Gamesbakery.BusinessLogic.Services
                         Log.Information("GuestUser authenticated successfully");
                         return (UserRole.Guest, null, null);
                     }
-                    Log.Warning("Invalid password for GuestUser");
-                    return (UserRole.Guest, null, null);
                 }
 
-                // Use admin connection for Users and Sellers
+                // Database authentication using admin connection
                 var adminConnectionString = _configuration.GetConnectionString("AdminConnection");
-                var options = new DbContextOptionsBuilder<GamesbakeryDbContext>()
-                    .UseSqlServer(adminConnectionString)
-                    .Options;
-                Log.Information($"CONN STR: {adminConnectionString}");
+                using var connection = new SqlConnection(adminConnectionString);
+                await connection.OpenAsync();
 
-                // Используем чистый SQL через ADO.NET вместо EF контекста
-                using (var connection = new SqlConnection(adminConnectionString))
+                // Check Users table
+                using (var command = new SqlCommand("SELECT UserID FROM Users WHERE Name = @username AND Password = @password", connection))
                 {
-                    await connection.OpenAsync();
-
-                    // Check Users table
-                    using (var command = new SqlCommand("SELECT UserID, Name, Password FROM Users WHERE Name = @username", connection))
+                    command.Parameters.AddWithValue("@username", username);
+                    command.Parameters.AddWithValue("@password", password); // TODO: Use hashing in production
+                    var userId = await command.ExecuteScalarAsync();
+                    if (userId != null)
                     {
-                        command.Parameters.AddWithValue("@username", username);
-                        using (var reader = await command.ExecuteReaderAsync())
-                        {
-                            if (await reader.ReadAsync())
-                            {
-                                var userId = reader.GetGuid(reader.GetOrdinal("UserID"));
-                                var storedPassword = reader.GetString(reader.GetOrdinal("Password"));
-                                if (VerifyPassword(password, storedPassword))
-                                {
-                                    Log.Information("User {Username} authenticated successfully", username);
-                                    return (UserRole.User, userId, null);
-                                }
-                            }
-                        }
-                    }
-
-                    // Check Sellers table
-                    using (var command = new SqlCommand("SELECT SellerID, Name, Password FROM Sellers WHERE Name = @username", connection))
-                    {
-                        command.Parameters.AddWithValue("@username", username);
-                        using (var reader = await command.ExecuteReaderAsync())
-                        {
-                            if (await reader.ReadAsync())
-                            {
-                                var sellerId = reader.GetGuid(reader.GetOrdinal("SellerID"));
-                                var storedPassword = reader.GetString(reader.GetOrdinal("Password"));
-                                if (VerifyPassword(password, storedPassword))
-                                {
-                                    Log.Information("Seller {Username} authenticated successfully", username);
-                                    return (UserRole.Seller, null, sellerId);
-                                }
-                            }
-                        }
+                        Log.Information("User {Username} authenticated successfully", username);
+                        return (UserRole.User, (Guid)userId, null);
                     }
                 }
 
-                Log.Warning("No matching user or seller found for Username={Username}", username);
+                // Check Sellers table
+                using (var command = new SqlCommand("SELECT SellerID FROM Sellers WHERE Name = @username AND Password = @password", connection))
+                {
+                    command.Parameters.AddWithValue("@username", username);
+                    command.Parameters.AddWithValue("@password", password);
+                    var sellerId = await command.ExecuteScalarAsync();
+                    if (sellerId != null)
+                    {
+                        Log.Information("Seller {Username} authenticated successfully", username);
+                        return (UserRole.Seller, null, (Guid)sellerId);
+                    }
+                }
+
+                Log.Warning("Authentication failed for {Username}", username);
                 return (UserRole.Guest, null, null);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Authentication failed for username: {Username}", username);
+                Log.Error(ex, "Authentication error for {Username}", username);
                 return (UserRole.Guest, null, null);
             }
         }
 
-
-        private bool VerifyPassword(string inputPassword, string storedPassword)
-        {
-            // Placeholder for plain-text comparison (replace with hashing in production)
-            return inputPassword == storedPassword;
-        }
-
-        public UserRole GetCurrentRole()
-        {
-            var roleString = _httpContextAccessor.HttpContext?.Session.GetString("Role");
-            if (Enum.TryParse<UserRole>(roleString, out var role))
-            {
-                return role;
-            }
-            return UserRole.Guest;
-        }
-
         public Guid? GetCurrentUserId()
         {
-            var userIdString = _httpContextAccessor.HttpContext?.Session.GetString("UserId");
-            if (Guid.TryParse(userIdString, out var userId))
-            {
-                return userId;
-            }
-            return null;
+            var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst("UserId")?.Value;
+            return Guid.TryParse(userIdClaim, out var id) && id != Guid.Empty ? id : null;
         }
 
         public Guid? GetCurrentSellerId()
         {
-            var sellerIdString = _httpContextAccessor.HttpContext?.Session.GetString("SellerId");
-            if (Guid.TryParse(sellerIdString, out var sellerId))
+            var sellerIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst("SellerId")?.Value;
+            return Guid.TryParse(sellerIdClaim, out var id) && id != Guid.Empty ? id : null;
+        }
+
+        public UserRole GetCurrentRole()
+        {
+            var roleClaim = _httpContextAccessor.HttpContext?.User?.FindFirst("role")?.Value;
+            return Enum.TryParse<UserRole>(roleClaim, true, out var role) ? role : UserRole.Guest;
+        }
+
+        public async Task<UserProfileDTO> RegisterUserAsync(string username, string email, string password, string country)
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(email) ||
+                string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(country))
             {
-                return sellerId;
+                throw new ArgumentException("All registration fields must be provided.");
             }
-            return null;
+            var userDto = new UserProfileDTO
+            {
+                Id = Guid.NewGuid(),
+                Username = username,
+                Email = email,
+                RegistrationDate = DateTime.UtcNow,
+                Country = country,
+                IsBlocked = false,
+                Balance = 0m,
+                TotalSpent = 0m
+            };
+            return await _userRepository.AddAsync(userDto, UserRole.User);
         }
     }
 }

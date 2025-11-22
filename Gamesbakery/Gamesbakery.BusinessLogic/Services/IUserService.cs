@@ -9,12 +9,12 @@ namespace Gamesbakery.BusinessLogic.Services
     {
         Task<UserProfileDTO> RegisterUserAsync(string username, string email, string password, string country);
         Task<UserProfileDTO> RegisterUserAsync(string username, string email, string password, string country, bool proc);
-        Task<UserProfileDTO> GetUserByIdAsync(Guid id);
-        Task<UserProfileDTO> GetUserByEmailAsync(string email);
-        Task<UserProfileDTO> UpdateBalanceAsync(Guid userId, decimal newBalance);
-        Task<UserProfileDTO> BlockUserAsync(Guid userId);
-        Task<UserProfileDTO> UnblockUserAsync(Guid userId);
-        Task<IEnumerable<UserListDTO>> GetAllUsersExceptAsync(Guid excludedUserId);
+        Task<UserProfileDTO> GetUserByIdAsync(Guid id, Guid? curUserId, UserRole role);
+        Task<UserProfileDTO> GetUserByEmailAsync(string email, Guid? curUserId, UserRole role);
+        Task<UserProfileDTO> UpdateBalanceAsync(Guid userId, decimal newBalance, Guid? curUserId, UserRole role);
+        Task<UserProfileDTO> BlockUserAsync(Guid userId, UserRole role);
+        Task<UserProfileDTO> UnblockUserAsync(Guid userId, UserRole role);
+        Task<IEnumerable<UserListDTO>> GetAllUsersExceptAsync(Guid excludedUserId, UserRole role);
         Task<UserListDTO> GetByUsernameAsync(string username, UserRole role);
     }
 }

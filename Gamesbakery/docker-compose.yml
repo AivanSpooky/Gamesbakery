@@ -7,7 +7,7 @@ services:
     environment:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=YourStrong@Pass
-      - MSSQL_PID=Express
+      - MSSQL_PID=Developer
       - MSSQL_AGENT_ENABLED=true
     ports:
       - "1434:1433"
@@ -20,15 +20,16 @@ services:
       start_interval: 5s
     volumes:
       - sql-data:/var/opt/mssql
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     networks:
       - gamesbakery-network
+    restart: unless-stopped
 
-  web:
+
+  web-master:
     build:
       context: .
       dockerfile: Gamesbakery.WebGUI/Dockerfile
-    container_name: gamesbakery-web
+    container_name: gamesbakery-web-master
     ports:
       - "8080:80"
     environment:
@@ -38,6 +39,11 @@ services:
       - ConnectionStrings__GuestConnection=Server=db,1433;Database=Gamesbakery;User Id=GuestUser;Password=GuestPass123;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
       - ConnectionStrings__AdminConnection=Server=db,1433;Database=Gamesbakery;User Id=AdminUser;Password=AdminPass123;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
       - TEST_DB_CONNECTION=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=60;
+      - Jwt__Key=your-super-secret-key-at-least-256-bits-long-for-production
+      - Jwt__Issuer=Gamesbakery
+      - Jwt__Audience=GamesbakeryUsers
+      - DATA_PROTECTION_PATH=/app/dataprotection-keys
+      - UIMode=spa
     depends_on:
       db:
         condition: service_healthy
@@ -48,165 +54,287 @@ services:
       retries: 15
       start_period: 90s
     volumes:
-      - dataprotection-keys:/root/.aspnet/DataProtection-Keys
+      - dataprotection-keys:/app/dataprotection-keys
       - ./logs:/app/logs:delegated
     networks:
       - gamesbakery-network
     restart: unless-stopped
 
-  tests:
+  frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.tests
-    container_name: gamesbakery-tests
-    depends_on:
-      web:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-    environment:
-      - TEST_DB_CONNECTION=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=60;
-      - E2E__BaseUrl=http://web:80
-      - E2E__HealthCheckTimeoutSeconds=90
-      - E2E__HealthCheckEndpoints=health
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
-      - ConnectionStrings__GuestConnection=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
-      - ConnectionStrings__AdminConnection=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
-      - USE_ROLE_BASED_CONNECTIONS=false
-      - ALLURE_CONFIG=/app/allureConfig.json
-      - ALLURE_OUTPUT_DIR=/app/allure-results
-      - ALLURE_ALLOW_EMPTY_SUITES=true
-      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
-      - DOTNET_CLI_TELEMETRY_OPTOUT=1
+      context: ../ClientApp
+      dockerfile: Dockerfile.vue
+    container_name: gamesbakery-frontend
+    ports:
+      - "80:80"
     volumes:
-      - ./allure-results:/app/allure-results:delegated
-      - ./logs:/app/logs:delegated
+      - ../ClientApp/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
     networks:
       - gamesbakery-network
-    command: |
-      sh -c "
-      set -e
-      echo '=== Test Container Started ==='
-      echo 'Current directory:' && pwd
-      echo 'Available files:' && ls -la /app/
+    depends_on:
+      - web-master
+ 
 
-      echo '=== Waiting for services ==='
-      echo 'Waiting for DB (port 1433)...'
-      until nc -z db 1433 2>/dev/null; do
-        echo 'DB not ready, waiting...'
-        sleep 2
-      done
-      echo '✓ DB is ready!'
+  # nginx:
+  #   image: nginx:latest
+  #   container_name: gamesbakery-nginx
+  #   ports:
+  #     - "8080:80"
+  #   volumes:
+  #     - ./nginx/static:/usr/share/nginx/html/static:ro
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - web
+  #     - adminer
+  #   networks:
+  #     - gamesbakery-network
+  #   restart: unless-stopped
+  # nginx:
+  #   image: nginx:latest
+  #   container_name: gamesbakery-nginx
+  #   ports:
+  #     - "80:80"  Внешний порт 80
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/static:/usr/share/nginx/html/static:ro
+  #   depends_on:
+  #     - web-master
+  #     - web-slave1
+  #     - web-slave2
+  #   networks:
+  #     - gamesbakery-network
+  # promtail:
+  #   image: grafana/promtail:latest
+  #   volumes:
+  #     - ./logs:/logs:ro
+  #     - ./promtail-config.yaml:/etc/promtail/config.yml
+  #   command: -config.file=/etc/promtail/config.yml
+  #   networks:
+  #     - gamesbakery-network
 
-      echo 'Checking databases:'
-      docker exec gamesbakery-db /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q \"SELECT name FROM sys.databases WHERE name IN ('master','Gamesbakery')\" -C -N -h-1 || true
+  # loki:
+  #   image: grafana/loki:latest
+  #   ports:
+  #     - "3100:3100"
+  #   command: -config.file=/etc/loki/local-config.yaml
+  #   networks:
+  #     - gamesbakery-network
 
-      echo 'Waiting for Web (port 80)...'
-      until nc -z web 80 2>/dev/null; do
-        echo 'Web not ready, waiting...'
-        sleep 2
-      done
-      echo '✓ Web is ready!'
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #   depends_on:
+  #     - loki
+  #   networks:
+  #     - gamesbakery-network
 
-      echo 'Testing web health check...'
-      until curl -f http://web:80/health 2>/dev/null; do
-        echo 'Web health check not ready, waiting...'
-        sleep 3
-      done
-      echo '✓ Web health check is ready!'
-      echo 'Health check response:' && curl -s http://web:80/health
+  adminer:
+    image: adminer:latest
+    container_name: gamesbakery-adminer
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+      - ADMINER_DESIGN=nette
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - gamesbakery-network
 
-      echo '=== Starting Tests ==='
-      echo 'Creating Allure results directories...'
-      mkdir -p /app/allure-results/bl /app/allure-results/da /app/allure-results/e2e
-      chmod -R 777 /app/allure-results
+    
+    restart: unless-stopped
+
+  # tests:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.tests
+  #   container_name: gamesbakery-tests
+  #   depends_on:
+  #     web-master:
+  #       condition: service_healthy
+  #     db:
+  #       condition: service_healthy
+  #   environment:
+  #     - TEST_DB_CONNECTION=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=60;
+  #     - E2E__BaseUrl=http://web:80
+  #     - E2E__HealthCheckTimeoutSeconds=90
+  #     - E2E__HealthCheckEndpoints=health
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - ConnectionStrings__DefaultConnection=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
+  #     - ConnectionStrings__GuestConnection=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
+  #     - ConnectionStrings__AdminConnection=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
+  #     - USE_ROLE_BASED_CONNECTIONS=false
+  #     - ALLURE_CONFIG=/app/allureConfig.json
+  #     - ALLURE_OUTPUT_DIR=/app/allure-results
+  #     - ALLURE_ALLOW_EMPTY_SUITES=true
+  #     - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+  #     - DOTNET_CLI_TELEMETRY_OPTOUT=1
+  #   volumes:
+  #     - ./allure-results:/app/allure-results:delegated
+  #     - ./logs:/app/logs:delegated
+  #   networks:
+  #     - gamesbakery-network
+  #   command: |
+  #     sh -c "
+  #     set -e
+  #     echo '=== Test Container Started ==='
+  #     echo 'Current directory:' && pwd
+  #     echo 'Available files:' && ls -la /app/
+
+  #     echo '=== Waiting for services ==='
+  #     echo 'Waiting for DB (port 1433)...'
+  #     until nc -z db 1433 2>/dev/null; do
+  #       echo 'DB not ready, waiting...'
+  #       sleep 2
+  #     done
+  #     echo '✓ DB is ready!'
+
+  #     echo 'Checking databases:'
+  #     docker exec gamesbakery-db /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q \"SELECT name FROM sys.databases WHERE name IN ('master','Gamesbakery')\" -C -N -h-1 || true
+
+  #     echo 'Waiting for Web (port 80)...'
+  #     until nc -z web 80 2>/dev/null; do
+  #       echo 'Web not ready, waiting...'
+  #       sleep 2
+  #     done
+  #     echo '✓ Web is ready!'
+
+  #     echo 'Testing web health check...'
+  #     until curl -f http://web:80/health 2>/dev/null; do
+  #       echo 'Web health check not ready, waiting...'
+  #       sleep 3
+  #     done
+  #     echo '✓ Web health check is ready!'
+  #     echo 'Health check response:' && curl -s http://web:80/health
+
+  #     echo '=== Starting Tests ==='
+  #     echo 'Creating Allure results directories...'
+  #     mkdir -p /app/allure-results/bl /app/allure-results/da /app/allure-results/e2e
+  #     chmod -R 777 /app/allure-results
       
-      echo '=== Running Business Logic Tests ==='
-      cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --logger 'console;verbosity=detailed' --results-directory /app/allure-results/bl && cd /app
+  #     echo '=== Running Business Logic Tests ==='
+  #     cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --logger 'console;verbosity=detailed' --results-directory /app/allure-results/bl && cd /app
       
-      echo '=== Running Data Access Tests ==='
-      cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --logger 'console;verbosity=detailed' --results-directory /app/allure-results/da && cd /app
+  #     echo '=== Running Data Access Tests ==='
+  #     cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --logger 'console;verbosity=detailed' --results-directory /app/allure-results/da && cd /app
       
-      echo '=== Running E2E Tests ==='
-      cd /app/build-e2e && echo 'Running E2E tests...' && dotnet test Gamesbakery.E2E.Tests.dll --logger 'console;verbosity=detailed' --results-directory /app/allure-results/e2e && cd /app
+  #     echo '=== Running E2E Tests ==='
+  #     cd /app/build-e2e && echo 'Running E2E tests...' && dotnet test Gamesbakery.E2E.Tests.dll --logger 'console;verbosity=detailed' --results-directory /app/allure-results/e2e && cd /app
       
-      echo '=== Test Results ==='
-      echo 'Allure results:'
-      ls -la /app/allure-results/ || echo 'No results found'
-      echo 'Business Logic:'
-      ls -la /app/allure-results/bl/ 2>/dev/null || echo 'No BL results'
-      echo 'Data Access:'
-      ls -la /app/allure-results/da/ 2>/dev/null || echo 'No DA results'
-      echo 'E2E:'
-      ls -la /app/allure-results/e2e/ 2>/dev/null || echo 'No E2E results'
-      echo 'All XML files:'
-      find /app/allure-results -name '*.xml' -type f 2>/dev/null | head -10 || echo 'No XML files'
-      echo '=== Tests Finished ==='
-      "
+  #     echo '=== Test Results ==='
+  #     echo 'Allure results:'
+  #     ls -la /app/allure-results/ || echo 'No results found'
+  #     echo 'Business Logic:'
+  #     ls -la /app/allure-results/bl/ 2>/dev/null || echo 'No BL results'
+  #     echo 'Data Access:'
+  #     ls -la /app/allure-results/da/ 2>/dev/null || echo 'No DA results'
+  #     echo 'E2E:'
+  #     ls -la /app/allure-results/e2e/ 2>/dev/null || echo 'No E2E results'
+  #     echo 'All XML files:'
+  #     find /app/allure-results -name '*.xml' -type f 2>/dev/null | head -10 || echo 'No XML files'
+  #     echo '=== Tests Finished ==='
+  #     "
+
+  # tests1:
+  #   build:
+  #       context: .
+  #       dockerfile: Dockerfile.tests
+  #   container_name: gamesbakery-tests1
+  #   depends_on:
+  #       web-master:
+  #           condition: service_healthy
+  #       db:
+  #           condition: service_healthy
+  #   environment:
+  #       - TEST_DB_CONNECTION=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=60;
+  #       - E2E__BaseUrl=http://web:80
+  #       - E2E__HealthCheckTimeoutSeconds=90
+  #       - E2E__HealthCheckEndpoints=health
+  #       - ASPNETCORE_ENVIRONMENT=Development
+  #       - ConnectionStrings__DefaultConnection=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
+  #       - ConnectionStrings__GuestConnection=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
+  #       - ConnectionStrings__AdminConnection=Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;
+  #       - USE_ROLE_BASED_CONNECTIONS=false
+  #       - ALLURE_CONFIG=/app/allureConfig.json
+  #       - ALLURE_OUTPUT_DIR=/app/allure-results
+  #       - ALLURE_ALLOW_EMPTY_SUITES=true
+  #       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+  #       - DOTNET_CLI_TELEMETRY_OPTOUT=1
+  #   volumes:
+  #       - ./allure-results:/app/allure-results:delegated
+  #       - ./logs:/app/logs:delegated
+  #   networks:
+  #       - gamesbakery-network
+  #   command: |
+  #       sh -c "
+  #       set -e
+  #       echo '=== Test Container Started ==='
+  #       echo 'Current directory:' && pwd
+  #       echo 'Available files:' && ls -la /app/
+
+  #       echo '=== Waiting for services ==='
+  #       echo 'Waiting for DB (port 1433)...'
+  #       until nc -z db 1433 2>/dev/null; do
+  #       echo 'DB not ready, waiting...'
+  #       sleep 2
+  #       done
+  #       echo '✓ DB is ready!'
+
+  #       echo 'Checking databases:'
+  #       docker exec gamesbakery-db /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P YourStrong@Pass -Q \"SELECT name FROM sys.databases WHERE name IN ('master','Gamesbakery')\" -C -N -h-1 || true
+
+  #       echo 'Waiting for Web (port 80)...'
+  #       until nc -z web 80 2>/dev/null; do
+  #       echo 'Web not ready, waiting...'
+  #       sleep 2
+  #       done
+  #       echo '✓ Web is ready!'
+
+  #       echo 'Testing web health check...'
+  #       until curl -f http://web:80/health 2>/dev/null; do
+  #       echo 'Web health check not ready, waiting...'
+  #       sleep 3
+  #       done
+  #       echo '✓ Web health check is ready!'
+  #       echo 'Health check response:' && curl -s http://web:80/health
+
+  #       echo '=== Starting Tests ==='
+  #       echo 'Creating Allure results directories...'
+  #       mkdir -p /app/allure-results/bl /app/allure-results/da /app/allure-results/e2e
+  #       chmod -R 777 /app/allure-results
+      
+  #       echo '=== Running Business Logic Tests ==='
+  #       cd /app/build-bl && dotnet test Gamesbakery.BusinessLogic.Tests.dll --logger 'console;verbosity=detailed' --results-directory /app/allure-results/bl && cd /app
+      
+  #       echo '=== Running Data Access Tests ==='
+  #       cd /app/build-da && dotnet test Gamesbakery.DataAccess.Tests.dll --logger 'console;verbosity=detailed' --results-directory /app/allure-results/da && cd /app
+      
+  #       echo '=== Running E2E Tests ==='
+  #       cd /app/build-e2e && echo 'Running E2E tests...' && dotnet test Gamesbakery.E2E.Tests.dll --logger 'console;verbosity=detailed' --results-directory /app/allure-results/e2e && cd /app
+      
+  #       echo '=== Test Results ==='
+  #       echo 'Allure results:'
+  #       ls -la /app/allure-results/ || echo 'No results found'
+  #       echo 'Business Logic:'
+  #       ls -la /app/allure-results/bl/ 2>/dev/null || echo 'No BL results'
+  #       echo 'Data Access:'
+  #       ls -la /app/allure-results/da/ 2>/dev/null || echo 'No DA results'
+  #       echo 'E2E:'
+  #       ls -la /app/allure-results/e2e/ 2>/dev/null || echo 'No E2E results'
+  #       echo 'All XML files:'
+  #       find /app/allure-results -name '*.xml' -type f 2>/dev/null | head -10 || echo 'No XML files'
+  #       echo '=== Tests Finished ==='
+  #       "
 
 volumes:
-  sql-data:
   dataprotection-keys:
+  sql-data:
 
 networks:
   gamesbakery-network:
     driver: bridge
     name: gamesbakery-network
-    
-
-  # health-checker:
-  #   image: curlimages/curl:latest
-  #   depends_on:
-  #     - web
-  #   command: >
-  #     sh -c "
-  #     echo 'Checking web service health...' &&
-  #     for i in {1..20}; do
-  #       echo 'Attempt $$i: Checking http://web:80/health' &&
-  #       if curl -f http://web:80/health; then
-  #         echo 'SUCCESS: Web service healthy!';
-  #         exit 0;
-  #       fi &&
-  #       sleep 3;
-  #     done &&
-  #     echo 'FAILED: Web service not healthy after 60 seconds';
-  #     exit 1
-  #     "
-  #   networks:
-  #     - gamesbakery-network
-
-    # clickhouse-server:
-  #     image: clickhouse/clickhouse-server:latest
-  #     ports:
-  #       - "8123:8123"
-  #       - "9000:9000"
-  #     volumes:
-  #       - clickhouse-data:/var/lib/clickhouse
-  #       - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/custom.xml
-  #     environment:
-  #       - CLICKHOUSE_USER=default
-  #       - CLICKHOUSE_PASSWORD=1
-  #     ulimits:
-  #       nofile:
-  #         soft: 262144
-  #         hard: 262144
-  #     command: ["--", "--transparent_hugepage_enabled=never"]
-    # db:
-  #   image: mcr.microsoft.com/mssql/server:2022-latest
-  #   environment:
-  #     - ACCEPT_EULA=Y
-  #     - SA_PASSWORD=YourStrong@Pass
-  #     - MSSQL_PID=Express
-  #   ports:
-  #     - "1434:1433"
-  #   volumes:
-  #     - sql-data:/var/opt/mssql
-  #   command: /bin/bash -c "\
-  #     /opt/mssql/bin/sqlservr & \
-  #     sleep 30 && \
-  #     /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -Q 'IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = \"GamesbakeryTest\") BEGIN CREATE DATABASE GamesbakeryTest END' && \
-  #     /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Pass -d GamesbakeryTest -i /init.sql && \
-  #     wait"
-  #   volumes:
-  #     - ./init.sql:/init.sql

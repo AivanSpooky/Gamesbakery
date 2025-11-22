@@ -1,4 +1,6 @@
-﻿namespace Gamesbakery.Core.Entities
+﻿using System;
+
+namespace Gamesbakery.Core.Entities
 {
     public class Review
     {
@@ -8,6 +10,9 @@
         public string Text { get; private set; }
         public int Rating { get; private set; }
         public DateTime CreationDate { get; private set; }
+
+        public User User { get; private set; } // Added
+        public Game Game { get; private set; } // Added
 
         public Review()
         {
@@ -23,13 +28,22 @@
                 throw new ArgumentException("Text cannot be empty.", nameof(text));
             if (rating < 1 || rating > 5)
                 throw new ArgumentException("Rating must be between 1 and 5.", nameof(rating));
-
             Id = id;
             UserId = userId;
             GameId = gameId;
             Text = text;
             Rating = rating;
             CreationDate = creationDate;
+        }
+
+        public void Update(string text, int rating)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                throw new ArgumentException("Text cannot be empty.", nameof(text));
+            if (rating < 1 || rating > 5)
+                throw new ArgumentException("Rating must be between 1 and 5.", nameof(rating));
+            Text = text;
+            Rating = rating;
         }
     }
 }

@@ -1,170 +1,87 @@
-﻿using Gamesbakery.Core;
-using Gamesbakery.Core.Entities;
-using Gamesbakery.Core.Repositories;
-using Microsoft.AspNetCore.Http;
-using Newtonsoft.Json;
-using Microsoft.AspNetCore.Http.Extensions;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Text.Json;
+using System.Linq;
 using System.Threading.Tasks;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.CartDTO;
+using Gamesbakery.Core.Repositories;
 
 namespace Gamesbakery.BusinessLogic.Services
 {
     public class CartService : ICartService
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ICartRepository _cartRepository;
         private readonly IOrderItemRepository _orderItemRepository;
-        private readonly IGameRepository _gameRepository;
-        private readonly IAuthenticationService _authService;
-        private const string CartSessionKey = "Cart";
-        public CartService(
-        IHttpContextAccessor httpContextAccessor,
-        IOrderItemRepository orderItemRepository,
-        IGameRepository gameRepository,
-        IAuthenticationService authService)
+
+        public CartService(ICartRepository cartRepository, IOrderItemRepository orderItemRepository)
         {
-            _authService = authService;
-            _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+            _cartRepository = cartRepository ?? throw new ArgumentNullException(nameof(cartRepository));
             _orderItemRepository = orderItemRepository ?? throw new ArgumentNullException(nameof(orderItemRepository));
-            _gameRepository = gameRepository ?? throw new ArgumentNullException(nameof(gameRepository));
         }
 
-        public async Task AddToCartAsync(Guid orderItemId)
+        public async Task AddToCartAsync(Guid orderItemId, Guid? userId)
         {
-            try
+            if (userId == null || userId == Guid.Empty)
+                throw new UnauthorizedAccessException("User not authenticated");
+            var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, UserRole.Admin);
+            if (orderItem == null)
+                throw new KeyNotFoundException($"OrderItem {orderItemId} not found");
+            if (orderItem.OrderId != null && orderItem.OrderId != Guid.Empty)
+                throw new InvalidOperationException("OrderItem already in order");
+            var cart = await _cartRepository.GetByUserIdAsync(userId.Value, UserRole.User);
+            if (cart == null)
             {
-                var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, UserRole.User, _authService.GetCurrentUserId());
-                if (orderItem == null)
-                    throw new KeyNotFoundException($"OrderItem with ID {orderItemId} not found.");
-                if (orderItem.OrderId != null && orderItem.OrderId != Guid.Empty)
-                    throw new InvalidOperationException($"OrderItem with ID {orderItemId} is already part of an order.");
-                if (orderItem.IsGifted)
-
-                    throw new InvalidOperationException($"OrderItem with ID {orderItemId} has already been gifted.");
-
-                var cart = GetCart();
-                if (!cart.Contains(orderItemId))
+                cart = new CarTDTO { CartId = Guid.NewGuid(), UserId = userId.Value };
+                await _cartRepository.AddAsync(cart, UserRole.User);
+            }
+            int maxRetries = 3;
+            for (int i = 0; i < maxRetries; i++)
+            {
+                try
                 {
-                    cart.Add(orderItemId);
-                    SaveCart(cart);
+                    await _cartRepository.AddItemAsync(cart.CartId, orderItemId, UserRole.User);
+                    return;
+                }
+                catch (Exception)
+                {
+                    if (i == maxRetries - 1) throw;
+                    await Task.Delay(100 * (i + 1));
                 }
             }
-            catch (Exception ex)
-            {
-                throw;
-            }
         }
 
-        public async Task RemoveFromCartAsync(Guid orderItemId)
+        public async Task RemoveFromCartAsync(Guid orderItemId, Guid? userId)
         {
-            try
-            {
-                var cart = GetCart();
-                if (cart.Remove(orderItemId))
-                {
-                    SaveCart(cart);
-                }
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            if (userId == null || userId == Guid.Empty)
+                throw new UnauthorizedAccessException("User not authenticated");
+            var cart = await _cartRepository.GetByUserIdAsync(userId.Value, UserRole.User);
+            if (cart != null)
+                await _cartRepository.RemoveItemAsync(cart.CartId, orderItemId, UserRole.User);
         }
 
-        public async Task<List<OrderItem>> GetCartItemsAsync()
+        public async Task<List<CartItemDTO>> GetCartItemsAsync(Guid? userId)
         {
-            try
-            {
-                var cart = GetCart();
-                var orderItems = new List<OrderItem>();
-                var invalidItemIds = new List<Guid>();
-
-                foreach (var orderItemId in cart)
-                {
-                    try
-                    {
-                        var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, UserRole.User, _authService.GetCurrentUserId());
-                        if (orderItem != null && orderItem.OrderId == null && !orderItem.IsGifted)
-                            orderItems.Add(orderItem);
-                        else
-                            invalidItemIds.Add(orderItemId);
-                    }
-                    catch (KeyNotFoundException)
-                    {
-                        invalidItemIds.Add(orderItemId); // Mark for removal
-                    }
-                }
-
-                // Remove invalid items from cart
-                if (invalidItemIds.Any())
-                {
-                    cart.RemoveAll(id => invalidItemIds.Contains(id));
-                    SaveCart(cart);
-                }
-
-                return orderItems;
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            if (userId == null || userId == Guid.Empty)
+                return new List<CartItemDTO>();
+            return await _cartRepository.GetItemsAsync(userId.Value, UserRole.User);
         }
 
-        public async Task<decimal> GetCartTotalAsync()
+        public async Task<decimal> GetCartTotalAsync(Guid? userId)
         {
-            try
+            var cartItems = await GetCartItemsAsync(userId);
+            return cartItems.Sum(item => item.GamePrice);
+        }
+
+        public async Task ClearCartAsync(Guid? userId)
+        {
+            if (userId != null && userId != Guid.Empty)
             {
-                var cartItems = await GetCartItemsAsync();
-                decimal total = 0;
-                foreach (var item in cartItems)
-                {
-                    try
-                    {
-                        var game = await _gameRepository.GetByIdAsync(item.GameId, UserRole.User);
-                        if (game != null)
-                        {
-                            total += game.Price;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        throw;
-                    }
-                }
-                return total;
-            }
-            catch (Exception ex)
-            {
-                throw;
+                var cart = await _cartRepository.GetByUserIdAsync(userId.Value, UserRole.User);
+                if (cart != null)
+                    await _cartRepository.ClearAsync(cart.CartId, UserRole.User);
             }
         }
 
-        public void ClearCart()
-        {
-            try
-            {
-                _httpContextAccessor.HttpContext.Session.Remove(CartSessionKey);
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
-
-        private List<Guid> GetCart()
-        {
-            var session = _httpContextAccessor.HttpContext.Session;
-            var cartJson = session.GetString(CartSessionKey);
-            return string.IsNullOrEmpty(cartJson)
-                ? new List<Guid>()
-                : JsonConvert.DeserializeObject<List<Guid>>(cartJson);
-        }
-
-        private void SaveCart(List<Guid> cart)
-        {
-            var session = _httpContextAccessor.HttpContext.Session;
-            session.SetString(CartSessionKey, JsonConvert.SerializeObject(cart));
-        }
+        public void ClearCart(Guid? userId) => ClearCartAsync(userId).GetAwaiter().GetResult();
     }
 }

@@ -1,8 +1,11 @@
-﻿using Gamesbakery.Core.Entities;
-using Gamesbakery.Core.Repositories;
-using Gamesbakery.Core.DTOs;
-using Gamesbakery.Core.DTOs.GameDTO;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.GameDTO;
+using Gamesbakery.Core.DTOs.OrderItemDTO;
+using Gamesbakery.Core.Repositories;
 
 namespace Gamesbakery.BusinessLogic.Services
 {
@@ -10,108 +13,147 @@ namespace Gamesbakery.BusinessLogic.Services
     {
         private readonly IGameRepository _gameRepository;
         private readonly ICategoryRepository _categoryRepository;
-        private readonly IAuthenticationService _authService;
+        private readonly IOrderItemRepository _orderItemRepository;
 
-        public GameService(
-            IGameRepository gameRepository,
-            ICategoryRepository categoryRepository,
-            IAuthenticationService authService)
+        public GameService(IGameRepository gameRepository, ICategoryRepository categoryRepository, IOrderItemRepository orderItemRepository)
         {
             _gameRepository = gameRepository;
             _categoryRepository = categoryRepository;
-            _authService = authService;
+            _orderItemRepository = orderItemRepository;
         }
 
-        public async Task<GameDetailsDTO> AddGameAsync(Guid categoryId, string title, decimal price, DateTime releaseDate, string description, string originalPublisher, bool needAvg=true)
+        public async Task<GameDetailsDTO> AddGameAsync(Guid categoryId, string title, decimal price, DateTime releaseDate, string description, string originalPublisher, UserRole role, bool needAvg = true)
         {
-            var currentRole = _authService.GetCurrentRole();
-            if (currentRole != UserRole.Admin)
-                throw new UnauthorizedAccessException("Only administrators can add games.");
-
-            var category = await _categoryRepository.GetByIdAsync(categoryId, currentRole);
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can add games");
+            var category = await _categoryRepository.GetByIdAsync(categoryId, role);
             if (category == null)
-                throw new KeyNotFoundException($"Category with ID {categoryId} not found.");
-
-            var game = new Game(Guid.NewGuid(), categoryId, title, price, releaseDate, description, true, originalPublisher);
-            var createdGame = await _gameRepository.AddAsync(game, currentRole);
-
-            // Получаем AverageRating
-            var averageRating = !needAvg ? 0m : _gameRepository.GetGameAverageRating(createdGame.Id);
-
-            var gameDetails = MapToDetailsDTO(createdGame);
-            gameDetails.AverageRating = averageRating;
-            return gameDetails;
+                throw new KeyNotFoundException($"Category {categoryId} not found");
+            var dto = new GameDetailsDTO
+            {
+                Id = Guid.NewGuid(),
+                CategoryId = categoryId,
+                Title = title,
+                Price = price,
+                ReleaseDate = releaseDate,
+                Description = description,
+                IsForSale = true,
+                OriginalPublisher = originalPublisher
+            };
+            var createdGame = await _gameRepository.AddAsync(dto, role);
+            if (needAvg)
+                createdGame.AverageRating = _gameRepository.GetAverageRating(createdGame.Id);
+            return createdGame;
         }
 
-        public async Task<GameDetailsDTO> GetGameByIdAsync(Guid id)
+        public async Task<GameDetailsDTO> GetGameByIdAsync(Guid id, UserRole role)
         {
-            var currentRole = _authService.GetCurrentRole();
-            var game = await _gameRepository.GetByIdAsync(id, currentRole);
+            var game = await _gameRepository.GetByIdAsync(id, role);
             if (game == null)
-                throw new KeyNotFoundException($"Game with ID {id} not found.");
+                throw new KeyNotFoundException($"Game {id} not found");
+            game.AverageRating = _gameRepository.GetAverageRating(id);
+            return game;
+        }
 
-            // Получаем AverageRating
-            var averageRating = _gameRepository.GetGameAverageRating(id);
-
-            var gameDetails = MapToDetailsDTO(game);
-            gameDetails.AverageRating = averageRating;
-            return gameDetails;
+        public async Task<GameDetailsDTO> GetGameByIdAsync(Guid id, UserRole role, bool includeOrderItems)
+        {
+            var game = await _gameRepository.GetByIdAsync(id, role);
+            if (game == null)
+                throw new KeyNotFoundException($"Game {id} not found");
+            game.AverageRating = _gameRepository.GetAverageRating(id);
+            if (includeOrderItems)
+            {
+                var orderItems = await _orderItemRepository.GetAvailableByGameIdAsync(id, role);
+                game.AvailableOrderItems = orderItems.ToList();
+            }
+            return game;
         }
 
         public async Task<List<GameListDTO>> GetAllGamesAsync()
         {
-            var currentRole = _authService.GetCurrentRole();
-            var games = await _gameRepository.GetAllAsync(currentRole);
-            return games.Select(MapToListDTO).ToList();
+            return (await _gameRepository.GetAllAsync(UserRole.Guest)).ToList();
         }
 
-        public async Task<GameDetailsDTO> SetGameForSaleAsync(Guid gameId, bool isForSale)
+        public async Task<GameDetailsDTO> SetGameForSaleAsync(Guid gameId, bool isForSale, UserRole role)
         {
-            var currentRole = _authService.GetCurrentRole();
-            if (currentRole != UserRole.Admin)
-                throw new UnauthorizedAccessException("Only administrators can set games for sale.");
-
-            var game = await _gameRepository.GetByIdAsync(gameId, currentRole);
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can update games");
+            var game = await _gameRepository.GetByIdAsync(gameId, role);
             if (game == null)
-                throw new KeyNotFoundException($"Game with ID {gameId} not found.");
-
-            game.SetForSale(isForSale);
-            var updatedGame = await _gameRepository.UpdateAsync(game, currentRole);
-
-            // Получаем AverageRating
-            var averageRating = _gameRepository.GetGameAverageRating(updatedGame.Id);
-
-            var gameDetails = MapToDetailsDTO(updatedGame);
-            gameDetails.AverageRating = averageRating;
-            return gameDetails;
+                throw new KeyNotFoundException($"Game {gameId} not found");
+            game.IsForSale = isForSale;
+            var updatedGame = await _gameRepository.UpdateAsync(game, role);
+            updatedGame.AverageRating = _gameRepository.GetAverageRating(updatedGame.Id);
+            return updatedGame;
         }
 
-        private GameDetailsDTO MapToDetailsDTO(Game game)
+        public async Task<List<GameListDTO>> GetFilteredGamesAsync(string? genre, decimal? minPrice, decimal? maxPrice, UserRole role)
         {
-            return new GameDetailsDTO
-            {
-                Id = game.Id,
-                CategoryId = game.CategoryId,
-                Title = game.Title,
-                Price = game.Price,
-                ReleaseDate = game.ReleaseDate,
-                Description = game.Description,
-                IsForSale = game.IsForSale,
-                OriginalPublisher = game.OriginalPublisher,
-                AverageRating = 0 
-            };
+            return (await _gameRepository.GetFilteredAsync(genre, minPrice, maxPrice, role)).ToList();
         }
 
-        private GameListDTO MapToListDTO(Game game)
+        public async Task<int> GetFilteredGamesCountAsync(string? genre, decimal? minPrice, decimal? maxPrice, UserRole role)
         {
-            return new GameListDTO
+            return await _gameRepository.GetCountAsync(genre, minPrice, maxPrice, role);
+        }
+
+        public async Task<GameDetailsDTO> UpdateGameAsync(Guid id, Guid categoryId, string title, decimal price, DateTime releaseDate, string? description, string? originalPublisher, bool isForSale, UserRole role)
+        {
+            if (role != UserRole.Admin && role != UserRole.Seller)
+                throw new UnauthorizedAccessException("Only admins and sellers can update games");
+            var game = await _gameRepository.GetByIdAsync(id, role);
+            if (game == null)
+                throw new KeyNotFoundException($"Game {id} not found");
+            game.CategoryId = categoryId;
+            game.Title = title;
+            game.Price = price;
+            game.ReleaseDate = releaseDate;
+            game.Description = description ?? string.Empty;
+            game.OriginalPublisher = originalPublisher ?? string.Empty;
+            game.IsForSale = isForSale;
+            var updatedGame = await _gameRepository.UpdateAsync(game, role);
+            updatedGame.AverageRating = _gameRepository.GetAverageRating(updatedGame.Id);
+            return updatedGame;
+        }
+
+        public async Task<GameDetailsDTO> PartialUpdateGameAsync(Guid id, Dictionary<string, object> updates, UserRole role)
+        {
+            if (role != UserRole.Admin && role != UserRole.Seller)
+                throw new UnauthorizedAccessException("Only admins and sellers can update games");
+            var game = await _gameRepository.GetByIdAsync(id, role);
+            if (game == null)
+                throw new KeyNotFoundException($"Game {id} not found");
+            foreach (var update in updates)
             {
-                Id = game.Id,
-                Title = game.Title,
-                Price = game.Price,
-                IsForSale = game.IsForSale,
-                CategoryId = game.CategoryId
-            };
+                switch (update.Key.ToLower())
+                {
+                    case "price":
+                        game.Price = Convert.ToDecimal(update.Value);
+                        break;
+                    case "title":
+                        game.Title = update.Value?.ToString() ?? string.Empty;
+                        break;
+                    case "description":
+                        game.Description = update.Value?.ToString() ?? string.Empty;
+                        break;
+                    case "categoryid":
+                        game.CategoryId = Guid.Parse(update.Value.ToString());
+                        break;
+                    case "isforSale":
+                        game.IsForSale = Convert.ToBoolean(update.Value);
+                        break;
+                }
+            }
+            var updatedGame = await _gameRepository.UpdateAsync(game, role);
+            updatedGame.AverageRating = _gameRepository.GetAverageRating(updatedGame.Id);
+            return updatedGame;
+        }
+
+        public async Task DeleteGameAsync(Guid id, UserRole role)
+        {
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can delete games");
+            await _gameRepository.DeleteAsync(id, role);
         }
     }
 }

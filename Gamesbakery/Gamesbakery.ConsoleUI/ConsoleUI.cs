@@ -5,6 +5,7 @@ using Gamesbakery.Core;
 using Gamesbakery.Core.DTOs;
 using Gamesbakery.Core.DTOs.GameDTO;
 using Gamesbakery.Core.DTOs.OrderDTO;
+using Gamesbakery.Core.DTOs.OrderItemDTO;
 using Gamesbakery.Core.DTOs.UserDTO;
 using Gamesbakery.Core.Entities;
 using Gamesbakery.DataAccess;

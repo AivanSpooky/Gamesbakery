@@ -1,7 +1,11 @@
-﻿using Gamesbakery.Core;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs;
 using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gamesbakery.DataAccess.Repositories
@@ -12,125 +16,86 @@ namespace Gamesbakery.DataAccess.Repositories
 
         public SellerRepository(GamesbakeryDbContext context)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _context = context;
         }
 
-        public async Task<Seller> AddAsync(Seller seller, UserRole role)
+        public async Task<SellerDTO> AddAsync(SellerDTO dto, UserRole role)
         {
             if (role != UserRole.Admin)
-                throw new UnauthorizedAccessException("Only administrators can add sellers.");
-
-            try
-            {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "INSERT INTO Sellers (SellerID, Name, RegistrationDate, AverageRating, Password) " +
-                    "VALUES (@SellerID, @Name, @RegistrationDate, @AverageRating, @Password)",
-                    new SqlParameter("@SellerID", seller.Id),
-                    new SqlParameter("@Name", seller.SellerName),
-                    new SqlParameter("@RegistrationDate", seller.RegistrationDate),
-                    new SqlParameter("@AverageRating", seller.AvgRating),
-                    new SqlParameter("@Password", seller.Password));
-                return seller;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to add seller to the database.", ex);
-            }
+                throw new UnauthorizedAccessException("Only admins can add sellers.");
+            var entity = new Seller(dto.Id, dto.SellerName, dto.RegistrationDate, dto.AvgRating, dto.Password);
+            _context.Sellers.Add(entity);
+            await _context.SaveChangesAsync();
+            return MapToDTO(entity);
         }
 
-        public async Task<Seller> AddAsync(Guid sellerId, string sellerName, string password, DateTime registrationDate, double avgRating, UserRole role)
+        public async Task DeleteAsync(Guid id, UserRole role)
         {
             if (role != UserRole.Admin)
-                throw new UnauthorizedAccessException("Only administrators can add sellers.");
-
-            try
+                throw new UnauthorizedAccessException("Only admins can delete sellers.");
+            var entity = await _context.Sellers.FindAsync(id);
+            if (entity != null)
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "INSERT INTO Sellers (SellerID, Name, RegistrationDate, AverageRating, Password) " +
-                    "VALUES (@SellerID, @Name, @RegistrationDate, @AverageRating, @Password)",
-                    new SqlParameter("@SellerID", sellerId),
-                    new SqlParameter("@Name", sellerName),
-                    new SqlParameter("@RegistrationDate", registrationDate),
-                    new SqlParameter("@AverageRating", avgRating),
-                    new SqlParameter("@Password", password));
-
-                return await GetByIdAsync(sellerId, role);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to add seller with ID {sellerId}: {ex.Message}", ex);
+                _context.Sellers.Remove(entity);
+                await _context.SaveChangesAsync();
             }
         }
 
-        public async Task<Seller> GetByIdAsync(Guid id, UserRole role)
+        public async Task<IEnumerable<SellerDTO>> GetAllAsync(UserRole role)
         {
-            try
-            {
-                string query = role == UserRole.Admin
-                    ? "SELECT SellerID, Name, RegistrationDate, AverageRating, Password FROM Sellers WHERE SellerID = @SellerID"
-                    : "SELECT SellerID, Name, RegistrationDate, AverageRating, Password FROM SellerProfile WHERE SellerID = @SellerID";
-
-                var sellers = await _context.Sellers
-                    .FromSqlRaw(query, new SqlParameter("@SellerID", id))
-                    .ToListAsync();
-                var seller = sellers.FirstOrDefault();
-
-                if (seller == null)
-                    throw new KeyNotFoundException($"Seller with ID {id} not found or you do not have access to this profile.");
-                return seller;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve seller with ID {id}: {ex.Message}", ex);
-            }
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can access all sellers.");
+            var sellers = await _context.Sellers.ToListAsync();
+            return sellers.Select(MapToDTO);
         }
 
-        public async Task<List<Seller>> GetAllAsync(UserRole role)
+        public async Task<SellerDTO?> GetByIdAsync(Guid id, UserRole role)
         {
-            try
-            {
-                string query = role == UserRole.Admin
-                    ? "SELECT SellerID, Name, RegistrationDate, AverageRating, Password FROM Sellers"
-                    : "SELECT SellerID, Name, RegistrationDate, AverageRating, Password FROM SellerProfile";
-
-                return await _context.Sellers
-                    .FromSqlRaw(query)
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to retrieve sellers from the database.", ex);
-            }
+            //if (role == UserRole.Seller)
+            //    throw new UnauthorizedAccessException("Sellers can only access their own profile.");
+            var entity = await _context.Sellers.FindAsync(id);
+            return entity != null ? MapToDTO(entity) : null;
         }
 
-        public async Task<Seller> UpdateAsync(Seller seller, UserRole role)
+        public async Task<SellerDTO> UpdateAsync(SellerDTO dto, UserRole role)
         {
-            if (seller == null)
-                throw new ArgumentNullException(nameof(seller));
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can update sellers.");
+            var entity = await _context.Sellers.FindAsync(dto.Id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Seller {dto.Id} not found");
+            entity.SetSellerName(dto.SellerName);
+            entity.SetAvgRating(dto.AvgRating);
+            _context.Sellers.Update(entity);
+            await _context.SaveChangesAsync();
+            return MapToDTO(entity);
+        }
 
-            try
+        public async Task<SellerDTO?> GetProfileAsync(Guid id, UserRole role)
+        {
+            if (role == UserRole.Seller)
+                throw new UnauthorizedAccessException("Sellers can only access their own profile.");
+            var entity = await _context.Sellers.FirstOrDefaultAsync(s => s.Id == id);
+            return entity != null ? MapToDTO(entity) : null;
+        }
+
+        public async Task<int> GetCountAsync(UserRole role)
+        {
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can access seller count.");
+            return await _context.Sellers.CountAsync();
+        }
+
+        private SellerDTO MapToDTO(Seller entity)
+        {
+            return new SellerDTO
             {
-                string query = role == UserRole.Admin
-                    ? "UPDATE Sellers SET Name = @Name, RegistrationDate = @RegistrationDate, AverageRating = @AverageRating, Password = @Password WHERE SellerID = @SellerID"
-                    : "UPDATE Sellers SET Name = @Name, RegistrationDate = @RegistrationDate, AverageRating = @AverageRating, Password = @Password WHERE SellerID = @SellerID";
-
-                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
-                    query,
-                    new SqlParameter("@Name", seller.SellerName),
-                    new SqlParameter("@RegistrationDate", seller.RegistrationDate),
-                    new SqlParameter("@AverageRating", seller.AvgRating),
-                    new SqlParameter("@Password", seller.Password),
-                    new SqlParameter("@SellerID", seller.Id));
-
-                if (rowsAffected == 0)
-                    throw new KeyNotFoundException($"Seller with ID {seller.Id} not found or you do not have access to this profile.");
-
-                return await GetByIdAsync(seller.Id, role);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to update seller in the database.", ex);
-            }
+                Id = entity.Id,
+                SellerName = entity.SellerName,
+                RegistrationDate = entity.RegistrationDate,
+                AvgRating = entity.AvgRating,
+                Password = entity.Password
+            };
         }
     }
 }

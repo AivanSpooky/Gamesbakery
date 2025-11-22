@@ -1,7 +1,11 @@
-﻿using Gamesbakery.Core;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.GameDTO;
 using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gamesbakery.DataAccess.Repositories
@@ -12,99 +16,118 @@ namespace Gamesbakery.DataAccess.Repositories
 
         public GameRepository(GamesbakeryDbContext context)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _context = context;
         }
 
-        public async Task<Game> AddAsync(Game game, UserRole role)
+        public async Task<GameDetailsDTO> AddAsync(GameDetailsDTO dto, UserRole role)
         {
-            try
-            {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "INSERT INTO Games (GameID, CategoryID, Title, Price, ReleaseDate, Description, IsForSale, OriginalPublisher) " +
-                    "VALUES (@GameID, @CategoryID, @Title, @Price, @ReleaseDate, @Description, @IsForSale, @OriginalPublisher)",
-                    new SqlParameter("@GameID", game.Id),
-                    new SqlParameter("@CategoryID", game.CategoryId),
-                    new SqlParameter("@Title", game.Title),
-                    new SqlParameter("@Price", game.Price),
-                    new SqlParameter("@ReleaseDate", game.ReleaseDate),
-                    new SqlParameter("@Description", game.Description),
-                    new SqlParameter("@IsForSale", game.IsForSale),
-                    new SqlParameter("@OriginalPublisher", game.OriginalPublisher));
-                return game;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to add game to the database.", ex);
-            }
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can add games.");
+            var entity = new Game(dto.Id, dto.CategoryId, dto.Title, dto.Price, dto.ReleaseDate, dto.Description, dto.IsForSale, dto.OriginalPublisher);
+            _context.Games.Add(entity);
+            await _context.SaveChangesAsync();
+            return MapToDetailsDTO(entity);
         }
 
-        public async Task<Game> GetByIdAsync(Guid id, UserRole role)
+        public async Task DeleteAsync(Guid id, UserRole role)
         {
-            try
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can delete games.");
+            var entity = await _context.Games.FindAsync(id);
+            if (entity != null)
             {
-                var games = await _context.Games
-                    .FromSqlRaw("SELECT GameID, CategoryID, Title, Price, ReleaseDate, Description, IsForSale, OriginalPublisher " +
-                                "FROM Games WHERE GameID = @GameID",
-                        new SqlParameter("@GameID", id))
-                    .ToListAsync();
-                var game = games.FirstOrDefault();
-                if (game == null)
-                    throw new KeyNotFoundException($"Game with ID {id} not found.");
-                return game;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve game with ID {id}: {ex.Message}", ex);
+                _context.Games.Remove(entity);
+                await _context.SaveChangesAsync();
             }
         }
 
-        public async Task<List<Game>> GetAllAsync(UserRole role)
+        public async Task<IEnumerable<GameListDTO>> GetAllAsync(UserRole role)
         {
-            try
-            {
-                return await _context.Games
-                    .FromSqlRaw("SELECT GameID, CategoryID, Title, Price, ReleaseDate, Description, IsForSale, OriginalPublisher FROM Games")
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to retrieve games from the database.", ex);
-            }
+            var games = await _context.Games.Include(g => g.Category).ToListAsync();
+            return games.Select(MapToListDTO);
         }
 
-        public async Task<Game> UpdateAsync(Game game, UserRole role)
+        public async Task<GameDetailsDTO?> GetByIdAsync(Guid id, UserRole role)
         {
-            if (game == null)
-                throw new ArgumentNullException(nameof(game));
-
-            try
-            {
-                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
-                    "UPDATE Games SET CategoryID = @CategoryID, Title = @Title, Price = @Price, ReleaseDate = @ReleaseDate, " +
-                    "Description = @Description, IsForSale = @IsForSale, OriginalPublisher = @OriginalPublisher " +
-                    "WHERE GameID = @GameID",
-                    new SqlParameter("@GameID", game.Id),
-                    new SqlParameter("@CategoryID", game.CategoryId),
-                    new SqlParameter("@Title", game.Title),
-                    new SqlParameter("@Price", game.Price),
-                    new SqlParameter("@ReleaseDate", game.ReleaseDate),
-                    new SqlParameter("@Description", game.Description),
-                    new SqlParameter("@IsForSale", game.IsForSale),
-                    new SqlParameter("@OriginalPublisher", game.OriginalPublisher));
-
-                if (rowsAffected == 0)
-                    throw new KeyNotFoundException($"Game with ID {game.Id} not found.");
-
-                return await GetByIdAsync(game.Id, role);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to update game in the database.", ex);
-            }
+            var entity = await _context.Games.Include(g => g.Category).FirstOrDefaultAsync(g => g.Id == id);
+            return entity != null ? MapToDetailsDTO(entity) : null;
         }
-        public decimal GetGameAverageRating(Guid gameId)
+
+        public async Task<GameDetailsDTO> UpdateAsync(GameDetailsDTO dto, UserRole role)
         {
-            return _context.GetGameAverageRating(gameId);
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can update games.");
+            var entity = await _context.Games.FindAsync(dto.Id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Game {dto.Id} not found");
+            entity.SetCategoryId(dto.CategoryId);
+            entity.SetTitle(dto.Title);
+            entity.SetPrice(dto.Price);
+            entity.SetReleaseDate(dto.ReleaseDate);
+            entity.SetDescription(dto.Description);
+            entity.SetOriginalPublisher(dto.OriginalPublisher);
+            entity.SetForSale(dto.IsForSale);
+            _context.Games.Update(entity);
+            await _context.SaveChangesAsync();
+            return MapToDetailsDTO(entity);
+        }
+
+        public async Task<IEnumerable<GameListDTO>> GetFilteredAsync(string genre, decimal? minPrice, decimal? maxPrice, UserRole role)
+        {
+            var query = _context.Games.Include(g => g.Category).AsQueryable();
+            if (!string.IsNullOrEmpty(genre))
+                query = query.Where(g => g.Category.GenreName == genre);
+            if (minPrice.HasValue)
+                query = query.Where(g => g.Price >= minPrice.Value);
+            if (maxPrice.HasValue)
+                query = query.Where(g => g.Price <= maxPrice.Value);
+            var games = await query.ToListAsync();
+            return games.Select(MapToListDTO);
+        }
+
+        public async Task<int> GetCountAsync(string genre, decimal? minPrice, decimal? maxPrice, UserRole role)
+        {
+            var query = _context.Games.AsQueryable();
+            if (!string.IsNullOrEmpty(genre))
+                query = query.Where(g => g.Category.GenreName == genre);
+            if (minPrice.HasValue)
+                query = query.Where(g => g.Price >= minPrice.Value);
+            if (maxPrice.HasValue)
+                query = query.Where(g => g.Price <= maxPrice.Value);
+            return await query.CountAsync();
+        }
+
+        public decimal GetAverageRating(Guid gameId)
+        {
+            return _context.Reviews.Where(r => r.GameId == gameId).Average(r => (decimal?)r.Rating) ?? 0;
+        }
+
+        private GameDetailsDTO MapToDetailsDTO(Game entity)
+        {
+            return new GameDetailsDTO
+            {
+                Id = entity.Id,
+                CategoryId = entity.CategoryId,
+                Title = entity.Title,
+                Price = entity.Price,
+                ReleaseDate = entity.ReleaseDate,
+                Description = entity.Description,
+                IsForSale = entity.IsForSale,
+                OriginalPublisher = entity.OriginalPublisher,
+                AverageRating = GetAverageRating(entity.Id)
+            };
+        }
+
+        private GameListDTO MapToListDTO(Game entity)
+        {
+            return new GameListDTO
+            {
+                Id = entity.Id,
+                CategoryId = entity.CategoryId,
+                Title = entity.Title,
+                Price = entity.Price,
+                IsForSale = entity.IsForSale
+            };
         }
     }
 }

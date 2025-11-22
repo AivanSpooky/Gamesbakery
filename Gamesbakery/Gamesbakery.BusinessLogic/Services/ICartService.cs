@@ -1,13 +1,18 @@
-﻿using Gamesbakery.Core.Entities;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Gamesbakery.Core.DTOs.CartDTO;
+using Gamesbakery.Core.Entities;
 
-namespace Gamesbakery.BusinessLogic.Services
+namespace Gamesbakery.Core
 {
     public interface ICartService
     {
-        Task AddToCartAsync(Guid orderItemId);
-        Task RemoveFromCartAsync(Guid orderItemId);
-        Task<List<OrderItem>> GetCartItemsAsync();
-        Task<decimal> GetCartTotalAsync();
-        void ClearCart();
+        Task AddToCartAsync(Guid orderItemId, Guid? userId);
+        Task RemoveFromCartAsync(Guid orderItemId, Guid? userId);
+        Task<List<CartItemDTO>> GetCartItemsAsync(Guid? userId);
+        Task<decimal> GetCartTotalAsync(Guid? userId);
+        Task ClearCartAsync(Guid? userId);
+        void ClearCart(Guid? userId);
     }
 }

@@ -1,34 +1,12 @@
-﻿@using Gamesbakery.Core.DTOs.GiftDTO
-
-@{
-    ViewData["Title"] = "Gift Details";
+﻿@model Gamesbakery.Core.DTOs.Response.GiftResponseDTO
+<h2>Детали подарка</h2>
+<dl class="row">
+    <dt class="col-sm-2">Дата</dt>
+    <dd class="col-sm-10">@Model.GiftDate.ToShortDateString()</dd>
+    <dt class="col-sm-2">Игра</dt>
+    <dd class="col-sm-10">@Model.GameTitle</dd>
+</dl>
+<a asp-action="Index" class="btn btn-secondary">Назад</a>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
 }
-
-<h1>Gift Details</h1>
-
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
-}
-
-@if (Model != null)
-{
-    <dl class="row">
-        <dt class="col-sm-2">Game Title</dt>
-        <dd class="col-sm-10">@Model.GameTitle</dd>
-        <dt class="col-sm-2">Sender ID</dt>
-        <dd class="col-sm-10">@Model.SenderId</dd>
-        <dt class="col-sm-2">Recipient ID</dt>
-        <dd class="col-sm-10">@Model.RecipientId</dd>
-        <dt class="col-sm-2">Key</dt>
-        <dd class="col-sm-10">@Model.Key</dd>
-        <dt class="col-sm-2">Gift Date</dt>
-        <dd class="col-sm-10">@Model.GiftDate.ToString("g")</dd>
-    </dl>
-}
-else
-{
-    <p>Gift not found.</p>
-}
-
-<a asp-action="Index" class="btn btn-secondary">Back to Gifts</a>

@@ -1,13 +1,15 @@
-﻿using Gamesbakery.Core;
-using Gamesbakery.Core.DTOs.UserDTO;
+﻿using System;
+using System.Threading.Tasks;
 using Gamesbakery.BusinessLogic.Services;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.UserDTO;
+using Gamesbakery.Core.DTOs.Response;
+using Gamesbakery.Infrastructure;
+using Gamesbakery.WebGUI.Extensions;
+using Gamesbakery.WebGUI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Gamesbakery.Infrastructure;
-using Gamesbakery.WebGUI.Models;
 using Serilog;
-using System;
-using System.Threading.Tasks;
 
 namespace Gamesbakery.Controllers
 {
@@ -50,11 +52,10 @@ namespace Gamesbakery.Controllers
                         model.Username, model.Email, model.Country);
                     if (!await _dbChecker.CanConnectAsync())
                     {
-                        LogError("Database unavailable");
+                        LogError(new InvalidOperationException("Database unavailable"), "Database connection failed during registration");
                         ModelState.AddModelError("", "База данных недоступна.");
                         return View(model);
                     }
-
                     if (ModelState.IsValid)
                     {
                         var user = await _userService.RegisterUserAsync(
@@ -65,7 +66,6 @@ namespace Gamesbakery.Controllers
                         LogInformation("Successfully registered user Username={Username}", model.Username);
                         return RedirectToAction("Login", "Account");
                     }
-
                     LogWarning("Invalid model state for user registration");
                     return View(model);
                 }
@@ -80,47 +80,42 @@ namespace Gamesbakery.Controllers
 
         public async Task<IActionResult> Profile()
         {
-            using (PushLogContext())
+            var userId = GetCurrentUserId();
+            var role = GetCurrentRole();
+            try
             {
-                try
+                if (userId == null)
+                    return RedirectToAction("Login", "Account");
+                var user = await _userService.GetUserByIdAsync(userId.Value, userId, role);
+                var userResponse = new UserResponseDTO
                 {
-                    LogInformation("User accessed profile");
-                    if (!await _dbChecker.CanConnectAsync())
-                    {
-                        LogError("Database unavailable");
-                        ViewBag.ErrorMessage = "База данных недоступна.";
-                        return View();
-                    }
-
-                    var userId = _authService.GetCurrentUserId();
-                    if (userId == null)
-                    {
-                        LogWarning("Unauthorized access to profile");
-                        return Unauthorized("Требуется авторизация.");
-                    }
-
-                    var user = await _userService.GetUserByIdAsync(userId.Value);
-                    LogInformation("Successfully retrieved profile for UserId={UserId}", userId);
-                    return View(user);
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, "Error retrieving profile");
-                    ViewBag.ErrorMessage = $"Ошибка при загрузке профиля: {ex.Message}";
-                    return View();
-                }
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    RegistrationDate = user.RegistrationDate,
+                    Country = user.Country,
+                    Balance = user.Balance,
+                    TotalSpent = user.TotalSpent
+                };
+                return View(userResponse);
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, "Error retrieving user profile");
+                ViewBag.ErrorMessage = $"Ошибка: {ex.Message}";
+                return View();
             }
         }
 
         [HttpGet]
-        public async Task<IActionResult> UpdateBalance()
+        public IActionResult UpdateBalance()
         {
             using (PushLogContext())
             {
                 try
                 {
                     LogInformation("User accessed balance update page");
-                    if (_authService.GetCurrentUserId() == null)
+                    if (GetCurrentUserId() == null)
                     {
                         LogWarning("Unauthorized access to balance update");
                         return Unauthorized("Требуется авторизация.");
@@ -130,7 +125,8 @@ namespace Gamesbakery.Controllers
                 catch (Exception ex)
                 {
                     LogError(ex, "Error accessing balance update page");
-                    throw;
+                    ViewBag.ErrorMessage = $"Ошибка загрузки формы: {ex.Message}";
+                    return View();
                 }
             }
         }
@@ -140,37 +136,35 @@ namespace Gamesbakery.Controllers
         {
             using (PushLogContext())
             {
+                var role = GetCurrentRole();
+                var userId = GetCurrentUserId();
                 try
                 {
                     LogInformation("User attempted to update balance with NewBalance={NewBalance}", newBalance);
-                    if (_authService.GetCurrentUserId() == null)
+                    if (userId == null)
                     {
                         LogWarning("Unauthorized attempt to update balance");
                         return Unauthorized("Требуется авторизация.");
                     }
-
                     if (!await _dbChecker.CanConnectAsync())
                     {
-                        LogError("Database unavailable");
+                        LogError(new InvalidOperationException("Database unavailable"), "Database connection failed during balance update");
                         ModelState.AddModelError("", "База данных недоступна.");
                         return View();
                     }
-
                     if (newBalance < 0)
                     {
                         LogWarning("Invalid balance update: NewBalance={NewBalance} is negative", newBalance);
                         ModelState.AddModelError("", "Баланс не может быть отрицательным.");
                         return View();
                     }
-
-                    var userId = _authService.GetCurrentUserId().Value;
-                    var user = await _userService.UpdateBalanceAsync(userId, newBalance);
+                    var user = await _userService.UpdateBalanceAsync(userId.Value, newBalance, userId, role);
                     LogInformation("Successfully updated balance for UserId={UserId} to {NewBalance}", userId, newBalance);
                     return RedirectToAction(nameof(Profile));
                 }
                 catch (Exception ex)
                 {
-                    LogError(ex, "Error updating balance");
+                    LogError(ex, "Error updating balance for UserId={UserId}", GetCurrentUserId());
                     ModelState.AddModelError("", $"Ошибка при обновлении баланса: {ex.Message}");
                     return View();
                 }
@@ -182,22 +176,21 @@ namespace Gamesbakery.Controllers
         {
             using (PushLogContext())
             {
+                var role = GetCurrentRole();
                 try
                 {
                     LogInformation("User attempted to block user with UserId={UserId}", userId);
-                    if (_authService.GetCurrentRole() != UserRole.Admin)
+                    if (role != UserRole.Admin)
                     {
-                        LogWarning("Unauthorized attempt to block user by Role={Role}", HttpContext.Session.GetString("Role"));
+                        LogWarning("Unauthorized attempt to block user by Role={Role}", role);
                         return Unauthorized("Только администраторы могут блокировать пользователей.");
                     }
-
                     if (!await _dbChecker.CanConnectAsync())
                     {
-                        LogError("Database unavailable");
+                        LogError(new InvalidOperationException("Database unavailable"), "Database connection failed during user block");
                         return StatusCode(503, "База данных недоступна.");
                     }
-
-                    await _userService.BlockUserAsync(userId);
+                    var user = await _userService.BlockUserAsync(userId, role);
                     LogInformation("Successfully blocked user UserId={UserId}", userId);
                     return RedirectToAction(nameof(Profile));
                 }
@@ -214,22 +207,21 @@ namespace Gamesbakery.Controllers
         {
             using (PushLogContext())
             {
+                var role = GetCurrentRole();
                 try
                 {
                     LogInformation("User attempted to unblock user with UserId={UserId}", userId);
-                    if (_authService.GetCurrentRole() != UserRole.Admin)
+                    if (role != UserRole.Admin)
                     {
-                        LogWarning("Unauthorized attempt to unblock user by Role={Role}", HttpContext.Session.GetString("Role"));
+                        LogWarning("Unauthorized attempt to unblock user by Role={Role}", role);
                         return Unauthorized("Только администраторы могут разблокировать пользователей.");
                     }
-
                     if (!await _dbChecker.CanConnectAsync())
                     {
-                        LogError("Database unavailable");
+                        LogError(new InvalidOperationException("Database unavailable"), "Database connection failed during user unblock");
                         return StatusCode(503, "База данных недоступна.");
                     }
-
-                    await _userService.UnblockUserAsync(userId);
+                    var user = await _userService.UnblockUserAsync(userId, role);
                     LogInformation("Successfully unblocked user UserId={UserId}", userId);
                     return RedirectToAction(nameof(Profile));
                 }

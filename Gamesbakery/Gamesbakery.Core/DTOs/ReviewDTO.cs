@@ -8,5 +8,6 @@
         public string Text { get; set; }
         public int Rating { get; set; }
         public DateTime CreationDate { get; set; }
+        public string Username { get; set; } // Added
     }
 }

@@ -22,35 +22,35 @@ namespace Gamesbakery.BusinessLogic.Schedulers
             _authService = authService;
         }
 
-        public async Task UpdateOrderStatusesAsync()
-        {
-            var currentRole = _authService.GetCurrentRole();
-            var orders = await _orderRepository.GetByUserIdAsync(Guid.Empty, currentRole);
+        //public async Task UpdateOrderStatusesAsync()
+        //{
+        //    var currentRole = _authService.GetCurrentRole();
+        //    var orders = await _orderRepository.GetByUserIdAsync(Guid.Empty, currentRole);
 
-            foreach (var order in orders)
-            {
-                if (order.IsCompleted || order.IsOverdue)
-                    continue;
+        //    foreach (var order in orders)
+        //    {
+        //        if (order.IsCompleted || order.IsOverdue)
+        //            continue;
 
-                // Проверяем, прошло ли 14 дней
-                var daysSinceOrder = (DateTime.UtcNow - order.OrderDate).TotalDays;
-                if (daysSinceOrder >= 14)
-                {
-                    order.MarkAsOverdue();
-                    await _orderRepository.UpdateAsync(order, currentRole);
-                    continue;
-                }
+        //        // Проверяем, прошло ли 14 дней
+        //        var daysSinceOrder = (DateTime.UtcNow - order.OrderDate).TotalDays;
+        //        if (daysSinceOrder >= 14)
+        //        {
+        //            order.MarkAsOverdue();
+        //            await _orderRepository.UpdateAsync(order, currentRole);
+        //            continue;
+        //        }
 
-                // Проверяем, все ли ключи сгенерированы
-                var orderItems = await _orderItemRepository.GetByOrderIdAsync(order.Id, currentRole);
-                var allKeysGenerated = orderItems.All(item => !string.IsNullOrWhiteSpace(item.Key));
+        //        // Проверяем, все ли ключи сгенерированы
+        //        var orderItems = await _orderItemRepository.GetByOrderIdAsync(order.Id, currentRole);
+        //        var allKeysGenerated = orderItems.All(item => !string.IsNullOrWhiteSpace(item.Key));
 
-                if (allKeysGenerated)
-                {
-                    order.Complete();
-                    await _orderRepository.UpdateAsync(order, currentRole);
-                }
-            }
-        }
+        //        if (allKeysGenerated)
+        //        {
+        //            order.Complete();
+        //            await _orderRepository.UpdateAsync(order, currentRole);
+        //        }
+        //    }
+        //}
     }
 }

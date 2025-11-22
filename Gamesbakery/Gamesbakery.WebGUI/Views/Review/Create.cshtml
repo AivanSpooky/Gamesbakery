@@ -1,23 +1,20 @@
-﻿@model Gamesbakery.Core.DTOs.ReviewDTO
-
-<h2>Добавить отзыв для @ViewBag.GameTitle</h2>
-
+﻿@model Gamesbakery.Core.DTOs.ReviewCreateDTO
+<h2>Оставить отзыв</h2>
 <form asp-action="Create" method="post">
-    <input type="hidden" asp-for="GameId" />
+    <input type="hidden" name="gameId" value="@ViewBag.GameId" />
     <div class="form-group">
-        <label asp-for="Text">Комментарий</label>
-        <textarea asp-for="Text" class="form-control"></textarea>
-        <span asp-validation-for="Text" class="text-danger"></span>
-    </div>
-    <div class="form-group">
-        <label asp-for="Rating">Оценка (1-5)</label>
+        <label asp-for="Rating">Рейтинг (1-5)</label>
         <input asp-for="Rating" class="form-control" type="number" min="1" max="5" />
         <span asp-validation-for="Rating" class="text-danger"></span>
     </div>
-    <button type="submit" class="btn btn-primary">Сохранить</button>
-    <a asp-action="Index" asp-route-gameId="@Model.GameId" class="btn btn-secondary">Отмена</a>
+    <div class="form-group">
+        <label asp-for="Text">Текст</label>
+        <textarea asp-for="Text" class="form-control"></textarea>
+        <span asp-validation-for="Text" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Отправить</button>
+    <a asp-controller="Game" asp-action="Details" asp-route-id="@ViewBag.GameId" class="btn btn-secondary">Отмена</a>
 </form>
-
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

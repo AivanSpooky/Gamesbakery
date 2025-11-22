@@ -36,7 +36,6 @@ namespace Gamesbakery.BusinessLogic.Tests
         [Trait("Category", "Unit")]
         public async Task AddReviewAsync_ValidData_ReturnsReviewDTO()
         {
-            // Arrange
             var userId = Guid.NewGuid();
             var gameId = Guid.NewGuid();
             var categoryId = Guid.NewGuid();
@@ -50,9 +49,7 @@ namespace Gamesbakery.BusinessLogic.Tests
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.User)).ReturnsAsync(user);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId, UserRole.User)).ReturnsAsync(game);
             _reviewRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<Review>(), UserRole.User)).ReturnsAsync(review);
-            // Act
             var result = await _reviewService.AddReviewAsync(userId, gameId, text, rating);
-            // Assert
             Assert.NotNull(result);
             Assert.Equal(text, result.Text);
             Assert.Equal(rating, result.Rating);
@@ -66,19 +63,17 @@ namespace Gamesbakery.BusinessLogic.Tests
         [Trait("Category", "Unit")]
         public async Task AddReviewAsync_InvalidRating_ThrowsArgumentException()
         {
-            // Arrange
             var userId = Guid.NewGuid();
             var gameId = Guid.NewGuid();
             var categoryId = Guid.NewGuid();
             var text = "Great game!";
-            var rating = 6; // Рейтинг должен быть от 1 до 5
+            var rating = 6;
             var user = new User(userId, "JohnDoe", "john.doe@example.com", DateTime.UtcNow, "United States", "password123", false, 100);
             var game = new Game(gameId, categoryId, "Game Title", 59.99m, DateTime.UtcNow, "Description", true, "Bethesda");
             _authServiceMock.Setup(auth => auth.GetCurrentUserId()).Returns(userId);
             _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.User)).ReturnsAsync(user);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId, UserRole.User)).ReturnsAsync(game);
-            // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => _reviewService.AddReviewAsync(userId, gameId, text, rating));
         }
 
@@ -90,7 +85,6 @@ namespace Gamesbakery.BusinessLogic.Tests
         [Trait("Category", "Unit")]
         public async Task AddReviewAsync_EmptyText_ThrowsArgumentException()
         {
-            // Arrange
             var userId = Guid.NewGuid();
             var gameId = Guid.NewGuid();
             var categoryId = Guid.NewGuid();
@@ -102,7 +96,6 @@ namespace Gamesbakery.BusinessLogic.Tests
             _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.User)).ReturnsAsync(user);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId, UserRole.User)).ReturnsAsync(game);
-            // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => _reviewService.AddReviewAsync(userId, gameId, text, rating));
         }
 
@@ -114,7 +107,6 @@ namespace Gamesbakery.BusinessLogic.Tests
         [Trait("Category", "Unit")]
         public async Task AddReviewAsync_BlockedUser_ThrowsInvalidOperationException()
         {
-            // Arrange
             var userId = Guid.NewGuid();
             var gameId = Guid.NewGuid();
             var text = "Great game!";
@@ -125,8 +117,10 @@ namespace Gamesbakery.BusinessLogic.Tests
             _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
             _userRepositoryMock.Setup(repo => repo.GetByIdAsync(userId, UserRole.User)).ReturnsAsync(user);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId, UserRole.User)).ReturnsAsync(game);
-            _orderItemRepositoryMock.Setup(repo => repo.GetByUserIdAsync(userId, UserRole.User)).ReturnsAsync(new List<OrderItem> { new OrderItem(Guid.NewGuid(), Guid.NewGuid(), gameId, Guid.NewGuid(), "KEY") });
-            // Act & Assert
+            _orderItemRepositoryMock.Setup(repo => repo.GetByUserIdAsync(userId, UserRole.User)).ReturnsAsync(new List<OrderItem>
+            {
+                new OrderItem(Guid.NewGuid(), null, gameId, Guid.NewGuid(), "KEY", false)
+            });
             await Assert.ThrowsAsync<InvalidOperationException>(() => _reviewService.AddReviewAsync(userId, gameId, text, rating));
         }
 
@@ -138,7 +132,6 @@ namespace Gamesbakery.BusinessLogic.Tests
         [Trait("Category", "Unit")]
         public async Task GetReviewsByGameIdAsync_GameExists_ReturnsReviewDTOList()
         {
-            // Arrange
             var gameId = Guid.NewGuid();
             var userId1 = Guid.NewGuid();
             var userId2 = Guid.NewGuid();
@@ -151,10 +144,8 @@ namespace Gamesbakery.BusinessLogic.Tests
             };
             _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
             _gameRepositoryMock.Setup(repo => repo.GetByIdAsync(gameId, UserRole.User)).ReturnsAsync(game);
-            _reviewRepositoryMock.Setup(repo => repo.GetByGameIdAsync(gameId, UserRole.User)).ReturnsAsync(reviews);
-            // Act
+            _reviewRepositoryMock.Setup(repo => repo.GetByGameIdAsync(gameId, UserRole.User, null, null, null)).ReturnsAsync(reviews); // Explicit parameters
             var result = await _reviewService.GetReviewsByGameIdAsync(gameId);
-            // Assert
             Assert.NotNull(result);
             Assert.Equal(2, result.Count);
         }
@@ -167,12 +158,24 @@ namespace Gamesbakery.BusinessLogic.Tests
         [Trait("Category", "Unit")]
         public async Task GetReviewsByGameIdAsync_GameNotFound_ThrowsKeyNotFoundException()
         {
-            // Arrange
             var gameId = Guid.NewGuid();
             _authServiceMock.Setup(auth => auth.GetCurrentRole()).Returns(UserRole.User);
-            _reviewRepositoryMock.Setup(repo => repo.GetByGameIdAsync(gameId, UserRole.User)).ReturnsAsync((List<Review>)null);
-            // Act & Assert
+            _reviewRepositoryMock.Setup(repo => repo.GetByGameIdAsync(gameId, UserRole.User, null, null, null)).ReturnsAsync((List<Review>)null); // Explicit parameters
             await Assert.ThrowsAsync<ArgumentNullException>(() => _reviewService.GetReviewsByGameIdAsync(gameId));
         }
+    }
+
+    public interface IOrderItemRepository
+    {
+        Task<OrderItem> AddAsync(OrderItem orderItem, UserRole role);
+        Task<OrderItem> GetByIdAsync(Guid id, UserRole role, Guid? userId = null);
+        Task<List<OrderItem>> GetByOrderIdAsync(Guid orderId, UserRole role);
+        Task<List<OrderItem>> GetBySellerIdAsync(Guid sellerId, UserRole role);
+        Task<OrderItem> UpdateAsync(OrderItem orderItem, UserRole role);
+        Task DeleteAsync(Guid id, UserRole role);
+        Task<int> GetCountAsync(Guid? sellerId = null, Guid? gameId = null, UserRole role = UserRole.Admin);
+        Task<List<OrderItem>> GetFilteredAsync(Guid? sellerId = null, Guid? gameId = null, UserRole role = UserRole.Admin);
+        Task<List<OrderItem>> GetAvailableByGameIdAsync(Guid gameId, UserRole role);
+        Task<List<OrderItem>> GetByUserIdAsync(Guid userId, UserRole role);
     }
 }

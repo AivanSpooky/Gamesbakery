@@ -1,16 +1,21 @@
-﻿using Gamesbakery.Core.Entities;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Gamesbakery.Core.DTOs.UserDTO;
+using Gamesbakery.Core.Entities;
 
 namespace Gamesbakery.Core.Repositories
 {
     public interface IUserRepository
     {
-        Task<IEnumerable<User>> GetAllAsync();
-        Task<User> AddAsync(User user, UserRole role);
-        Task<User> AddAsync(Guid userId, string username, string email, string password, string country, DateTime registrationDate, bool isBlocked, decimal balance, UserRole role);
-        Task<User> GetByIdAsync(Guid userId, UserRole role);
-        Task<User> UpdateAsync(User user, UserRole role);
-        Task<User> GetByEmailAsync(string email, UserRole role);
-        Task<User> GetByUsernameAsync(string username, UserRole role);
-        decimal GetUserTotalSpent(Guid userId);
+        Task<UserProfileDTO> AddAsync(UserProfileDTO dto, UserRole role);
+        Task DeleteAsync(Guid id, UserRole role);
+        Task<IEnumerable<UserProfileDTO>> GetAllAsync(UserRole role);
+        Task<UserProfileDTO?> GetByIdAsync(Guid id, UserRole role);
+        Task<UserProfileDTO> UpdateAsync(UserProfileDTO dto, UserRole role);
+        Task<UserProfileDTO?> GetByUsernameAsync(string username, UserRole role);
+        Task<UserProfileDTO?> GetProfileAsync(Guid id, UserRole role);
+        decimal GetTotalSpent(Guid userId);
+        Task<UserProfileDTO?> GetByEmailAsync(string email, UserRole role);
     }
 }

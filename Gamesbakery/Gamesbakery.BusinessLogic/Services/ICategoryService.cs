@@ -1,11 +1,13 @@
-﻿using Gamesbakery.Core.Entities;
+﻿using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.CategoryDTO;
+using Gamesbakery.Core.Entities;
 
 namespace Gamesbakery.BusinessLogic.Services
 {
     public interface ICategoryService
     {
-        Task<Category> AddCategoryAsync(string genreName, string description);
-        Task<Category> GetCategoryByIdAsync(Guid id);
-        Task<List<Category>> GetAllCategoriesAsync();
+        Task<CategoryDTO> AddCategoryAsync(string genreName, string description, UserRole currentRole);
+        Task<CategoryDTO> GetCategoryByIdAsync(Guid id, UserRole currentRole);
+        Task<List<CategoryDTO>> GetAllCategoriesAsync();
     }
 }

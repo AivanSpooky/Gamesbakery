@@ -2,6 +2,6 @@
 {
     public interface IOrderStatusScheduler
     {
-        Task UpdateOrderStatusesAsync();
+        //Task UpdateOrderStatusesAsync();
     }
 }

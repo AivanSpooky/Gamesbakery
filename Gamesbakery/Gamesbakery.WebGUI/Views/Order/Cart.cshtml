@@ -1,36 +1,16 @@
-﻿@model List<Gamesbakery.Core.DTOs.OrderItemGDTO>
-@{
-    ViewData["Title"] = "Shopping Cart";
-    var total = ViewBag.Total as decimal?;
-}
+﻿@model List<Gamesbakery.Core.DTOs.OrderItemDTO.OrderItemDTO>
 
 <h2>Корзина</h2>
 
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger">
-        @TempData["ErrorMessage"]
-    </div>
-}
-
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success">
-        @TempData["SuccessMessage"]
-    </div>
-}
-
-@if (Model == null || !Model.Any())
-{
-    <p>Корзина пуста</p>
-}
-else
+@if (Model.Any())
 {
     <table class="table">
         <thead>
             <tr>
-                <th>Игра</th>
+                <th>Название игры</th>
                 <th>Цена</th>
+                <th>Ключ</th>
+                <th>Продавец</th>
                 <th>Действия</th>
             </tr>
         </thead>
@@ -40,24 +20,31 @@ else
                 <tr>
                     <td>@item.GameTitle</td>
                     <td>@item.GamePrice.ToString("C")</td>
+                    <td>@item.Key</td>
+                    <td>@item.SellerName</td>
                     <td>
                         <form asp-action="RemoveFromCart" method="post">
                             <input type="hidden" name="orderItemId" value="@item.Id" />
-                            <button type="submit" class="btn btn-danger btn-sm">Убрать</button>
+                            <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
                         </form>
                     </td>
                 </tr>
             }
         </tbody>
     </table>
-    <h4>Всего: @total?.ToString("C")</h4>
-    <div class="mb-2">
-        <form asp-action="ClearCart" method="post">
-            <button type="submit" class="btn btn-warning">Очистить корзину</button>
-        </form>
-    </div>
+    <p>Общая сумма: @ViewBag.Total.ToString("C")</p>
     <form asp-action="Checkout" method="post">
         <button type="submit" class="btn btn-primary">Оформить заказ</button>
     </form>
+    <form asp-action="ClearCart" method="post">
+        <button type="submit" class="btn btn-secondary">Очистить корзину</button>
+    </form>
 }
-<a asp-action="Index" asp-controller="Game" class="btn btn-secondary mt-2">Продолжить покупки</a>
+else
+{
+    <p>Корзина пуста.</p>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

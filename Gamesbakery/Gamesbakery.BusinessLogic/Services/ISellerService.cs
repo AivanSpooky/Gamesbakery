@@ -1,14 +1,18 @@
-﻿using Gamesbakery.Core.Entities;
+﻿using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs;
+using Gamesbakery.Core.DTOs.OrderItemDTO;
+using Gamesbakery.Core.Entities;
 
 namespace Gamesbakery.BusinessLogic.Services
 {
     public interface ISellerService
     {
-        Task<Seller> RegisterSellerAsync(string sellerName, string password);
-        Task<Seller> RegisterSellerAsync(string sellerName, string password, bool proc);
-        Task<Seller> GetSellerByIdAsync(Guid id);
-        Task<OrderItem> CreateKeyAsync(Guid gameId, string key);
-        Task<List<Seller>> GetAllSellersAsync();
-        Task UpdateSellerRatingAsync(Guid sellerId, double newRating);
+        Task<SellerDTO> RegisterSellerAsync(string sellerName, string password, UserRole role);
+        Task<SellerDTO> GetSellerByIdAsync(Guid id, Guid? curSellerId, UserRole role);
+        Task<OrderItemDTO> CreateKeyAsync(Guid gameId, string key, Guid? curSellerId, UserRole role);
+        Task<List<SellerDTO>> GetAllSellersAsync(UserRole role);
+        Task UpdateSellerRatingAsync(Guid sellerId, double newRating, UserRole role);
+        Task<List<OrderItemDTO>> GetOrderItemsBySellerIdAsync(Guid sellerId, Guid? curSellerId, UserRole role);
+        Task SetOrderItemKeyAsync(Guid orderItemId, string key, Guid sellerId, Guid? curSellerId, UserRole role);
     }
 }

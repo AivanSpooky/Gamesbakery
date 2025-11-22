@@ -1,17 +1,23 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Gamesbakery.Core.DTOs.OrderItemDTO;
 using Gamesbakery.Core.Entities;
 
 namespace Gamesbakery.Core.Repositories
 {
     public interface IOrderItemRepository
     {
-        Task<OrderItem> AddAsync(OrderItem orderItem, UserRole role);
-        Task<OrderItem> CreateKeyAsync(Guid gameId, Guid sellerId, string key, UserRole role);
-        Task<OrderItem> GetByIdAsync(Guid id, UserRole role, Guid? currentUserId);
-        Task<IEnumerable<OrderItem>> GetByUserIdAsync(Guid userId, UserRole role);
-        Task<List<OrderItem>> GetByOrderIdAsync(Guid orderId, UserRole role);
-        Task<List<OrderItem>> GetBySellerIdAsync(Guid sellerId, UserRole role);
-        Task UpdateAsync(OrderItem orderItem, UserRole role);
-        Task<List<OrderItem>> GetAvailableByGameIdAsync(Guid gameId);
+        Task<OrderItemDTO> AddAsync(OrderItemDTO dto, UserRole role);
+        Task<OrderItemDTO?> GetByIdAsync(Guid id, UserRole role, Guid? userId = null);
+        Task<List<OrderItemDTO>> GetByOrderIdAsync(Guid orderId, UserRole role);
+        Task<List<OrderItemDTO>> GetBySellerIdAsync(Guid sellerId, UserRole role);
+        Task<OrderItemDTO> UpdateAsync(OrderItemDTO dto, UserRole role);
+        Task DeleteAsync(Guid id, UserRole role);
+        Task<int> GetCountAsync(Guid? sellerId = null, Guid? gameId = null, UserRole role = UserRole.Admin);
+        Task<List<OrderItemDTO>> GetFilteredAsync(Guid? sellerId = null, Guid? gameId = null, UserRole role = UserRole.Admin);
+        Task<List<OrderItemDTO>> GetAvailableByGameIdAsync(Guid gameId, UserRole role);
+        Task<List<OrderItemDTO>> GetByUserIdAsync(Guid userId, UserRole role);
+        Task<IEnumerable<OrderItemDTO>> GetAllAsync(UserRole role);
     }
 }

@@ -1,0 +1,56 @@
+﻿@model List<Gamesbakery.Core.DTOs.Response.OrderItemResponseDTO>
+<h2>Товары</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Игра</th>
+            <th>Продавец</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Id</td>
+                <td>@item.GameTitle</td>
+                <td>@item.SellerName</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.Id">Детали</a>
+                    @if (User.IsInRole("Admin") || User.IsInRole("Seller"))
+                    {
+                        <text> | </text><a asp-action="Edit" asp-route-id="@item.Id">Редактировать</a>
+                    }
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <text> | </text>
+                        <form asp-action="Delete" method="post" asp-route-id="@item.Id" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+@if (User.IsInRole("Admin") || User.IsInRole("Seller"))
+{
+    <a asp-action="Create" class="btn btn-primary">Создать товар</a>
+}
+<!-- Pagination -->
+@if (ViewBag.TotalCount > Model.Count)
+{
+    <nav>
+        <ul class="pagination">
+            @if (ViewBag.Page > 1)
+            {
+                <li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.Page - 1)" asp-route-limit="@ViewBag.Limit">Предыдущая</a></li>
+            }
+            @if (ViewBag.Page * ViewBag.Limit < ViewBag.TotalCount)
+            {
+                <li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.Page + 1)" asp-route-limit="@ViewBag.Limit">Следующая</a></li>
+            }
+        </ul>
+    </nav>
+}

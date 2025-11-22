@@ -1,0 +1,43 @@
+﻿@model List<Gamesbakery.Core.DTOs.Response.ReviewResponseDTO>
+<h2>Отзывы пользователя</h2>
+@if (Model.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Игра</th>
+                <th>Рейтинг</th>
+                <th>Текст</th>
+                <th>Дата</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var review in Model)
+            {
+                <tr>
+                    <td>@review.GameId</td>
+                    <td>@review.Rating</td>
+                    <td>@review.Text</td>
+                    <td>@review.CreationDate.ToShortDateString()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Отзывов нет.</p>
+}
+<!-- Pagination -->
+<nav>
+    <ul class="pagination">
+        @if (ViewBag.Page > 1)
+        {
+            <li class="page-item"><a class="page-link" asp-action="UserReviews" asp-route-userId="@ViewBag.UserId" asp-route-page="@(ViewBag.Page - 1)" asp-route-limit="@ViewBag.Limit" asp-route-sortByRating="@ViewBag.SortByRating">Предыдущая</a></li>
+        }
+        @if (ViewBag.Page * ViewBag.Limit < ViewBag.TotalCount)
+        {
+            <li class="page-item"><a class="page-link" asp-action="UserReviews" asp-route-userId="@ViewBag.UserId" asp-route-page="@(ViewBag.Page + 1)" asp-route-limit="@ViewBag.Limit" asp-route-sortByRating="@ViewBag.SortByRating">Следующая</a></li>
+        }
+    </ul>
+</nav>

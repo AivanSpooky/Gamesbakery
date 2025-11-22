@@ -23,11 +23,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             _userService = new UserService(_userRepositoryMock.Object, _authServiceMock.Object);
         }
 
+        [AllureXunit(DisplayName = "Регистрация пользователя с корректными данными - успех")]
         [AllureSeverity(SeverityLevel.critical)]
         [AllureOwner("John Doe")]
         [AllureLink("User API Docs", "https://dev.gamesbakery.com/api/users")]
         [AllureIssue("USER-601")]
-        [AllureXunit(DisplayName = "Регистрация пользователя с корректными данными - успех")]
         [Trait("Category", "Unit")]
         public async Task RegisterUserAsync_ValidData_ReturnsUserDTO()
         {
@@ -57,11 +57,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             Assert.Equal(email, result.Email);
         }
 
+        [AllureXunit(DisplayName = "Регистрация пользователя с пустым именем - исключение")]
         [AllureSeverity(SeverityLevel.normal)]
         [AllureOwner("Jane Smith")]
         [AllureLink("User API Docs", "https://dev.gamesbakery.com/api/users")]
         [AllureIssue("USER-602")]
-        [AllureXunit(DisplayName = "Регистрация пользователя с пустым именем - исключение")]
         [Trait("Category", "Unit")]
         public async Task RegisterUserAsync_EmptyUsername_ThrowsArgumentException()
         {
@@ -76,11 +76,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             await Assert.ThrowsAsync<ArgumentException>(() => _userService.RegisterUserAsync(username, email, password, country));
         }
 
+        [AllureXunit(DisplayName = "Регистрация пользователя с длинным паролем - исключение")]
         [AllureSeverity(SeverityLevel.normal)]
         [AllureOwner("John Doe")]
         [AllureLink("User API Docs", "https://dev.gamesbakery.com/api/users")]
         [AllureIssue("USER-603")]
-        [AllureXunit(DisplayName = "Регистрация пользователя с длинным паролем - исключение")]
         [Trait("Category", "Unit")]
         public async Task RegisterUserAsync_LongPassword_ThrowsArgumentException()
         {
@@ -105,11 +105,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             await Assert.ThrowsAsync<ArgumentException>(() => _userService.RegisterUserAsync(username, email, password, country));
         }
 
+        [AllureXunit(DisplayName = "Получение пользователя по ID - успех")]
         [AllureSeverity(SeverityLevel.critical)]
         [AllureOwner("Jane Smith")]
         [AllureLink("User API Docs", "https://dev.gamesbakery.com/api/users")]
         [AllureIssue("USER-604")]
-        [AllureXunit(DisplayName = "Получение пользователя по ID - успех")]
         [Trait("Category", "Unit")]
         public async Task GetUserByIdAsync_UserExists_ReturnsUserDTO()
         {
@@ -135,11 +135,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             Assert.Equal(userId, result.Id);
         }
 
+        [AllureXunit(DisplayName = "Получение пользователя по несуществующему ID - исключение")]
         [AllureSeverity(SeverityLevel.normal)]
         [AllureOwner("John Doe")]
         [AllureLink("User API Docs", "https://dev.gamesbakery.com/api/users")]
         [AllureIssue("USER-605")]
-        [AllureXunit(DisplayName = "Получение пользователя по несуществующему ID - исключение")]
         [Trait("Category", "Unit")]
         public async Task GetUserByIdAsync_UserNotFound_ThrowsKeyNotFoundException()
         {
@@ -153,11 +153,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             await Assert.ThrowsAsync<KeyNotFoundException>(() => _userService.GetUserByIdAsync(userId));
         }
 
+        [AllureXunit(DisplayName = "Обновление баланса с корректным значением - успех")]
         [AllureSeverity(SeverityLevel.critical)]
         [AllureOwner("Jane Smith")]
         [AllureLink("User API Docs", "https://dev.gamesbakery.com/api/users")]
         [AllureIssue("USER-606")]
-        [AllureXunit(DisplayName = "Обновление баланса с корректным значением - успех")]
         [Trait("Category", "Unit")]
         public async Task UpdateBalanceAsync_ValidBalance_ReturnsUserDTO()
         {
@@ -185,11 +185,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             Assert.Equal(newBalance, result.Balance);
         }
 
+        [AllureXunit(DisplayName = "Обновление баланса с отрицательным значением - исключение")]
         [AllureSeverity(SeverityLevel.normal)]
         [AllureOwner("John Doe")]
         [AllureLink("User API Docs", "https://dev.gamesbakery.com/api/users")]
         [AllureIssue("USER-607")]
-        [AllureXunit(DisplayName = "Обновление баланса с отрицательным значением - исключение")]
         [Trait("Category", "Unit")]
         public async Task UpdateBalanceAsync_NegativeBalance_ThrowsUnauthorizedAccessException()
         {
@@ -212,11 +212,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             await Assert.ThrowsAsync<ArgumentException>(() => _userService.UpdateBalanceAsync(userId, newBalance));
         }
 
+        [AllureXunit(DisplayName = "Блокировка пользователя - успех")]
         [AllureSeverity(SeverityLevel.critical)]
         [AllureOwner("Jane Smith")]
         [AllureLink("User API Docs", "https://dev.gamesbakery.com/api/users")]
         [AllureIssue("USER-608")]
-        [AllureXunit(DisplayName = "Блокировка пользователя - успех")]
         [Trait("Category", "Unit")]
         public async Task BlockUserAsync_UserExists_Success()
         {
@@ -241,11 +241,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             Assert.True(user.IsBlocked);
         }
 
+        [AllureXunit(DisplayName = "Блокировка несуществующего пользователя - исключение")]
         [AllureSeverity(SeverityLevel.normal)]
         [AllureOwner("John Doe")]
         [AllureLink("User API Docs", "https://dev.gamesbakery.com/api/users")]
         [AllureIssue("USER-609")]
-        [AllureXunit(DisplayName = "Блокировка несуществующего пользователя - исключение")]
         [Trait("Category", "Unit")]
         public async Task BlockUserAsync_UserNotFound_ThrowsKeyNotFoundException()
         {

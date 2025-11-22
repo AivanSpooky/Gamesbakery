@@ -1,30 +1,45 @@
-﻿using System.Text.RegularExpressions;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using Gamesbakery.Core;
 
 namespace Gamesbakery.Core.Entities
 {
     public class User
     {
         public Guid Id { get; private set; }
-        public string Username { get; private set; }
-        public string Email { get; private set; }
+        public string Username { get; set; }
+        public string Email { get; set; }
         public DateTime RegistrationDate { get; private set; }
-        public string Country { get; private set; }
+        public string Country { get; set; }
         public string Password { get; private set; }
-        public bool IsBlocked { get; private set; }
+        public bool IsBlocked { get; set; }
         public decimal Balance { get; private set; }
+        public decimal TotalSpent { get; private set; }
+        public Cart Cart { get; private set; } // Added
+        public List<Order> Orders { get; private set; } // Added
+        public List<Review> Reviews { get; private set; } // Added
+        public List<Gift> SentGifts { get; private set; } // Added
+        public List<Gift> ReceivedGifts { get; private set; } // Added
 
         public User()
         {
+            Orders = new List<Order>();
+            Reviews = new List<Review>();
+            SentGifts = new List<Gift>();
+            ReceivedGifts = new List<Gift>();
         }
 
         public User(Guid id, string username, string email, DateTime registrationDate, string country, string password, bool isBlocked, decimal balance)
         {
             if (string.IsNullOrWhiteSpace(username) || username.Length > 50)
                 throw new ArgumentException("Username must be between 1 and 50 characters.", nameof(username));
-            if (string.IsNullOrWhiteSpace(email) || email.Length > 100 || !Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-                throw new ArgumentException("Invalid email format.", nameof(email));
-            if (string.IsNullOrWhiteSpace(country) || country.Length > 300 || !CountryProvider.IsValidCountry(country))
-                throw new ArgumentException("Country must be a valid country name (max 300 characters, no spaces).", nameof(country));
+            if (string.IsNullOrWhiteSpace(email) || email.Length > 100)
+                throw new ArgumentException("Email must be between 1 and 100 characters.", nameof(email));
+            if (string.IsNullOrWhiteSpace(country) || country.Length > 300)
+                throw new ArgumentException("Country must be between 1 and 300 characters.", nameof(country));
+            if (!CountryProvider.IsValidCountry(country))
+                throw new ArgumentException($"Country '{country}' is not a valid country name.", nameof(country));
             if (string.IsNullOrWhiteSpace(password) || password.Length > 100)
                 throw new ArgumentException("Password must be between 1 and 100 characters.", nameof(password));
             if (balance < 0)
@@ -38,6 +53,11 @@ namespace Gamesbakery.Core.Entities
             Password = password;
             IsBlocked = isBlocked;
             Balance = balance;
+            TotalSpent = 0;
+            Orders = new List<Order>();
+            Reviews = new List<Review>();
+            SentGifts = new List<Gift>();
+            ReceivedGifts = new List<Gift>();
         }
 
         public void UpdateBalance(decimal newBalance)
@@ -46,8 +66,18 @@ namespace Gamesbakery.Core.Entities
                 throw new ArgumentException("Balance cannot be negative.", nameof(newBalance));
             Balance = newBalance;
         }
-        public void SetBlock(bool b) => IsBlocked = b ? true : false;
+
+        public void UpdateCountry(string newCountry)
+        {
+            if (string.IsNullOrWhiteSpace(newCountry) || newCountry.Length > 300)
+                throw new ArgumentException("Country must be between 1 and 300 characters.", nameof(newCountry));
+            if (!CountryProvider.IsValidCountry(newCountry))
+                throw new ArgumentException($"Country '{newCountry}' is not a valid country name.", nameof(newCountry));
+            Country = newCountry;
+        }
+
         public void Block() => IsBlocked = true;
         public void Unblock() => IsBlocked = false;
+        public void UpdateTotalSpent(decimal totalSpent) => TotalSpent = totalSpent;
     }
 }

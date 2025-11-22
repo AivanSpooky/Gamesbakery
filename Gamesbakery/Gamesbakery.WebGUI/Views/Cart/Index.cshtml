@@ -1,0 +1,53 @@
+﻿@model List<Gamesbakery.Core.DTOs.Response.CartItemResponseDTO>
+<h2>Корзина</h2>
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+@if (Model.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Название игры</th>
+                <th>Цена</th>
+                <th>Продавец</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.GameTitle</td>
+                    <td>@item.GamePrice.ToString("C")</td>
+                    <td>@item.SellerName</td>
+                    <td>
+                        <form asp-action="Remove" method="post">
+                            <input type="hidden" name="orderItemId" value="@item.OrderItemId" />
+                            <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p>Общая сумма: @ViewBag.Total.ToString("C")</p>
+    <form asp-action="Checkout" method="post">
+        <button type="submit" class="btn btn-primary">Оформить заказ</button>
+    </form>
+    <form asp-action="Clear" method="post">
+        <button type="submit" class="btn btn-secondary">Очистить корзину</button>
+    </form>
+}
+else
+{
+    <p>Корзина пуста.</p>
+}
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

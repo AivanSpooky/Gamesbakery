@@ -1,12 +1,10 @@
-﻿@model Gamesbakery.Core.DTOs.GameDTO.GameDetailsDTO
-
+﻿@model Gamesbakery.Core.DTOs.GameDTO.GameCreateDTO
 <h2>Добавить игру</h2>
-
 <form asp-action="Create" method="post">
     <div class="form-group">
         <label asp-for="CategoryId">Категория</label>
         @{
-            var categories = ViewBag.Categories as IEnumerable<dynamic>;
+            var categories = ViewBag.Categories as IEnumerable<Gamesbakery.Core.DTOs.Response.CategoryResponseDTO>;
         }
         <select asp-for="CategoryId" class="form-control">
             <option value="">Выберите категорию</option>
@@ -48,7 +46,6 @@
     <button type="submit" class="btn btn-primary">Сохранить</button>
     <a asp-action="Index" class="btn btn-secondary">Отмена</a>
 </form>
-
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

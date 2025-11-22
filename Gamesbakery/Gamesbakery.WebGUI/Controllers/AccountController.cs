@@ -1,113 +1,112 @@
-﻿using Gamesbakery.Core;
-using Gamesbakery.WebGUI.Models;
-using Gamesbakery.BusinessLogic.Services;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using System;
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Serilog;
-using System;
+using System.Text;
 using System.Threading.Tasks;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs;
+using Gamesbakery.Core.DTOs.Response;
+using Gamesbakery.WebGUI.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using IAuthenticationService = Gamesbakery.Core.IAuthenticationService;
-using Gamesbakery.Controllers;
+using Microsoft.IdentityModel.Tokens;
 
-namespace Gamesbakery.WebGUI.Controllers
+namespace Gamesbakery.Controllers
 {
-    public class AccountController : BaseController
+    [AllowAnonymous]
+    public class AccountController : Controller
     {
         private readonly IAuthenticationService _authService;
+        private readonly IConfiguration _configuration;
 
         public AccountController(IAuthenticationService authService, IConfiguration configuration)
-            : base(Log.ForContext<AccountController>(), configuration)
         {
             _authService = authService;
+            _configuration = configuration;
         }
 
         [HttpGet]
         public IActionResult Login()
         {
-            using (PushLogContext())
+            if (User.Identity.IsAuthenticated)
+                return RedirectToAction("Index", "Home");
+            return View(new LoginViewModel());
+        }
+
+        public async Task<IActionResult> ApiLogin([FromBody] LoginDTO dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new { error = "Invalid input" });
+            var (role, userId, sellerId) = await _authService.AuthenticateAsync(dto.Username, dto.Password);
+            if (role == UserRole.Guest)
+                return Unauthorized(new { error = "Неверное имя пользователя или пароль" });
+            var token = GenerateJwtToken(dto.Username, role, userId, sellerId);
+            Response.Cookies.Append("JwtToken", token, new CookieOptions
             {
-                LogInformation("User accessed login page");
-                return View();
-            }
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTime.UtcNow.AddHours(8)
+            });
+            return Ok(new SingleResponse<object>
+            {
+                Item = new { token, role = role.ToString(), userId, sellerId },
+                Message = "Login successful"
+            });
         }
 
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
-            using (PushLogContext())
+            if (!ModelState.IsValid)
+                return View(model);
+            var result = await ApiLogin(new LoginDTO
             {
-                try
-                {
-                    LogInformation("User attempted login with username: {Username}", model.Username);
-
-                    if (!ModelState.IsValid)
-                    {
-                        LogWarning("Login failed for username: {Username}: Invalid model state", model.Username);
-                        return View(model);
-                    }
-
-                    var (role, userId, sellerId) = await _authService.AuthenticateAsync(model.Username, model.Password);
-
-                    if (role == UserRole.Guest && model.Username != "GuestUser")
-                    {
-                        ModelState.AddModelError("", "Неверное имя пользователя или пароль.");
-                        LogWarning("Login failed for username: {Username}: Invalid credentials", model.Username);
-                        return View(model);
-                    }
-
-                    // Set session variables
-                    HttpContext.Session.SetString("Username", model.Username);
-                    HttpContext.Session.SetString("Role", role.ToString());
-                    if (userId.HasValue)
-                        HttpContext.Session.SetString("UserId", userId.Value.ToString());
-                    if (sellerId.HasValue)
-                        HttpContext.Session.SetString("SellerId", sellerId.Value.ToString());
-
-                    // Create claims for non-Guest users
-                    var claims = new List<Claim>
-                    {
-                        new Claim(ClaimTypes.Name, model.Username),
-                        new Claim(ClaimTypes.Role, role.ToString())
-                    };
-                    var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                    var principal = new ClaimsPrincipal(identity);
-                    await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-
-                    LogInformation("Login successful for username: {Username}, role: {Role}, userId: {UserId}, sellerId: {SellerId}",
-                        model.Username, role, userId, sellerId);
-                    return RedirectToAction("Index", "Home");
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, "Error during login for username: {Username}", model.Username);
-                    ModelState.AddModelError("", $"Произошла ошибка при входе: {ex.Message}");
-                    return View(model);
-                }
-            }
+                Username = model.Username,
+                Password = model.Password
+            });
+            if (result is OkObjectResult)
+                return RedirectToAction("Index", "Home");
+            ModelState.AddModelError("", "Неверное имя пользователя или пароль.");
+            return View(model);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Logout()
+        [IgnoreAntiforgeryToken]
+        public IActionResult Logout()
         {
-            using (PushLogContext())
+            Response.Cookies.Delete("JwtToken", new CookieOptions
             {
-                try
-                {
-                    LogInformation("User logged out");
-                    await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                    HttpContext.Session.Clear();
-                    return RedirectToAction("Index", "Home");
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, "Error during logout");
-                    throw;
-                }
-            }
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Lax
+            });
+            return RedirectToAction("Index", "Home");
+        }
+
+        private string GenerateJwtToken(string username, UserRole role, Guid? userId, Guid? sellerId)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, username),
+                new Claim(ClaimTypes.Role, role.ToString())
+            };
+            if (userId.HasValue && userId != Guid.Empty)
+                claims.Add(new Claim("UserId", userId.Value.ToString()));
+            if (sellerId.HasValue && sellerId != Guid.Empty)
+                claims.Add(new Claim("SellerId", sellerId.Value.ToString()));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(8),
+                signingCredentials: creds);
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Allure.Xunit.Attributes;
 using Gamesbakery.BusinessLogic.Services;
@@ -19,6 +20,7 @@ namespace Gamesbakery.BusinessLogic.Tests
     {
         private readonly GamesbakeryDbContext _context;
         private readonly GameService _gameService;
+        private static readonly object _lockObject = new object();
 
         public GameServiceIT(SqlServerDbContextFixture fixture)
         {
@@ -33,6 +35,7 @@ namespace Gamesbakery.BusinessLogic.Tests
         [Trait("Category", "Integration")]
         public async Task CanAddGameViaService()
         {
+            // ИЗОЛЯЦИЯ: Каждый тест в своей транзакции
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -48,13 +51,19 @@ namespace Gamesbakery.BusinessLogic.Tests
                 // Assert
                 Assert.NotNull(result);
                 Assert.Equal("Service Test Game", result.Title);
+
+                // Проверяем в БД в рамках той же транзакции
                 var dbGame = await _context.Games.FindAsync(result.Id);
                 Assert.NotNull(dbGame);
                 Assert.Equal(49.99m, dbGame.Price);
+                Assert.Equal(categoryId, dbGame.CategoryId);
+
+                await transaction.CommitAsync();
             }
-            finally
+            catch
             {
                 await transaction.RollbackAsync();
+                throw;
             }
         }
 
@@ -81,13 +90,18 @@ namespace Gamesbakery.BusinessLogic.Tests
                 // Assert
                 Assert.NotNull(result);
                 Assert.False(result.IsForSale);
+
+                // Проверяем в рамках той же транзакции
                 var dbGame = await _context.Games.FindAsync(game.Id);
                 Assert.NotNull(dbGame);
                 Assert.False(dbGame.IsForSale);
+
+                await transaction.CommitAsync();
             }
-            finally
+            catch
             {
                 await transaction.RollbackAsync();
+                throw;
             }
         }
 
@@ -98,12 +112,11 @@ namespace Gamesbakery.BusinessLogic.Tests
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Очистите базу перед тестом
+                // Arrange: Полная очистка перед тестом
                 _context.Games.RemoveRange(_context.Games);
                 _context.Categories.RemoveRange(_context.Categories);
                 await _context.SaveChangesAsync();
 
-                // Arrange
                 var categoryId = Guid.NewGuid();
                 var category = new Category(categoryId, "Strategy", "Strategy games");
                 _context.Categories.Add(category);
@@ -121,10 +134,13 @@ namespace Gamesbakery.BusinessLogic.Tests
                 Assert.Equal(2, result.Count);
                 Assert.Contains(result, g => g.Title == "Game 1");
                 Assert.Contains(result, g => g.Title == "Game 2");
+
+                await transaction.CommitAsync();
             }
-            finally
+            catch
             {
                 await transaction.RollbackAsync();
+                throw;
             }
         }
     }

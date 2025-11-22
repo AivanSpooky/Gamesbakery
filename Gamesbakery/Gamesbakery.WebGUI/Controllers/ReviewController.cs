@@ -1,139 +1,146 @@
-﻿using Gamesbakery.Core;
-using Gamesbakery.Core.DTOs;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Gamesbakery.BusinessLogic.Services;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs;
+using Gamesbakery.Core.DTOs.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Gamesbakery.Infrastructure;
 using Serilog;
-using System;
-using System.Threading.Tasks;
 
 namespace Gamesbakery.Controllers
 {
+    [AllowAnonymous]
     public class ReviewController : BaseController
     {
         private readonly IReviewService _reviewService;
         private readonly IGameService _gameService;
-        private readonly IAuthenticationService _authService;
-        private readonly IDatabaseConnectionChecker _dbChecker;
 
-        public ReviewController(
-            IReviewService reviewService,
-            IGameService gameService,
-            IAuthenticationService authService,
-            IDatabaseConnectionChecker dbChecker,
-            IConfiguration configuration)
+        public ReviewController(IReviewService reviewService, IGameService gameService, IConfiguration configuration)
             : base(Log.ForContext<ReviewController>(), configuration)
         {
             _reviewService = reviewService;
             _gameService = gameService;
-            _authService = authService;
-            _dbChecker = dbChecker;
         }
 
-        public async Task<IActionResult> Index(Guid gameId)
+        [Authorize(Roles = "User,Admin")]
+        public async Task<IActionResult> UserReviews(Guid userId, int page = 1, int limit = 10, string sortByRating = null)
         {
-            using (PushLogContext())
+            try
             {
-                try
+                var currentUserId = GetCurrentUserId();
+                var role = GetCurrentRole();
+                if (currentUserId != userId && role != UserRole.Admin)
+                    return Forbid();
+                var reviews = await _reviewService.GetByUserIdAsync(userId, sortByRating, role);
+                var totalCount = reviews.Count;
+                var paginatedItems = reviews.Skip((page - 1) * limit).Take(limit).Select(r => new ReviewResponseDTO
                 {
-                    LogInformation("User accessed reviews for GameId={GameId}", gameId);
-                    if (!await _dbChecker.CanConnectAsync())
-                    {
-                        LogError("Database unavailable");
-                        ViewBag.ErrorMessage = "База данных недоступна.";
-                        return View(new List<ReviewDTO>());
-                    }
-
-                    var reviews = await _reviewService.GetReviewsByGameIdAsync(gameId);
-                    ViewBag.GameId = gameId;
-                    LogInformation("Successfully retrieved reviews for GameId={GameId}", gameId);
-                    return View(reviews);
-                }
-                catch (KeyNotFoundException ex)
-                {
-                    LogWarning("No reviews found for GameId={GameId}", gameId);
-                    return NotFound();
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, "Error retrieving reviews for GameId={GameId}", gameId);
-                    throw;
-                }
+                    Id = r.Id,
+                    UserId = r.UserId,
+                    GameId = r.GameId,
+                    Text = r.Text,
+                    Rating = r.Rating,
+                    CreationDate = r.CreationDate
+                }).ToList();
+                ViewBag.TotalCount = totalCount;
+                ViewBag.Page = page;
+                ViewBag.Limit = limit;
+                ViewBag.UserId = userId;
+                ViewBag.SortByRating = sortByRating;
+                return View(paginatedItems);
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, "Error loading user reviews for UserId={UserId}", userId);
+                ViewBag.ErrorMessage = $"Ошибка загрузки отзывов: {ex.Message}";
+                return View(new List<ReviewResponseDTO>());
             }
         }
 
+        [AllowAnonymous]
+        public async Task<IActionResult> Index(Guid gameId)
+        {
+            try
+            {
+                var reviews = await _reviewService.GetReviewsByGameIdAsync(gameId);
+                var reviewsResponse = reviews.Select(r => new ReviewResponseDTO
+                {
+                    Id = r.Id,
+                    UserId = r.UserId,
+                    GameId = r.GameId,
+                    Text = r.Text,
+                    Rating = r.Rating,
+                    CreationDate = r.CreationDate
+                }).ToList();
+                ViewBag.GameId = gameId;
+                return View(reviewsResponse);
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, "Error retrieving reviews for GameId={GameId}", gameId);
+                ViewBag.ErrorMessage = $"Ошибка загрузки отзывов: {ex.Message}";
+                return View(new List<ReviewResponseDTO>());
+            }
+        }
+
+        [Authorize(Roles = "User")]
         [HttpGet]
         public async Task<IActionResult> Create(Guid gameId)
         {
-            using (PushLogContext())
+            try
             {
-                try
-                {
-                    LogInformation("User accessed review creation page for GameId={GameId}", gameId);
-                    if (_authService.GetCurrentUserId() == null)
-                    {
-                        LogWarning("Unauthorized access to review creation");
-                        return Unauthorized("Требуется авторизация.");
-                    }
-
-                    var game = await _gameService.GetGameByIdAsync(gameId);
-                    ViewBag.GameTitle = game.Title;
-                    return View(new ReviewDTO { GameId = gameId, Text = "" });
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, "Error accessing review creation page for GameId={GameId}", gameId);
-                    throw;
-                }
+                var role = GetCurrentRole();
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                    return RedirectToAction("Login", "Account");
+                var game = await _gameService.GetGameByIdAsync(gameId, role);
+                if (game == null)
+                    return NotFound();
+                ViewBag.GameTitle = game.Title;
+                ViewBag.GameId = gameId;
+                return View(new ReviewCreateDTO { GameId = gameId });
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, "Error accessing review creation page for GameId={GameId}", gameId);
+                ViewBag.ErrorMessage = $"Ошибка загрузки формы: {ex.Message}";
+                return View();
             }
         }
 
+        [Authorize(Roles = "User")]
         [HttpPost]
-        public async Task<IActionResult> Create(ReviewDTO review)
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> Create(ReviewCreateDTO review)
         {
-            using (PushLogContext())
+            var role = GetCurrentRole();
+            var userId = GetCurrentUserId();
+            try
             {
-                try
+                if (userId == null)
+                    return RedirectToAction("Login", "Account");
+                if (!ModelState.IsValid)
                 {
-                    LogInformation("User attempted to create review with parameters: GameId={GameId}, Rating={Rating}, Text={Text}",
-                        review.GameId, review.Rating, review.Text);
-                    if (_authService.GetCurrentUserId() == null)
-                    {
-                        LogWarning("Unauthorized attempt to create review");
-                        return Unauthorized("Требуется авторизация.");
-                    }
-
-                    if (!await _dbChecker.CanConnectAsync())
-                    {
-                        LogError("Database unavailable");
-                        ModelState.AddModelError("", "База данных недоступна.");
-                        var game = await _gameService.GetGameByIdAsync(review.GameId);
-                        ViewBag.GameTitle = game.Title;
-                        return View(review);
-                    }
-
-                    if (ModelState.IsValid)
-                    {
-                        var userId = _authService.GetCurrentUserId().Value;
-                        await _reviewService.AddReviewAsync(userId, review.GameId, review.Text, review.Rating);
-                        LogInformation("Successfully created review for GameId={GameId} by UserId={UserId}", review.GameId, userId);
-                        return RedirectToAction(nameof(Index), new { gameId = review.GameId });
-                    }
-
-                    LogWarning("Invalid model state for review creation");
-                    var gameForError = await _gameService.GetGameByIdAsync(review.GameId);
-                    ViewBag.GameTitle = gameForError.Title;
+                    var game = await _gameService.GetGameByIdAsync(review.GameId, role);
+                    ViewBag.GameTitle = game?.Title;
+                    ViewBag.GameId = review.GameId;
                     return View(review);
                 }
-                catch (Exception ex)
-                {
-                    LogError(ex, "Error creating review for GameId={GameId}", review.GameId);
-                    ModelState.AddModelError("", $"Ошибка при добавлении отзыва: {ex.Message}");
-                    var gameForError = await _gameService.GetGameByIdAsync(review.GameId);
-                    ViewBag.GameTitle = gameForError.Title;
-                    return View(review);
-                }
+                var createdReview = await _reviewService.AddReviewAsync(userId.Value, review.GameId, review.Text, review.Rating, userId, role);
+                TempData["SuccessMessage"] = "Отзыв успешно добавлен!";
+                return RedirectToAction("Index", new { gameId = review.GameId });
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, "Error creating review for GameId={GameId}", review.GameId);
+                ModelState.AddModelError("", $"Ошибка при добавлении отзыва: {ex.Message}");
+                var game = await _gameService.GetGameByIdAsync(review.GameId, role);
+                ViewBag.GameTitle = game?.Title;
+                ViewBag.GameId = review.GameId;
+                return View(review);
             }
         }
     }

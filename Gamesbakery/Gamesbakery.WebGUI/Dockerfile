@@ -30,8 +30,9 @@ USER root
 RUN apt-get update && \
     apt-get install -y curl netcat-openbsd && \
     rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /app/logs && \
-    chmod 777 /app/logs
+    mkdir -p /app/dataprotection-keys /app/keys /app/logs && \
+    chmod 777 /app/dataprotection-keys /app/keys /app/logs && \
+    chown -R 1000:1000 /app/dataprotection-keys /app/keys /app/logs
 
 # Copy published application
 COPY --from=publish /app/publish .
@@ -47,4 +48,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:80/health/check || exit 1
 
+USER 1000
 ENTRYPOINT ["dotnet", "Gamesbakery.WebGUI.dll"]

@@ -1,34 +1,43 @@
-﻿@model Gamesbakery.WebGUI.Models.HomeIndexViewModel
-@using System.Linq
-
+﻿@using Gamesbakery.WebGUI.Extensions
+@model Gamesbakery.WebGUI.Models.HomeIndexViewModel
 <h2>Добро пожаловать в Gamesbakery!</h2>
-
-<div class="button-container">
-    @if (User.Identity.IsAuthenticated)
-    {
-        <p>Вы вошли как @User.Identity.Name (Роль: @Model.Role)</p>
-        <a asp-controller="Game" asp-action="Index" class="btn btn-primary m-2">Перейти к играм</a>
-    }
-    else
-    {
-        <p>Пожалуйста, <a asp-controller="Account" asp-action="Login">войдите</a> или <a asp-controller="User" asp-action="Register">зарегистрируйтесь</a> для доступа к функциям.</p>
-        <a asp-controller="Game" asp-action="Index" class="btn btn-primary m-2">Перейти к играм</a>
-        <a asp-controller="Account" asp-action="Login" class="btn btn-secondary m-2">Вход</a>
-        <a asp-controller="User" asp-action="Register" class="btn btn-secondary m-2">Регистрация</a>
-    }
-</div>
-
-<h3>Категории игр</h3>
-@if (Model.Categories != null && Model.Categories.Any())
+@if (User.Identity.IsAuthenticated)
 {
-    <ul>
-        @foreach (var category in Model.Categories)
-        {
-            <li><a asp-controller="Game" asp-action="Index" asp-route-genre="@category.GenreName">@category.GenreName</a></li>
+    <p>Вы вошли как @User.Identity.Name
+    <span class="badge badge-primary">
+        @{
+            var role = ViewContext.HttpContext.User.GetRole();
         }
-    </ul>
+        Роль: @role
+    </span></p>
+    <a asp-controller="User" asp-action="Profile" class="btn btn-info">Профиль</a>
+    <form asp-controller="Account" asp-action="Logout" method="post" style="display:inline;">
+        <button type="submit" class="btn btn-outline-danger">Выйти</button>
+    </form>
 }
 else
 {
-    <p>Категории не найдены.</p>
+    <div class="alert alert-info">
+        <a asp-controller="Account" asp-action="Login" class="btn btn-primary">Вход</a>
+        <a asp-controller="User" asp-action="Register" class="btn btn-success">Регистрация</a>
+    </div>
+}
+<a asp-controller="Game" asp-action="Index" class="btn btn-primary m-2">Все игры</a>
+<h3>Категории</h3>
+@if (Model?.Categories != null)
+{
+    <div class="row">
+        @foreach (var category in Model.Categories)
+        {
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">@category.GenreName</h5>
+                        <p class="card-text">@category.Description</p>
+                        <a asp-controller="Game" asp-action="Index" asp-route-genre="@category.GenreName" class="btn btn-primary">Игры</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 }

@@ -1,25 +1,34 @@
-﻿namespace Gamesbakery.Core.Entities
+﻿using System;
+using System.Collections.Generic;
+
+namespace Gamesbakery.Core.Entities
 {
     public class Game
     {
         public Guid Id { get; private set; }
         public Guid CategoryId { get; private set; }
+        public Category Category { get; private set; }
         public void SetCategoryId(Guid categoryId) => CategoryId = categoryId;
         public string Title { get; private set; }
-        public void SetTitle(string title) => Title = title;
+        public void SetTitle(string title) => Title = title ?? throw new ArgumentNullException(nameof(title));
         public decimal Price { get; private set; }
-        public void SetPrice(decimal price) => Price = price;
+        public void SetPrice(decimal price) => Price = price >= 0 ? price : throw new ArgumentException("Price cannot be negative.", nameof(price));
         public DateTime ReleaseDate { get; private set; }
         public void SetReleaseDate(DateTime rd) => ReleaseDate = rd;
         public string Description { get; private set; }
-        public void SetDescription(string desc) => Description = desc;
+        public void SetDescription(string desc) => Description = desc ?? throw new ArgumentNullException(nameof(desc));
         public bool IsForSale { get; private set; }
         public void SetForSale(bool isForSale) => IsForSale = isForSale;
         public string OriginalPublisher { get; private set; }
-        public void SetOriginalPublisher(string op) => OriginalPublisher = op;
+        public void SetOriginalPublisher(string op) => OriginalPublisher = op ?? throw new ArgumentNullException(nameof(op));
+
+        public List<OrderItem> OrderItems { get; private set; } // Added
+        public List<Review> Reviews { get; private set; } // Added
 
         public Game()
         {
+            OrderItems = new List<OrderItem>();
+            Reviews = new List<Review>();
         }
 
         public Game(Guid id, Guid categoryId, string title, decimal price, DateTime releaseDate, string description, bool isForSale, string originalPublisher)
@@ -34,7 +43,6 @@
                 throw new ArgumentException("Description cannot be empty.", nameof(description));
             if (string.IsNullOrWhiteSpace(originalPublisher))
                 throw new ArgumentException("OriginalPublisher cannot be empty.", nameof(originalPublisher));
-
             Id = id;
             CategoryId = categoryId;
             Title = title;
@@ -43,6 +51,8 @@
             Description = description;
             IsForSale = isForSale;
             OriginalPublisher = originalPublisher;
+            OrderItems = new List<OrderItem>();
+            Reviews = new List<Review>();
         }
 
         public void UpdatePrice(decimal newPrice)

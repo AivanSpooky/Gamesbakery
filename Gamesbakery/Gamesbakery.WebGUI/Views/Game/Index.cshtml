@@ -1,12 +1,10 @@
-﻿@model List<Gamesbakery.Core.DTOs.GameDTO.GameListDTO>
-
+﻿@model List<Gamesbakery.Core.DTOs.Response.GameListResponseDTO>
 <h2>Список игр</h2>
-
 <form asp-action="Index" method="get">
     <div class="form-group">
         <label for="genre">Жанр</label>
         @{
-            var categories = ViewBag.Categories as IEnumerable<dynamic>;
+            var categories = ViewBag.Categories as IEnumerable<Gamesbakery.Core.DTOs.Response.CategoryResponseDTO>;
         }
         <select name="genre" id="genre" class="form-control">
             <option value="">Все жанры</option>
@@ -14,7 +12,14 @@
             {
                 @foreach (var category in categories)
                 {
-                    <option value="@category.GenreName" selected="@(ViewBag.Genre == category.GenreName ? "selected" : "")">@category.GenreName</option>
+                    if (ViewBag.Genre != null && ViewBag.Genre.ToString() == category.GenreName)
+                    {
+                        <option value="@category.GenreName" selected>@category.GenreName</option>
+                    }
+                    else
+                    {
+                        <option value="@category.GenreName">@category.GenreName</option>
+                    }
                 }
             }
         </select>
@@ -35,57 +40,37 @@
     <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
 }
 
-<!-- Пагинация -->
 @{
-    int page = ViewBag.Page;
-    int pageSize = ViewBag.PageSize;
-    int totalCount = ViewBag.TotalCount;
-    int totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    var categories = ViewBag.Categories as IEnumerable<Gamesbakery.Core.DTOs.Response.CategoryResponseDTO>;
 }
 
-@if (Model != null && Model.Any())
-{
-    <table class="table">
-        <thead>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Название</th>
+            <th>Цена</th>
+            <th>Жанр</th>
+            <th>Доступно</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var game in Model)
+        {
             <tr>
-                <th>Название</th>
-                <th>Цена</th>
-                <th>В продаже</th>
-                <th>Действия</th>
+                <td>@game.Title</td>
+                <td>@game.Price.ToString("C")</td>
+                <td>Не указан</td>
+                <td>@(game.IsForSale ? "Да" : "Нет")</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@game.Id" class="btn btn-info btn-sm">Подробнее</a>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            @foreach (var game in Model)
-            {
-                <tr>
-                    <td>@game.Title</td>
-                    <td>@game.Price.ToString("C")</td>
-                    <td>@(game.IsForSale ? "Да" : "Нет")</td>
-                    <td>
-                        <a asp-action="Details" asp-route-id="@game.Id">Подробности</a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
-    <nav>
-        <ul class="pagination">
-            @for (int i = 1; i <= totalPages; i++)
-            {
-                <li class="page-item @(i == page ? "active" : "")">
-                    <a class="page-link" href="@Url.Action("Index", new { page = i, pageSize, genre = ViewBag.Genre, minPrice = ViewBag.MinPrice, maxPrice = ViewBag.MaxPrice })">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
-}
-else
-{
-    <p>Игры не найдены.</p>
-}
+        }
+    </tbody>
+</table>
 
 @if (User.IsInRole("Admin"))
 {
-    <a asp-action="Create" class="btn btn-primary">Добавить игру</a>
+    <a asp-action="Create" class="btn btn-success">Добавить игру</a>
 }

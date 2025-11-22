@@ -1,0 +1,152 @@
+@font-face {
+  font-family: 'Rixel';
+  src: url('@/assets/fonts/Rixel.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Roboto';
+  src: url('@/assets/fonts/Roboto-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --color-background: #001299;
+  --color-background-accent: #067AFF;
+  --color-background-border: #00d8ff;
+  --color-bg: #067aff;
+  --color-btn-accent: #CD0000;
+  --color-btn-delete: #CC0000;
+  --color-money-accent: #E0E100;
+  --color-yellow-border: #919200;
+  --color-border-1: #00D9FF;
+  --color-border-2: #067301;
+  --color-border-3: #730303;
+  --color-teal-accent: #13BABA;
+  --color-teal-border: #0a6262;
+  --color-additional-accent: #8FCF27;
+  --color-gift-accent: #DA00A1;
+  --color-purple-accent: #ff00f6;
+  --color-pink-border: #890065;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #000000;
+  --color-ban-color: #cc0000;
+  --color-ban-border: #730303;
+  --color-unban-color: #067301;
+  --color-unban-border: #273b4a;
+  --color-error: #FE0000;
+  --color-warning: #FDFE02;
+  --color-success: #0BFF00;
+  --font-main: 'Rixel', sans-serif;
+  --font-additional: 'Roboto', sans-serif;
+  --font-size-main: 32px;
+  --font-size-small: 16px;
+  --font-size-medium: 24px;
+  --font-size-large: 64px;
+  --radius-main: 40px;
+  --radius-small: 20px;
+  --radius-button: 90px;
+  --border-interactive: 12px;
+  --border-notification: 6px;
+  --section-gap: 160px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-additional);
+  font-size: var(--font-size-small);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Твои неоновые классы */
+.neon-button {
+  background: var(--color-btn-accent);
+  color: var(--color-text-secondary);
+  border: var(--border-interactive) solid var(--color-border-1);
+  border-radius: var(--radius-button);
+  padding: 16px 40px;
+  font-family: var(--font-main);
+  font-size: var(--font-size-medium);
+  cursor: hover
+
+{
+  box-shadow: 0 0 30px #00D9FF;
+}
+
+}
+
+.neon-input {
+  background: transparent;
+  border: var(--border-interactive) solid var(--color-border-1);
+  border-radius: var(--radius-main);
+  padding: 20px;
+  color: white;
+  font-size: var(--font-size-main);
+  font-family: var(--font-main);
+}
+
+  .neon-input::placeholder {
+    color: rgba(255,255,255,0.5);
+  }
+
+.neon-form {
+  background: var(--color-background-accent);
+  border: var(--border-interactive) solid var(--color-border-1);
+  border-radius: var(--radius-main);
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.neon-list-item {
+  background: rgba(0, 0, 0, 0.4);
+  border: var(--border-notification) solid var(--color-border-3);
+  border-radius: var(--radius-main);
+  padding: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-main);
+  font-family: var(--font-main);
+}
+
+.big-title {
+  font-family: var(--font-main);
+  font-size: var(--font-size-large);
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.input-main {
+  @apply neon-input w-full;
+}
+
+.btn-primary {
+  @apply neon-button;
+}
+
+.form-card {
+  @apply neon-form mt-32;
+}

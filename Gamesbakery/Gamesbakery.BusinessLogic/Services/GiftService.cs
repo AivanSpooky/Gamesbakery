@@ -1,12 +1,11 @@
-﻿using Gamesbakery.Core;
-using Gamesbakery.Core.DTOs;
-using Gamesbakery.Core.DTOs.GiftDTO;
-using Gamesbakery.Core.Entities;
-using Gamesbakery.Core.Repositories;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.GiftDTO;
+using Gamesbakery.Core.DTOs.OrderItemDTO;
+using Gamesbakery.Core.Repositories;
 
 namespace Gamesbakery.BusinessLogic.Services
 {
@@ -15,169 +14,74 @@ namespace Gamesbakery.BusinessLogic.Services
         private readonly IGiftRepository _giftRepository;
         private readonly IOrderItemRepository _orderItemRepository;
         private readonly IGameRepository _gameRepository;
-        private readonly IAuthenticationService _authService;
 
-        public GiftService(
-            IGiftRepository giftRepository,
-            IOrderItemRepository orderItemRepository,
-            IGameRepository gameRepository,
-            IAuthenticationService authService)
+        public GiftService(IGiftRepository giftRepository, IOrderItemRepository orderItemRepository, IGameRepository gameRepository)
         {
-            _giftRepository = giftRepository ?? throw new ArgumentNullException(nameof(giftRepository));
-            _orderItemRepository = orderItemRepository ?? throw new ArgumentNullException(nameof(orderItemRepository));
-            _gameRepository = gameRepository ?? throw new ArgumentNullException(nameof(gameRepository));
-            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+            _giftRepository = giftRepository;
+            _orderItemRepository = orderItemRepository;
+            _gameRepository = gameRepository;
         }
 
-        public async Task<IEnumerable<GiftDTO>> GetGiftsBySenderAsync(Guid senderId, UserRole role)
+        public async Task<IEnumerable<GiftDTO>> GetGiftsBySenderAsync(Guid senderId, Guid? curUserId, UserRole role)
         {
-            Guid? curUserId = _authService.GetCurrentUserId();
-            if (senderId == Guid.Empty)
-                throw new ArgumentException("SenderId cannot be empty.", nameof(senderId));
-
-            var gifts = await _giftRepository.GetBySenderIdAsync(senderId, role);
-            var giftDTOs = new List<GiftDTO>();
-
-            foreach (var gift in gifts)
-            {
-                var orderItem = await _orderItemRepository.GetByIdAsync(gift.OrderItemId, role, curUserId);
-                var game = orderItem != null ? await _gameRepository.GetByIdAsync(orderItem.GameId, role) : null;
-                giftDTOs.Add(new GiftDTO
-                {
-                    Id = gift.Id,
-                    SenderId = gift.SenderId,
-                    RecipientId = gift.RecipientId,
-                    GameId = orderItem?.GameId ?? Guid.Empty,
-                    GameTitle = game?.Title ?? "Unknown",
-                    Key = orderItem?.Key,
-                    GiftDate = gift.GiftDate
-                });
-            }
-
-            return giftDTOs;
+            return await _giftRepository.GetBySenderIdAsync(senderId, role);
         }
 
-        public async Task<IEnumerable<GiftDTO>> GetGiftsByRecipientAsync(Guid recipientId, UserRole role)
+        public async Task<IEnumerable<GiftDTO>> GetGiftsByRecipientAsync(Guid recipientId, Guid? curUserId, UserRole role)
         {
-            Guid? curUserId = _authService.GetCurrentUserId();
-            if (recipientId == Guid.Empty)
-                throw new ArgumentException("RecipientId cannot be empty.", nameof(recipientId));
-
-            var gifts = await _giftRepository.GetByRecipientIdAsync(recipientId, role);
-            var giftDTOs = new List<GiftDTO>();
-
-            foreach (var gift in gifts)
-            {
-                var orderItem = await _orderItemRepository.GetByIdAsync(gift.OrderItemId, role, curUserId);
-                var game = orderItem != null ? await _gameRepository.GetByIdAsync(orderItem.GameId, role) : null;
-                giftDTOs.Add(new GiftDTO
-                {
-                    Id = gift.Id,
-                    SenderId = gift.SenderId,
-                    RecipientId = gift.RecipientId,
-                    GameId = orderItem?.GameId ?? Guid.Empty,
-                    GameTitle = game?.Title ?? "Unknown",
-                    Key = orderItem?.Key,
-                    GiftDate = gift.GiftDate
-                });
-            }
-
-            return giftDTOs;
+            return await _giftRepository.GetByRecipientIdAsync(recipientId, role);
         }
 
-        public async Task<GiftDTO> GetGiftByIdAsync(Guid giftId, UserRole role, GiftSource source)
+        public async Task<GiftDTO> GetGiftByIdAsync(Guid giftId, Guid? curUserId, UserRole role)
         {
-            if (giftId == Guid.Empty)
-                throw new ArgumentException("GiftId cannot be empty.", nameof(giftId));
-
-            var currentUserId = _authService.GetCurrentUserId();
-            if (currentUserId == null && role != UserRole.Admin)
-                throw new UnauthorizedAccessException("User not authenticated.");
-
-            try
-            {
-                var gift = await _giftRepository.GetByIdAsync(giftId, role, source, currentUserId);
-                if (gift == null)
-                    throw new KeyNotFoundException($"Gift with ID {giftId} not found.");
-
-                var orderItem = await _orderItemRepository.GetByIdAsync(gift.OrderItemId, role, currentUserId);
-                var game = orderItem != null ? await _gameRepository.GetByIdAsync(orderItem.GameId, role) : null;
-
-                var giftDTO = new GiftDTO
-                {
-                    Id = gift.Id,
-                    SenderId = gift.SenderId,
-                    RecipientId = gift.RecipientId,
-                    GameId = orderItem?.GameId ?? Guid.Empty,
-                    GameTitle = game?.Title ?? "Unknown",
-                    Key = orderItem?.Key,
-                    GiftDate = gift.GiftDate
-                };
-                return giftDTO;
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            if (curUserId == null && role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Not authenticated");
+            var gift = await _giftRepository.GetByIdAsync(giftId, role, curUserId);
+            if (gift == null)
+                throw new KeyNotFoundException($"Gift {giftId} not found");
+            return gift;
         }
 
-        public async Task CreateGiftAsync(Guid senderId, Guid recipientId, Guid orderItemId, UserRole role)
+        public async Task<GiftDTO> SendGiftAsync(Guid senderId, Guid recipientId, Guid orderItemId, Guid? curUserId, UserRole role)
         {
-            Guid? curUserId = _authService.GetCurrentUserId();
-            if (senderId == Guid.Empty || recipientId == Guid.Empty || orderItemId == Guid.Empty)
-                throw new ArgumentException("Invalid sender, recipient, or order item ID.");
+            return await CreateGiftAsync(senderId, recipientId, orderItemId, curUserId, role);
+        }
 
+        public async Task<GiftDTO> CreateGiftAsync(Guid senderId, Guid recipientId, Guid orderItemId, Guid? curUserId, UserRole role)
+        {
+            if (curUserId != senderId && role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Can only send from own account");
             var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, role, curUserId);
-            if (orderItem == null)
-                throw new KeyNotFoundException($"OrderItem with ID {orderItemId} not found.");
-
-            if (orderItem.IsGifted)
-                throw new InvalidOperationException("This order item has already been gifted.");
-
-            orderItem.SetGifted(true);
+            if (orderItem == null || orderItem.IsGifted)
+                throw new InvalidOperationException("Invalid or already gifted order item");
+            orderItem.IsGifted = true;
             await _orderItemRepository.UpdateAsync(orderItem, UserRole.Admin);
-
-            var gift = new Gift(Guid.NewGuid(), senderId, recipientId, orderItemId, DateTime.UtcNow);
-            await _giftRepository.AddAsync(gift);
+            var game = await _gameRepository.GetByIdAsync(orderItem.GameId, role);
+            var giftDTO = new GiftDTO
+            {
+                GiftId = Guid.NewGuid(),
+                SenderId = senderId,
+                RecipientId = recipientId,
+                OrderItemId = orderItemId,
+                GiftDate = DateTime.UtcNow,
+                Type = GiftSource.Sent,
+                GameTitle = game?.Title ?? "Unknown",
+                Key = orderItem.Key
+            };
+            return await _giftRepository.AddAsync(giftDTO, role);
         }
 
         public async Task DeleteGiftAsync(Guid giftId, UserRole role)
         {
-            if (giftId == Guid.Empty)
-                throw new ArgumentException("GiftId cannot be empty.", nameof(giftId));
-
             if (role != UserRole.Admin)
-                throw new UnauthorizedAccessException("Only administrators can delete gifts.");
-
-            var gift = await _giftRepository.GetByIdAsync(giftId, role, GiftSource.All, _authService.GetCurrentUserId());
-            if (gift == null)
-                throw new KeyNotFoundException($"Gift with ID {giftId} not found.");
-
-            await _giftRepository.DeleteAsync(giftId);
+                throw new UnauthorizedAccessException("Only admins can delete gifts");
+            await _giftRepository.DeleteAsync(giftId, role);
         }
 
-        public async Task<IEnumerable<OrderItemGDTO>> GetAvailableOrderItemsAsync(Guid userId, UserRole role)
+        public async Task<IEnumerable<OrderItemDTO>> GetAvailableOrderItemsAsync(Guid userId, UserRole role)
         {
-            if (userId == Guid.Empty)
-                throw new ArgumentException("UserId cannot be empty.", nameof(userId));
-
             var orderItems = await _orderItemRepository.GetByUserIdAsync(userId, role);
-            var availableOrderItems = orderItems
-                .Where(oi => !oi.IsGifted)
-                .ToList();
-
-            var orderItemDTOs = new List<OrderItemGDTO>();
-            foreach (var orderItem in availableOrderItems)
-            {
-                var game = await _gameRepository.GetByIdAsync(orderItem.GameId, role);
-                orderItemDTOs.Add(new OrderItemGDTO
-                {
-                    Id = orderItem.Id,
-                    GameTitle = game?.Title ?? "Unknown"
-                });
-            }
-
-            return orderItemDTOs;
+            return orderItems.Where(oi => !oi.IsGifted);
         }
     }
 }

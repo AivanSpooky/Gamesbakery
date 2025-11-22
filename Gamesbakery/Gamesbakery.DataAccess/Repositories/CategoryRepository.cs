@@ -1,11 +1,12 @@
-﻿using Gamesbakery.Core;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.CategoryDTO;
 using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Gamesbakery.DataAccess.Repositories
 {
@@ -15,69 +16,63 @@ namespace Gamesbakery.DataAccess.Repositories
 
         public CategoryRepository(GamesbakeryDbContext context)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _context = context;
         }
 
-        public async Task<Category> AddAsync(Category category, UserRole role)
+        public async Task<CategoryDTO> AddAsync(CategoryDTO dto, UserRole role)
         {
-            try
+            var entity = new Category(dto.Id, dto.GenreName, dto.Description);
+            _context.Categories.Add(entity);
+            await _context.SaveChangesAsync();
+            return MapToDTO(entity);
+        }
+
+        public async Task DeleteAsync(Guid id, UserRole role)
+        {
+            var entity = await _context.Categories.FindAsync(id);
+            if (entity != null)
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "INSERT INTO Categories (CategoryID, Name, Description) VALUES (@CategoryID, @GenreName, @Description)",
-                    new SqlParameter("@CategoryID", category.Id),
-                    new SqlParameter("@GenreName", category.GenreName),
-                    new SqlParameter("@Description", category.Description ?? (object)DBNull.Value));
-                return category;
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException($"Database error while adding category: {ex.Message}", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to add category to the database.", ex);
+                _context.Categories.Remove(entity);
+                await _context.SaveChangesAsync();
             }
         }
 
-        public async Task<Category> GetByIdAsync(Guid id, UserRole role)
+        public async Task<IEnumerable<CategoryDTO>> GetAllAsync(UserRole role)
         {
-            try
-            {
-                var categories = await _context.Categories
-                    .FromSqlRaw("SELECT CategoryID, Name, Description FROM Categories WHERE CategoryID = @CategoryID",
-                        new SqlParameter("@CategoryID", id))
-                    .ToListAsync();
-                var category = categories.FirstOrDefault();
-                if (category == null)
-                    throw new KeyNotFoundException($"Category with ID {id} not found.");
-                return category;
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException($"Database error while retrieving category with ID {id}: {ex.Message}", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve category with ID {id}: {ex.Message}", ex);
-            }
+            var categories = await _context.Categories.ToListAsync();
+            return categories.Select(MapToDTO);
         }
 
-        public async Task<List<Category>> GetAllAsync(UserRole role)
+        public async Task<CategoryDTO?> GetByIdAsync(Guid id, UserRole role)
         {
-            try
+            var entity = await _context.Categories.FindAsync(id);
+            return entity != null ? MapToDTO(entity) : null;
+        }
+
+        public async Task<CategoryDTO> UpdateAsync(CategoryDTO dto, UserRole role)
+        {
+            var entity = await _context.Categories.FindAsync(dto.Id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Category {dto.Id} not found");
+            entity.Update(dto.GenreName, dto.Description);
+            _context.Categories.Update(entity);
+            await _context.SaveChangesAsync();
+            return MapToDTO(entity);
+        }
+
+        public async Task<int> GetCountAsync(UserRole role)
+        {
+            return await _context.Categories.CountAsync();
+        }
+
+        private CategoryDTO MapToDTO(Category entity)
+        {
+            return new CategoryDTO
             {
-                return await _context.Categories
-                    .FromSqlRaw("SELECT CategoryID, Name, Description FROM Categories")
-                    .ToListAsync();
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException($"Database connection error while retrieving categories: {ex.Message}", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to retrieve categories from the database.", ex);
-            }
+                Id = entity.Id,
+                GenreName = entity.GenreName,
+                Description = entity.Description
+            };
         }
     }
 }

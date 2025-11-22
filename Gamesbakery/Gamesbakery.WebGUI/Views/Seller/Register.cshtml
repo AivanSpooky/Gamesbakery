@@ -1,22 +1,71 @@
-﻿@model Gamesbakery.WebGUI.Models.SellerRegisterViewModel
+﻿@model Gamesbakery.WebGUI.Models.RegisterViewModel
 
-<h2>Регистрация продавца</h2>
+<h2>Регистрация</h2>
 
-<form asp-action="Register" method="post">
+<form id="registerForm" method="post">
     <div class="form-group">
-        <label asp-for="SellerName">Имя продавца</label>
-        <input asp-for="SellerName" class="form-control" />
-        <span asp-validation-for="SellerName" class="text-danger"></span>
+        <label asp-for="Username">Имя пользователя</label>
+        <input asp-for="Username" class="form-control" required />
+        <span asp-validation-for="Username" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Email">Электронная почта</label>
+        <input asp-for="Email" class="form-control" type="email" required />
+        <span asp-validation-for="Email" class="text-danger"></span>
     </div>
     <div class="form-group">
         <label asp-for="Password">Пароль</label>
-        <input asp-for="Password" class="form-control" type="password" />
+        <input asp-for="Password" class="form-control" type="password" required />
         <span asp-validation-for="Password" class="text-danger"></span>
     </div>
-    <button type="submit" class="btn btn-primary">Зарегистрировать</button>
-    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Отмена</a>
+    <div class="form-group">
+        <label asp-for="Country">Страна</label>
+        <input asp-for="Country" class="form-control" required />
+        <span asp-validation-for="Country" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary" id="registerBtn">Зарегистрироваться</button>
+    <a asp-controller="Account" asp-action="Login" class="btn btn-secondary">У меня есть аккаунт</a>
+    <div id="registerError" class="alert alert-danger" style="display:none;"></div>
 </form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('registerBtn');
+            const formData = new FormData(e.target);
+            
+            btn.disabled = true;
+            btn.textContent = 'Регистрация...';
+
+            try {
+                const response = await fetch('/api/v2/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: formData.get('Username'),
+                        email: formData.get('Email'),
+                        password: formData.get('Password'),
+                        country: formData.get('Country')
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    window.location.href = '/Account/Login';
+                } else {
+                    document.getElementById('registerError').style.display = 'block';
+                    document.getElementById('registerError').textContent = data.message || 'Ошибка регистрации';
+                }
+            } catch (error)
+            {
+                document.getElementById('registerError').style.display = 'block';
+                document.getElementById('registerError').textContent = 'Ошибка сети';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Зарегистрироваться';
+            }
+        });
+    </script>
 }

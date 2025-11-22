@@ -1,46 +1,40 @@
-﻿using Gamesbakery.Core;
-using Gamesbakery.Core.Entities;
-using Gamesbakery.Core.Repositories;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.CategoryDTO;
+using Gamesbakery.Core.Repositories;
 
 namespace Gamesbakery.BusinessLogic.Services
 {
     public class CategoryService : ICategoryService
     {
         private readonly ICategoryRepository _categoryRepository;
-        private readonly IAuthenticationService _authService;
 
-        public CategoryService(ICategoryRepository categoryRepository, IAuthenticationService authService)
+        public CategoryService(ICategoryRepository categoryRepository)
         {
             _categoryRepository = categoryRepository;
-            _authService = authService;
         }
 
-        public async Task<Category> AddCategoryAsync(string genreName, string description)
+        public async Task<CategoryDTO> AddCategoryAsync(string genreName, string description, UserRole currentRole)
         {
-            var currentRole = _authService.GetCurrentRole();
             if (currentRole != UserRole.Admin)
-                throw new UnauthorizedAccessException("Only administrators can add categories.");
-
-            var category = new Category(Guid.NewGuid(), genreName, description);
-            return await _categoryRepository.AddAsync(category, currentRole);
+                throw new UnauthorizedAccessException("Only admins can add categories");
+            var dto = new CategoryDTO { Id = Guid.NewGuid(), GenreName = genreName, Description = description };
+            return await _categoryRepository.AddAsync(dto, currentRole);
         }
 
-        public async Task<Category> GetCategoryByIdAsync(Guid id)
+        public async Task<CategoryDTO> GetCategoryByIdAsync(Guid id, UserRole currentRole)
         {
-            var currentRole = _authService.GetCurrentRole();
             var category = await _categoryRepository.GetByIdAsync(id, currentRole);
             if (category == null)
-                throw new KeyNotFoundException($"Category with ID {id} not found.");
+                throw new KeyNotFoundException($"Category {id} not found");
             return category;
         }
 
-        public async Task<List<Category>> GetAllCategoriesAsync()
+        public async Task<List<CategoryDTO>> GetAllCategoriesAsync()
         {
-            var currentRole = _authService.GetCurrentRole();
-            return await _categoryRepository.GetAllAsync(currentRole);
+            return (await _categoryRepository.GetAllAsync(UserRole.Guest)).ToList();
         }
     }
 }

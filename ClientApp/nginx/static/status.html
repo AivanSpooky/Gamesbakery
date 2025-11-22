@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статус системы - GamesBakery</title>
+    <link rel="stylesheet" href="/css/status.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-gamepad"></i>
+                <span>GamesBakery</span>
+            </div>
+            <h1 class="page-title">Мониторинг системы</h1>
+            <div class="last-update" id="lastUpdate">
+                Последнее обновление: загрузка...
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Status Cards -->
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="card-header">
+                        <i class="fas fa-server"></i>
+                        <h3>Состояние сервера</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="status-item">
+                            <span class="label">Активные подключения:</span>
+                            <span class="value" id="activeConnections">-</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">Чтение:</span>
+                            <span class="value" id="reading">-</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">Запись:</span>
+                            <span class="value" id="writing">-</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">Ожидание:</span>
+                            <span class="value" id="waiting">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="status-card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Статистика запросов</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="status-item">
+                            <span class="label">Всего принято:</span>
+                            <span class="value" id="accepted">-</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">Обработано:</span>
+                            <span class="value" id="handled">-</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">Всего запросов:</span>
+                            <span class="value" id="requests">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="status-card">
+                    <div class="card-header">
+                        <i class="fas fa-database"></i>
+                        <h3>База данных</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="status-item">
+                            <span class="label">Состояние:</span>
+                            <span class="value status-indicator" id="dbStatus">
+                                <span class="status-dot"></span>
+                                Проверка...
+                            </span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">Сервер:</span>
+                            <span class="value">SQL Server 2022</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">Порт:</span>
+                            <span class="value">1434</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="status-card">
+                    <div class="card-header">
+                        <i class="fas fa-globe"></i>
+                        <h3>Веб-сервисы</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="status-item">
+                            <span class="label">Основное приложение:</span>
+                            <span class="value status-indicator" id="webStatus">
+                                <span class="status-dot"></span>
+                                Проверка...
+                            </span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">Adminer:</span>
+                            <span class="value status-indicator" id="adminerStatus">
+                                <span class="status-dot"></span>
+                                Проверка...
+                            </span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">NGINX:</span>
+                            <span class="value status-indicator" id="nginxStatus">
+                                <span class="status-dot"></span>
+                                Проверка...
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Raw Data Section -->
+            <div class="raw-data-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-code"></i> Сырые данные</h3>
+                    <button class="toggle-btn" id="toggleRawData">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="raw-data-content" id="rawDataContent">
+                    <pre id="rawStatusData">Загрузка данных...</pre>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="auto-refresh">
+                    <label for="autoRefresh">Автообновление:</label>
+                    <select id="autoRefresh">
+                        <option value="5000">5 секунд</option>
+                        <option value="10000" selected>10 секунд</option>
+                        <option value="30000">30 секунд</option>
+                        <option value="60000">1 минута</option>
+                        <option value="0">Выкл</option>
+                    </select>
+                </div>
+                <div class="system-info">
+                    <span>GamesBakery Monitoring System v1.0</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-sync fa-spin"></i>
+            <p>Обновление данных...</p>
+        </div>
+    </div>
+
+    <script src="/js/status.js"></script>
+</body>
+</html>

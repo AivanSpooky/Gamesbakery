@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Документация - Gamesbakery</title>
+    <link href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.1.0/github-markdown.min.css" rel="stylesheet">
+    <style>
+        .markdown-body {
+            max-width: 1000px;
+            padding: 40px;
+            margin: 0 auto;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .markdown-body img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .markdown-body h1 { color: #2d333b; border-bottom: 2px solid #d0d7de; }
+        .markdown-body h2 { color: #0550ae; }
+        .markdown-body table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        .markdown-body th, .markdown-body td {
+            border: 1px solid #d0d7de;
+            padding: 12px;
+            text-align: left;
+        }
+        .markdown-body th { background-color: #f6f8fa; }
+    </style>
+</head>
+<body class="markdown-body">
+
+<h1>1. Название проекта</h1>
+<p><strong>Gamesbakery</strong></p>
+
+<h1>2. Цель проекта</h1>
+<p><strong>Цель работы:</strong> разработка базы данных и веб-приложения для хранения, обработки и управления данными магазина видеоигр, специализирующегося на продаже цифровых ключей.</p>
+<p><strong>Решаемая проблема:</strong> отсутствие в существующих решениях гибкой системы покупки нескольких копий игр с возможностью их последующей передачи другим пользователям.</p>
+<p><strong>Предоставляемая возможность:</strong> удобный механизм приобретения, продажи и дарения цифровых ключей, обеспечивающий взаимодействие между покупателями, продавцами и администраторами.</p>
+
+<h1>3. Краткое описание идеи проекта</h1>
+<p>Данный проект представляет собой систему для продажи цифровых копий (ключей) видеоигр, их классификации по жанрам и ведения учёта заказов от пользователей. Система позволяет регистрировать новых пользователей, оформлять заказы и оставлять отзывы на игры. Также система предоставляет инструменты для анализа продаж и управления базой данных игр и разработчиков.</p>
+
+<h1>4. Краткое описание предметной области</h1>
+<p>В онлайн-магазине цифровых ключей для видеоигр участвуют:</p>
+<ul>
+    <li><strong>Покупатели (Users)</strong> — просматривают каталог ключей, оформляют заказы, оставляют отзывы</li>
+    <li><strong>Продавцы (Sellers)</strong> — загружают информацию о товарах, указывают цену и количество</li>
+    <li><strong>Администраторы (Admins)</strong> — контролируют целостность и актуальность базы данных</li>
+</ul>
+
+<h1>5. Краткий анализ аналогичных решений</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Решение</th>
+            <th>Модель размещения ключей</th>
+            <th>Система отзывов</th>
+            <th>Покупка нескольких ключей</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><a href="https://steampay.com/">Steampay</a></td>
+            <td>Проверенные продавцы</td>
+            <td>Комментарии</td>
+            <td>Одна подарочная копия</td>
+        </tr>
+        <tr>
+            <td><a href="https://kupikod.com/">Kupikod</a></td>
+            <td>Официальные + частные</td>
+            <td>Звездная оценка</td>
+            <td>Отсутствует</td>
+        </tr>
+        <tr>
+            <td><a href="https://zaka-zaka.com/">Zaka-zaka</a></td>
+            <td>Проверенные продавцы</td>
+            <td>Отсутствует</td>
+            <td>Покупка нескольких копий</td>
+        </tr>
+        <tr style="background-color: #f0f8ff;">
+            <td><strong>Gamesbakery</strong></td>
+            <td>Проверенные продавцы</td>
+            <td>Комментарии + Звезды</td>
+            <td><strong>Несколько копий + передача</strong></td>
+        </tr>
+    </tbody>
+</table>
+
+<h1>6. Краткое обоснование целесообразности</h1>
+<p>Проект создаётся для геймеров и дистрибьюторов, которым важно быстро и безопасно покупать, продавать и дарить цифровые копии игр.</p>
+
+<h1>7. Функциональные требования</h1>
+<ul>
+    <li>Регистрация и аутентификация с ролями (Guest, User, Seller, Admin)</li>
+    <li>Просмотр каталога с фильтрами по жанрам, поиск</li>
+    <li>Покупка нескольких ключей одной игры</li>
+    <li>Передача ключей другим пользователям</li>
+    <li>Отзывы и рейтинги (комментарии + звёзды)</li>
+    <li>Управление данными игр и заказов</li>
+</ul>
+
+<h1>8. Технологический стек</h1>
+<ul>
+    <li><strong>Backend:</strong> ASP.NET Core (C#)</li>
+    <li><strong>Frontend:</strong> HTML, CSS, Razor Pages</li>
+    <li><strong>База данных:</strong> Microsoft SQL Server</li>
+    <li><strong>ORM:</strong> Entity Framework Core</li>
+    <li><strong>Логирование:</strong> Serilog</li>
+    <li><strong>Контейнеризация:</strong> Docker, Docker Compose</li>
+</ul>
+
+<h1>9. Акторы (роли)</h1>
+<ul>
+    <li><strong>Гость</strong> — просмотр каталога</li>
+    <li><strong>Пользователь</strong> — заказы, отзывы</li>
+    <li><strong>Продавец</strong> — управление товарами</li>
+    <li><strong>Админ</strong> — управление системой</li>
+</ul>
+
+<h1>10. Use-Case диаграмма</h1>
+<img src="images/uc.jpg" alt="Use-Case диаграмма">
+
+<h1>11. Диаграмма сущностей</h1>
+<img src="images/er.jpg" alt="ER-диаграмма">
+
+<h1>12. Пользовательские сценарии</h1>
+
+<h2>Сценарий 1: Регистрация</h2>
+<ol>
+    <li>Открывает сайт</li>
+    <li>Выбирает «Зарегистрироваться»</li>
+    <li>Заполняет форму</li>
+    <li>Система создаёт пользователя</li>
+    <li>Перенаправление в кабинет</li>
+</ol>
+
+<h2>Сценарий 2: Оформление заказа</h2>
+<ol>
+    <li>Авторизуется</li>
+    <li>Добавляет игры в корзину</li>
+    <li>Оформляет заказ</li>
+    <li>Система списывает деньги</li>
+    <li>Заказ оплачен</li>
+</ol>
+
+<h1>13. BPMN диаграммы</h1>
+<img src="images/bpmn-1.jpg" alt="Регистрация">
+<img src="images/bpmn-2.jpg" alt="Оформление заказа">
+<img src="images/bpmn-3.jpg" alt="Оформление подарка">
+
+<h1>14. Диаграмма БД</h1>
+<img src="images/DB.png" alt="ER-диаграмма БД">
+
+<h1>15. Компонентная диаграмма</h1>
+<img src="images/upper-level-comps.jpg" alt="Компонентная диаграмма">
+
+<h1>16. Экраны приложения</h1>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+    <img src="images/i1.png" alt="Главное меню">
+    <img src="images/i2.png" alt="Вход">
+    <img src="images/i3.png" alt="Регистрация">
+    <img src="images/i4.png" alt="Список игр">
+    <img src="images/i5.png" alt="Профиль">
+    <img src="images/i6.png" alt="Корзина">
+    <img src="images/i7.png" alt="Экран игры">
+    <img src="images/i8.png" alt="Подарки">
+</div>
+
+</body>
+</html>

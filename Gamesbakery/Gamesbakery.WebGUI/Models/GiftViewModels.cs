@@ -1,11 +1,13 @@
-﻿using Gamesbakery.Core.DTOs.GiftDTO;
+﻿using System.Collections.Generic;
+using Gamesbakery.Core.DTOs.GiftDTO;
+using Gamesbakery.Core.DTOs.Response;
 
 namespace Gamesbakery.WebGUI.Models
 {
     public class GiftIndexViewModel
     {
-        public IEnumerable<GiftDTO> SentGifts { get; set; }
-        public IEnumerable<GiftDTO> ReceivedGifts { get; set; }
+        public IEnumerable<GiftResponseDTO> SentGifts { get; set; } = new List<GiftResponseDTO>();
+        public IEnumerable<GiftResponseDTO> ReceivedGifts { get; set; } = new List<GiftResponseDTO>();
     }
 
     public class GiftCreateViewModel

@@ -1,13 +1,19 @@
-﻿using Gamesbakery.Core.Entities;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Gamesbakery.Core.DTOs;
+using Gamesbakery.Core.Entities;
 
 namespace Gamesbakery.Core.Repositories
 {
     public interface ISellerRepository
     {
-        Task<Seller> AddAsync(Seller seller, UserRole role);
-        Task<Seller> AddAsync(Guid sellerId, string sellerName, string password, DateTime registrationDate, double avgRating, UserRole role);
-        Task<Seller> GetByIdAsync(Guid id, UserRole role);
-        Task<List<Seller>> GetAllAsync(UserRole role);
-        Task<Seller> UpdateAsync(Seller seller, UserRole role);
+        Task<SellerDTO> AddAsync(SellerDTO dto, UserRole role);
+        Task DeleteAsync(Guid id, UserRole role);
+        Task<IEnumerable<SellerDTO>> GetAllAsync(UserRole role);
+        Task<SellerDTO?> GetByIdAsync(Guid id, UserRole role);
+        Task<SellerDTO> UpdateAsync(SellerDTO dto, UserRole role);
+        Task<SellerDTO?> GetProfileAsync(Guid id, UserRole role);
+        Task<int> GetCountAsync(UserRole role);
     }
 }

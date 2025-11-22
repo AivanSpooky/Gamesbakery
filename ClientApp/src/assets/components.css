@@ -1,0 +1,65 @@
+.neon-button {
+  border-radius: var(--radius-button);
+  padding: 10px 20px;
+  font-size: var(--font-size-medium);
+  font-family: var(--font-main);
+  color: var(--text-black);
+  border: var(--border-interactive);
+  cursor: pointer;
+  background: var(--btn-accent); /* Пример, адаптируй по цвету */
+}
+
+.neon-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg-accent);
+  border-radius: var(--radius-main);
+  padding: 15px;
+}
+
+.neon-input {
+  border: var(--border-interactive);
+  border-radius: var(--radius-main);
+  padding: 8px;
+  font-size: var(--font-size-small);
+}
+
+.neon-list-item {
+  display: flex;
+  justify-content: space-between;
+  background: var(--main-color);
+  border: var(--border-3);
+  border-radius: var(--radius-main);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.neon-pagination {
+  display: flex;
+  gap: 5px;
+}
+
+  .neon-pagination button {
+    border-radius: 50%; /* Круглые как в пагинации макетов */
+    width: 30px;
+    height: 30px;
+    background: var(--additional-accent);
+    color: var(--text-white);
+  }
+
+.error-msg {
+  color: var(--error);
+}
+
+.warning-msg {
+  color: var(--warning);
+}
+
+.success-msg {
+  color: var(--success);
+}
+
+.info-msg {
+  color: var(--info);
+}

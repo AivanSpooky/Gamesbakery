@@ -12,10 +12,12 @@ using Microsoft.Extensions.Configuration;
 using Serilog;
 using Xunit;
 using System.Linq;
+using System.IO;
 
 namespace Gamesbakery.E2E.Tests
 {
     [Collection("E2ETests")]
+    [AllureTag("E2E")]
     public class DemoScenarioE2E
     {
         private readonly HttpClient _client;
@@ -23,7 +25,6 @@ namespace Gamesbakery.E2E.Tests
         private readonly string _connectionString;
         private readonly IConfiguration _configuration;
         private static readonly ILogger _logger = Log.ForContext<DemoScenarioE2E>();
-
         private readonly string _testUsername = "I";
         private readonly string _testPassword = "I";
 
@@ -41,7 +42,6 @@ namespace Gamesbakery.E2E.Tests
 
             _baseUrl = _configuration.GetValue<string>("E2E:BaseUrl")?.TrimEnd('/') ?? "http://web:80";
             _client = new HttpClient { BaseAddress = new Uri(_baseUrl + "/") };
-
             _client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
             _client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
 
@@ -67,76 +67,51 @@ namespace Gamesbakery.E2E.Tests
             await connection.OpenAsync();
             await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted);
 
-            try
-            {
-                _logger.Information("Transaction started - all changes will be rolled back");
+            // STEP 1: Verify unauthenticated state
+            _logger.Information("STEP 1: Checking unauthenticated state");
+            var homeResponse = await _client.GetAsync("/");
+            Assert.True(homeResponse.IsSuccessStatusCode);
+            var homeContent = await homeResponse.Content.ReadAsStringAsync();
+            Assert.Contains("Gamesbakery", homeContent);
+            Assert.Contains("Login", homeContent);
+            var canAccessBefore = await CanAccessProfileAsync();
+            Assert.False(canAccessBefore, "Should not access profile before login");
 
-                // STEP 1: Verify unauthenticated state
-                _logger.Information("STEP 1: Checking unauthenticated state");
-                var homeResponse = await _client.GetAsync("/");
-                Assert.True(homeResponse.IsSuccessStatusCode);
-                var homeContent = await homeResponse.Content.ReadAsStringAsync();
-                Assert.Contains("Gamesbakery", homeContent);
-                Assert.Contains("Login", homeContent);
+            // STEP 2: Perform login
+            _logger.Information("STEP 2: Performing login");
+            var loginSuccess = await PerformLoginAsync();
+            Assert.True(loginSuccess, "Login should succeed");
 
-                var canAccessBefore = await CanAccessProfileAsync();
-                Assert.False(canAccessBefore, "Should not access profile before login");
+            // STEP 3: Verify authentication
+            _logger.Information("STEP 3: Verifying authentication");
+            var isAuthenticated = await CanAccessProfileAsync();
+            Assert.True(isAuthenticated, "User should be authenticated after login");
 
-                // STEP 2: Perform login
-                _logger.Information("STEP 2: Performing login");
-                var loginSuccess = await PerformLoginAsync();
-                Assert.True(loginSuccess, "Login should succeed");
+            // STEP 4: Get profile content for analysis
+            _logger.Information("STEP 4: Getting profile content");
+            var profileResponse = await _client.GetAsync("User/Profile");
+            Assert.True(profileResponse.IsSuccessStatusCode);
+            var profileContent = await profileResponse.Content.ReadAsStringAsync();
+            _logger.Information("Profile content length: {Length}", profileContent.Length);
+            _logger.Debug("Profile HTML preview: {Preview}", profileContent.Substring(0, Math.Min(1000, profileContent.Length)));
 
-                // STEP 3: Verify authentication
-                _logger.Information("STEP 3: Verifying authentication");
-                var isAuthenticated = await CanAccessProfileAsync();
-                Assert.True(isAuthenticated, "User should be authenticated after login");
+            // STEP 5: Perform balance top-up
+            _logger.Information("STEP 5: Performing balance top-up");
+            var topUpSuccess = await PerformBalanceTopUpAsync(150.75m);
+            Assert.True(topUpSuccess, "Balance top-up should succeed");
 
-                // STEP 4: Get profile content for analysis
-                _logger.Information("STEP 4: Getting profile content");
-                var profileResponse = await _client.GetAsync("User/Profile");
-                Assert.True(profileResponse.IsSuccessStatusCode);
-                var profileContent = await profileResponse.Content.ReadAsStringAsync();
+            // STEP 6: Verify session still valid
+            _logger.Information("STEP 6: Verifying session after balance update");
+            var sessionStillValid = await CanAccessProfileAsync();
+            Assert.True(sessionStillValid, "Session should remain valid after balance update");
 
-                _logger.Information("Profile content length: {Length}", profileContent.Length);
-                _logger.Debug("Profile HTML preview: {Preview}", profileContent.Substring(0, Math.Min(1000, profileContent.Length)));
+            _logger.Information("E2E Test PASSED: Login and Balance Top-Up successful for user {User}", _testUsername);
+            Console.WriteLine("E2E Test PASSED: Login and Balance Top-Up successful!");
 
-                // STEP 5: Perform balance top-up
-                _logger.Information("STEP 5: Performing balance top-up");
-                var topUpSuccess = await PerformBalanceTopUpAsync(150.75m);
-                Assert.True(topUpSuccess, "Balance top-up should succeed");
-
-                // STEP 6: Verify session still valid
-                _logger.Information("STEP 6: Verifying session after balance update");
-                var sessionStillValid = await CanAccessProfileAsync();
-                Assert.True(sessionStillValid, "Session should remain valid after balance update");
-
-                _logger.Information("E2E Test PASSED: Login and Balance Top-Up successful for user {User}", _testUsername);
-                Console.WriteLine("E2E Test PASSED: Login and Balance Top-Up successful!");
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, "E2E Test FAILED for user {User}", _testUsername);
-                Console.WriteLine("E2E Test FAILED: " + ex.Message);
-                throw;
-            }
-            finally
-            {
-                try
-                {
-                    _logger.Information("Rolling back transaction");
-                    await transaction.RollbackAsync();
-                    _logger.Information("Transaction rolled back successfully");
-                }
-                catch (Exception rollbackEx)
-                {
-                    _logger.Error(rollbackEx, "Failed to rollback transaction");
-                }
-                finally
-                {
-                    await connection.CloseAsync();
-                }
-            }
+            // Rollback transaction to clean up test data
+            _logger.Information("Rolling back transaction");
+            await transaction.RollbackAsync();
+            _logger.Information("Transaction rolled back successfully");
         }
 
         private async Task<bool> PerformLoginAsync()
@@ -170,7 +145,6 @@ namespace Gamesbakery.E2E.Tests
             bool hasErrors = loginResponseContent.Contains("Invalid", StringComparison.OrdinalIgnoreCase) ||
                            loginResponseContent.Contains("неверное") ||
                            loginResponseContent.Contains("error", StringComparison.OrdinalIgnoreCase);
-
             bool isLoginForm = loginResponseContent.Contains("name=\"Username\"") &&
                              loginResponseContent.Contains("name=\"Password\"");
 
@@ -190,7 +164,6 @@ namespace Gamesbakery.E2E.Tests
         private async Task<bool> CanAccessProfileAsync()
         {
             var profileResponse = await _client.GetAsync("User/Profile");
-
             if (profileResponse.IsSuccessStatusCode)
             {
                 var profileContent = await profileResponse.Content.ReadAsStringAsync();
@@ -198,7 +171,6 @@ namespace Gamesbakery.E2E.Tests
                                  profileContent.Contains("Profile") ||
                                  profileContent.Contains("Balance") ||
                                  profileContent.Contains("balance", StringComparison.OrdinalIgnoreCase);
-
                 _logger.Information("Profile access: Status={Status}, HasUserData={HasUserData}",
                     profileResponse.StatusCode, hasUserData);
                 return hasUserData;
@@ -218,7 +190,6 @@ namespace Gamesbakery.E2E.Tests
             var balanceFormResponse = await _client.GetAsync("User/UpdateBalance");
             Assert.True(balanceFormResponse.IsSuccessStatusCode);
             var balanceFormContent = await balanceFormResponse.Content.ReadAsStringAsync();
-
             var balanceToken = ExtractAntiForgeryToken(balanceFormContent);
             Assert.NotNull(balanceToken);
 
@@ -231,7 +202,6 @@ namespace Gamesbakery.E2E.Tests
 
             var balanceContent = new FormUrlEncodedContent(balanceData);
             var balanceUpdateResponse = await _client.PostAsync("User/UpdateBalance", balanceContent);
-
             _logger.Information("Balance update: Status={StatusCode}, Amount={Amount}",
                 balanceUpdateResponse.StatusCode, amount);
 
@@ -270,8 +240,8 @@ namespace Gamesbakery.E2E.Tests
         {
             var timeoutSeconds = _configuration.GetValue<int>("E2E:HealthCheckTimeoutSeconds", 60);
             _logger.Information("Waiting for web service (timeout: {Timeout}s)", timeoutSeconds);
-
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             while (stopwatch.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
             {
                 try
@@ -287,9 +257,11 @@ namespace Gamesbakery.E2E.Tests
                 {
                     _logger.Debug("Health check failed: {Error}", ex.Message);
                 }
+
                 await Task.Delay(2000);
             }
-            throw new TimeoutException($"Web service not ready within {timeoutSeconds}s");
+
+            Assert.Fail($"Web service not ready within {timeoutSeconds}s");
         }
 
         private async Task WaitForDatabaseReadyAsync()
@@ -304,10 +276,8 @@ namespace Gamesbakery.E2E.Tests
                     var connectionString = "Server=db,1433;Database=Gamesbakery;User Id=sa;Password=YourStrong@Pass;TrustServerCertificate=True;Encrypt=False;";
                     await using var connection = new SqlConnection(connectionString);
                     await connection.OpenAsync();
-
                     await using var command = new SqlCommand("SELECT 1", connection);
                     await command.ExecuteScalarAsync();
-
                     _logger.Information("Database ready after {Attempt} attempts", attempt + 1);
                     return;
                 }
@@ -317,7 +287,8 @@ namespace Gamesbakery.E2E.Tests
                     await Task.Delay(1000);
                 }
             }
-            throw new TimeoutException("Database not ready within timeout");
+
+            Assert.Fail("Database not ready within timeout");
         }
     }
 }

@@ -1,24 +1,19 @@
-﻿@model List<Gamesbakery.Core.DTOs.OrderItemDTO>
+﻿@model List<Gamesbakery.Core.DTOs.Response.OrderItemResponseDTO>
 @using Gamesbakery.Core
 @{
     ViewData["Title"] = "Мои ключи";
-    var games = ViewBag.Games as List<Gamesbakery.Core.DTOs.GameDTO.GameListDTO>;
-    var role = Context.Session.GetString("Role");
+    var games = ViewBag.Games as List<Gamesbakery.Core.DTOs.Response.GameListResponseDTO>;
 }
-
 <h2>Мои ключи</h2>
-
 @if (TempData["ErrorMessage"] != null)
 {
     <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
 }
-
-@if (ViewBag.ErrorMessage != null)
+@if (TempData["SuccessMessage"] != null)
 {
-    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
 }
-
-@if (role == "Seller")
+@if (User.IsInRole("Seller"))
 {
     <h4>Добавить новый ключ</h4>
     <form asp-action="CreateKey" method="post">
@@ -33,10 +28,6 @@
                         <option value="@game.Id">@game.Title</option>
                     }
                 }
-                else
-                {
-                    <option value="" disabled>Нет доступных игр</option>
-                }
             </select>
         </div>
         <div class="form-group">
@@ -47,7 +38,6 @@
     </form>
     <hr />
 }
-
 @if (Model.Any())
 {
     <table class="table">
@@ -65,11 +55,11 @@
             {
                 <tr>
                     <td>@item.Id</td>
-                    <td>@(item.OrderId == null ? "Не привязан" : item.OrderId.ToString())</td>
-                    <td>@item.GameId</td>
-                    <td>@(item.Key ?? "Не установлен")</td>
+                    <td>Не привязан</td>
+                    <td>@item.GameTitle</td>
+                    <td>Не установлен</td>
                     <td>
-                        @if (string.IsNullOrEmpty(item.Key) && role == "Seller")
+                        @if (User.IsInRole("Seller"))
                         {
                             <form asp-action="SetOrderItemKey" method="post">
                                 <input type="hidden" name="orderItemId" value="@item.Id" />
@@ -89,5 +79,4 @@ else
 {
     <p>Ключи не найдены.</p>
 }
-
 <a asp-action="Profile" class="btn btn-secondary">Назад</a>

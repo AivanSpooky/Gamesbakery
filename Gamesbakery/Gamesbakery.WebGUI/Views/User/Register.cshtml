@@ -2,31 +2,72 @@
 
 <h2>Регистрация</h2>
 
-<form asp-action="Register" method="post">
+<form id="registerForm" method="post">
     <div class="form-group">
         <label asp-for="Username">Имя пользователя</label>
-        <input asp-for="Username" class="form-control" />
+        <input asp-for="Username" class="form-control" required />
         <span asp-validation-for="Username" class="text-danger"></span>
     </div>
     <div class="form-group">
         <label asp-for="Email">Электронная почта</label>
-        <input asp-for="Email" class="form-control" type="email" />
+        <input asp-for="Email" class="form-control" type="email" required />
         <span asp-validation-for="Email" class="text-danger"></span>
     </div>
     <div class="form-group">
         <label asp-for="Password">Пароль</label>
-        <input asp-for="Password" class="form-control" type="password" />
+        <input asp-for="Password" class="form-control" type="password" required />
         <span asp-validation-for="Password" class="text-danger"></span>
     </div>
     <div class="form-group">
         <label asp-for="Country">Страна</label>
-        <input asp-for="Country" class="form-control" />
+        <input asp-for="Country" class="form-control" required />
         <span asp-validation-for="Country" class="text-danger"></span>
     </div>
-    <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
-    <a asp-controller="Account" asp-action="Login" class="btn btn-secondary">Отмена</a>
+    <button type="submit" class="btn btn-primary" id="registerBtn">Зарегистрироваться</button>
+    <a asp-controller="Account" asp-action="Login" class="btn btn-secondary">У меня есть аккаунт</a>
+    <div id="registerError" class="alert alert-danger" style="display:none;"></div>
+    @Html.AntiForgeryToken()
 </form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('registerBtn');
+            btn.disabled = true;
+            btn.textContent = 'Регистрация...';
+
+            try {
+                const formData = new FormData(e.target);
+                const response = await fetch('/User/api/register', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': formData.get('__RequestVerificationToken')
+                    },
+                    body: JSON.stringify({
+                        username: formData.get('Username'),
+                        email: formData.get('Email'),
+                        password: formData.get('Password'),
+                        country: formData.get('Country')
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    window.location.href = '/Home/Index';
+                } else {
+                    document.getElementById('registerError').style.display = 'block';
+                    document.getElementById('registerError').textContent = data.message || 'Ошибка регистрации';
+                }
+            } catch (error) {
+                document.getElementById('registerError').style.display = 'block';
+                document.getElementById('registerError').textContent = 'Ошибка сети';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Зарегистрироваться';
+            }
+        });
+    </script>
 }

@@ -1,119 +1,134 @@
-﻿@model Gamesbakery.Core.DTOs.GameDTO.GameDetailsDTO
+﻿@model Gamesbakery.Core.DTOs.Response.GameDetailsResponseDTO
 @{
-    ViewData["Title"] = Model.Title;
-    var categories = ViewBag.Categories as List<Gamesbakery.Core.DTOs.CategoryDTO>;
-    var orderItems = ViewBag.OrderItems as List<Gamesbakery.Core.Entities.OrderItem>;
-    var reviews = ViewBag.Reviews as List<Gamesbakery.Core.DTOs.ReviewDTO>;
+    ViewData["Title"] = Model?.Title ?? "Игра не найдена";
+    var categories = ViewBag.Categories as List<Gamesbakery.Core.DTOs.Response.CategoryResponseDTO> ?? new List<Gamesbakery.Core.DTOs.Response.CategoryResponseDTO>();
+    var orderItems = ViewBag.OrderItems as List<Gamesbakery.Core.DTOs.Response.OrderItemResponseDTO> ?? new List<Gamesbakery.Core.DTOs.Response.OrderItemResponseDTO>();
+    var reviews = ViewBag.Reviews as List<Gamesbakery.Core.DTOs.Response.ReviewResponseDTO> ?? new List<Gamesbakery.Core.DTOs.Response.ReviewResponseDTO>();
 }
-
-<h2>@Model.Title</h2>
-
-@if (ViewBag.ErrorMessage != null)
+@if (Model == null)
 {
-    <div class="alert alert-danger">
-        @ViewBag.ErrorMessage
+    <h2>Игра не найдена</h2>
+    <p>Игра не найдена или произошла ошибка. Попробуйте снова.</p>
+}
+else
+{
+    <h2>@Model.Title</h2>
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+    <div>
+        <h4>Детали игры</h4>
+        <hr />
+        <dl class="row">
+            <dt class="col-sm-2">Жанр</dt>
+            <dd class="col-sm-10">
+                @categories.FirstOrDefault(c => c.Id == Model.CategoryId)?.GenreName ?? "Не указан"
+            </dd>
+            <dt class="col-sm-2">Цена</dt>
+            <dd class="col-sm-10">
+                @Model.Price.ToString("C")
+            </dd>
+            <dt class="col-sm-2">Дата выхода</dt>
+            <dd class="col-sm-10">
+                @Model.ReleaseDate.ToShortDateString()
+            </dd>
+            <dt class="col-sm-2">Средний рейтинг</dt>
+            <dd class="col-sm-10">
+                @Model.AverageRating.ToString("F2") / 5
+            </dd>
+            <dt class="col-sm-2">Описание</dt>
+            <dd class="col-sm-10">
+                @Model.Description
+            </dd>
+            <dt class="col-sm-2">Продается</dt>
+            <dd class="col-sm-10">
+                @(Model.IsForSale ? "Да" : "Нет")
+            </dd>
+            <dt class="col-sm-2">Издатель</dt>
+            <dd class="col-sm-10">
+                @Model.OriginalPublisher
+            </dd>
+        </dl>
     </div>
-}
-
-<div>
-    <h4>Детали игры</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            Жанр
-        </dt>
-        <dd class="col-sm-10">
-            @categories?.FirstOrDefault(c => c.Id == Model.CategoryId)?.GenreName
-        </dd>
-        <dt class="col-sm-2">
-            Цена
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Price.ToString("C")
-        </dd>
-        <dt class="col-sm-2">
-            Дата выхода
-        </dt>
-        <dd class="col-sm-10">
-            @Model.ReleaseDate.ToShortDateString()
-        </dd>
-        <dt class="col-sm-2">
-            Средний рейтинг
-        </dt>
-        <dd class="col-sm-10">
-            @Model.AverageRating.ToString("F2") / 5
-        </dd>
-        <dt class="col-sm-2">
-            Описание
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Description
-        </dd>
-        <dt class="col-sm-2">
-            Продается
-        </dt>
-        <dd class="col-sm-10">
-            @Model.IsForSale
-        </dd>
-        <dt class="col-sm-2">
-            Издатель
-        </dt>
-        <dd class="col-sm-10">
-            @Model.OriginalPublisher
-        </dd>
-    </dl>
-</div>
-
-@if (Model.IsForSale && orderItems != null && orderItems.Any())
-{
-    <h4>Доступные копии</h4>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Seller ID</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in orderItems)
-            {
+    @if (Model.IsForSale && orderItems.Any())
+    {
+        <h4>Доступные копии</h4>
+        <table class="table">
+            <thead>
                 <tr>
-                    <td>@item.SellerId</td>
-                    <td>
-                        <form asp-controller="Order" asp-action="AddToCart" method="post">
-                            <input type="hidden" name="orderItemId" value="@item.Id" />
-                            <button type="submit" class="btn btn-primary btn-sm">Добавить в корзину</button>
-                        </form>
-                    </td>
+                    <th>Продавец</th>
+                    <th>Действие</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
-else
-{
-    <p>Эту игру нельзя купить.</p>
-}
-
-<h4>Reviews</h4>
-@if (reviews == null || !reviews.Any())
-{
-    <p>Нет отзывов</p>
-}
-else
-{
-    <div class="list-group">
-        @foreach (var review in reviews)
-        {
-            <div class="list-group-item">
-                <h5 class="mb-1">Оценка: @review.Rating / 5</h5>
-                <p class="mb-1">@review.Text</p>
-                <small>Posted on @review.CreationDate.ToShortDateString()</small>
+            </thead>
+            <tbody>
+                @foreach (var item in orderItems)
+                {
+                    <tr>
+                        <td>@item.SellerName</td>
+                        <td>
+                            <form asp-controller="Cart" asp-action="Add" method="post">
+                                <input type="hidden" name="orderItemId" value="@item.Id" />
+                                <button type="submit" class="btn btn-primary btn-sm">Добавить в корзину</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>Эта игра не продается или нет доступных копий.</p>
+    }
+    <h4>Отзывы</h4>
+    @if (!reviews.Any())
+    {
+        <p>Отзывов нет.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Пользователь</th>
+                    <th>Рейтинг</th>
+                    <th>Текст</th>
+                    <th>Дата</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var review in reviews)
+                {
+                    <tr>
+                        <td>@review.UserId</td>
+                        <td>@review.Rating</td>
+                        <td>@review.Text</td>
+                        <td>@review.CreationDate.ToShortDateString()</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    @if (User.IsInRole("User"))
+    {
+        <h4>Оставить отзыв</h4>
+        <form asp-controller="Review" asp-action="Create" method="post">
+            <input type="hidden" name="gameId" value="@Model.Id" />
+            <div class="form-group">
+                <label for="rating">Рейтинг (1-5)</label>
+                <input name="rating" class="form-control" type="number" min="1" max="5" required />
             </div>
-        }
-    </div>
+            <div class="form-group">
+                <label for="text">Текст</label>
+                <textarea name="text" class="form-control"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Отправить</button>
+        </form>
+    }
 }
-
-<div>
-    <a asp-action="Index" class="btn btn-secondary">Назад к списку игр</a>
-</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

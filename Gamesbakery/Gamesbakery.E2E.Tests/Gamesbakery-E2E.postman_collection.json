@@ -20,6 +20,98 @@
             "type": "string"
         }
     ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "exec": [
+                    "// Calculate request size before sending",
+                    "try {",
+                    "    const request = pm.request;",
+                    "    let requestSize = 0;",
+                    "    ",
+                    "    // Add URL length",
+                    "    requestSize += request.url.toString().length;",
+                    "    ",
+                    "    // Add method length",
+                    "    requestSize += request.method.length;",
+                    "    ",
+                    "    // Add headers size",
+                    "    request.headers.each(header => {",
+                    "        requestSize += header.key.length + header.value.length + 4; // +4 for \": \" and \"\\r\\n\"",
+                    "    });",
+                    "    ",
+                    "    // Add body size if exists",
+                    "    if (request.body && request.body.raw) {",
+                    "        requestSize += request.body.raw.length;",
+                    "    }",
+                    "    ",
+                    "    // Store for use in test script",
+                    "    pm.variables.set('_calculatedRequestSize', requestSize);",
+                    "    console.log('Estimated request size: ' + requestSize + ' bytes');",
+                    "} catch (e) {",
+                    "    console.log('Error calculating request size:', e.message);",
+                    "}"
+                ],
+                "type": "text/javascript"
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "exec": [
+                    "// Display network transfer information",
+                    "console.log('=== NETWORK TRANSFER INFORMATION ===');",
+                    "console.log('Request URL: ' + pm.request.url.toString());",
+                    "console.log('Request method: ' + pm.request.method);",
+                    "console.log('Estimated request size: ' + pm.variables.get('_calculatedRequestSize') + ' bytes');",
+                    "console.log('Response status: ' + pm.response.code + ' ' + pm.response.status);",
+                    "console.log('Response size: ' + pm.response.responseSize + ' bytes');",
+                    "console.log('Total transfer (approx): ' + (parseInt(pm.variables.get('_calculatedRequestSize')) + pm.response.responseSize) + ' bytes');",
+                    "",
+                    "// Display response headers including Content-Length",
+                    "console.log('\\n=== RESPONSE HEADERS ===');",
+                    "pm.response.headers.each(header => {",
+                    "    console.log(header.key + ': ' + header.value);",
+                    "});",
+                    "",
+                    "// Check if Content-Length is present",
+                    "const contentLength = pm.response.headers.get('Content-Length');",
+                    "if (contentLength) {",
+                    "    console.log('\\nContent-Length header found: ' + contentLength + ' bytes');",
+                    "} else {",
+                    "    console.log('\\nContent-Length header not found. Possible reasons:');",
+                    "    console.log('- Transfer-Encoding: chunked');",
+                    "    console.log('- Dynamic content generation');",
+                    "    console.log('- Server configuration');",
+                    "}",
+                    "",
+                    "// Display first 200 bytes of response in hex for binary analysis",
+                    "console.log('\\n=== RESPONSE PREVIEW (first 200 bytes in hex) ===');",
+                    "try {",
+                    "    const responseText = pm.response.text();",
+                    "    if (responseText && responseText.length > 0) {",
+                    "        let hexPreview = '';",
+                    "        const maxBytes = Math.min(200, responseText.length);",
+                    "        ",
+                    "        for (let i = 0; i < maxBytes; i++) {",
+                    "            const charCode = responseText.charCodeAt(i);",
+                    "            hexPreview += charCode.toString(16).padStart(2, '0') + ' ';",
+                    "            if ((i + 1) % 16 === 0) hexPreview += '\\n';",
+                    "        }",
+                    "        console.log(hexPreview);",
+                    "    } else {",
+                    "        console.log('Empty response body');",
+                    "    }",
+                    "} catch (e) {",
+                    "    console.log('Cannot display response preview:', e.message);",
+                    "}",
+                    "console.log('=====================================');"
+                ],
+                "type": "text/javascript"
+            }
+        }
+    ],
     "item": [
         {
             "name": "E2E: Login and Balance Top-Up",
@@ -231,7 +323,12 @@
                                 "exec": [
                                     "pm.test('Balance form accessible', function () {",
                                     "    pm.response.to.have.status(200);",
-                                    "});"
+                                    "});",
+                                    "const responseText = pm.response.text();",
+                                    "const match = responseText.match(/<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"/);",
+                                    "if (match) {",
+                                    "    pm.collectionVariables.set('balanceToken', match[1]);",
+                                    "}"
                                 ],
                                 "type": "text/javascript"
                             }
@@ -263,6 +360,11 @@
                                     "key": "newBalance",
                                     "value": "150.75",
                                     "type": "text"
+                                },
+                                {
+                                    "key": "__RequestVerificationToken",
+                                    "value": "{{balanceToken}}",
+                                    "type": "text"
                                 }
                             ]
                         },
@@ -278,7 +380,16 @@
                             "script": {
                                 "exec": [
                                     "pm.test('Balance top-up successful', function () {",
-                                    "    pm.response.to.be.oneOf([200, 302]);",
+                                    "    // Ожидаем редирект на Profile (302)",
+                                    "    pm.response.to.have.status(302);",
+                                    "    ",
+                                    "    // Проверяем Location header",
+                                    "    const location = pm.response.headers.get('Location');",
+                                    "    pm.expect(location).to.include('/User/Profile');",
+                                    "    ",
+                                    "    console.log('Response status:', pm.response.code);",
+                                    "    console.log('Location header:', location);",
+                                    "    console.log('Response body:', pm.response.text().substring(0, 200));",
                                     "});"
                                 ],
                                 "type": "text/javascript"

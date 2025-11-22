@@ -22,62 +22,47 @@ namespace Gamesbakery.DataAccess.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Gamesbakery.Core.DTOs.GiftDTO.ReceivedGift", b =>
+            modelBuilder.Entity("Gamesbakery.Core.Entities.Cart", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CartId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("GiftID");
+                        .HasColumnName("CartID");
 
-                    b.Property<DateTime>("GiftDate")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("GiftDate");
-
-                    b.Property<Guid>("OrderItemId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("OrderItemID");
+                        .HasColumnName("UserID");
 
-                    b.Property<Guid>("RecipientId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("RecipientID");
+                    b.HasKey("CartId");
 
-                    b.Property<Guid>("SenderId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("SenderID");
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
-                    b.HasKey("Id");
-
-                    b.ToTable((string)null);
-
-                    b.ToView("UserReceivedGifts", (string)null);
+                    b.ToTable("Carts", (string)null);
                 });
 
-            modelBuilder.Entity("Gamesbakery.Core.DTOs.GiftDTO.SentGift", b =>
+            modelBuilder.Entity("Gamesbakery.Core.Entities.CartItem", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CartItemID")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("GiftID");
+                        .HasColumnName("CartItemID");
 
-                    b.Property<DateTime>("GiftDate")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("GiftDate");
+                    b.Property<Guid>("CartID")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("CartID");
 
-                    b.Property<Guid>("OrderItemId")
+                    b.Property<Guid>("OrderItemID")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("OrderItemID");
 
-                    b.Property<Guid>("RecipientId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("RecipientID");
+                    b.HasKey("CartItemID");
 
-                    b.Property<Guid>("SenderId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("SenderID");
+                    b.HasIndex("CartID");
 
-                    b.HasKey("Id");
+                    b.HasIndex("OrderItemID");
 
-                    b.ToTable((string)null);
-
-                    b.ToView("UserSentGifts", (string)null);
+                    b.ToTable("CartItems", (string)null);
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.Category", b =>
@@ -157,9 +142,21 @@ namespace Gamesbakery.DataAccess.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("GiftID");
 
+                    b.Property<string>("GameTitle")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("GameTitle");
+
                     b.Property<DateTime>("GiftDate")
                         .HasColumnType("datetime2")
                         .HasColumnName("GiftDate");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("KeyText");
 
                     b.Property<Guid>("OrderItemId")
                         .HasColumnType("uniqueidentifier")
@@ -172,6 +169,10 @@ namespace Gamesbakery.DataAccess.Migrations
                     b.Property<Guid>("SenderId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("SenderID");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int")
+                        .HasColumnName("GiftType");
 
                     b.HasKey("Id");
 
@@ -203,9 +204,15 @@ namespace Gamesbakery.DataAccess.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("OrderDate");
 
-                    b.Property<decimal>("Price")
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("Status");
+
+                    b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(10,2)")
-                        .HasColumnName("TotalPrice");
+                        .HasColumnName("TotalAmount");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier")
@@ -216,8 +223,6 @@ namespace Gamesbakery.DataAccess.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Orders", (string)null);
-
-                    b.ToView("UserOrders", (string)null);
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.OrderItem", b =>
@@ -259,8 +264,6 @@ namespace Gamesbakery.DataAccess.Migrations
                     b.HasIndex("SellerId");
 
                     b.ToTable("OrderItems", (string)null);
-
-                    b.ToView("SellerOrderItems", (string)null);
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.Review", b =>
@@ -298,8 +301,6 @@ namespace Gamesbakery.DataAccess.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Reviews", (string)null);
-
-                    b.ToView("UserReviews", (string)null);
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.Seller", b =>
@@ -332,8 +333,6 @@ namespace Gamesbakery.DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Sellers", (string)null);
-
-                    b.ToView("SellerProfile", (string)null);
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.User", b =>
@@ -349,8 +348,8 @@ namespace Gamesbakery.DataAccess.Migrations
 
                     b.Property<string>("Country")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
                         .HasColumnName("Country");
 
                     b.Property<string>("Email")
@@ -373,6 +372,10 @@ namespace Gamesbakery.DataAccess.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("RegistrationDate");
 
+                    b.Property<decimal>("TotalSpent")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("TotalSpent");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -385,17 +388,47 @@ namespace Gamesbakery.DataAccess.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
 
-                    b.ToView("UserProfile", (string)null);
+            modelBuilder.Entity("Gamesbakery.Core.Entities.Cart", b =>
+                {
+                    b.HasOne("Gamesbakery.Core.Entities.User", "User")
+                        .WithOne("Cart")
+                        .HasForeignKey("Gamesbakery.Core.Entities.Cart", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Gamesbakery.Core.Entities.CartItem", b =>
+                {
+                    b.HasOne("Gamesbakery.Core.Entities.Cart", "Cart")
+                        .WithMany("Items")
+                        .HasForeignKey("CartID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Gamesbakery.Core.Entities.OrderItem", "OrderItem")
+                        .WithMany("CartItems")
+                        .HasForeignKey("OrderItemID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Cart");
+
+                    b.Navigation("OrderItem");
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.Game", b =>
                 {
-                    b.HasOne("Gamesbakery.Core.Entities.Category", null)
-                        .WithMany()
+                    b.HasOne("Gamesbakery.Core.Entities.Category", "Category")
+                        .WithMany("Games")
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.Gift", b =>
@@ -403,66 +436,125 @@ namespace Gamesbakery.DataAccess.Migrations
                     b.HasOne("Gamesbakery.Core.Entities.OrderItem", "OrderItem")
                         .WithMany()
                         .HasForeignKey("OrderItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Gamesbakery.Core.Entities.User", null)
-                        .WithMany()
+                    b.HasOne("Gamesbakery.Core.Entities.User", "Recipient")
+                        .WithMany("ReceivedGifts")
                         .HasForeignKey("RecipientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Gamesbakery.Core.Entities.User", null)
-                        .WithMany()
+                    b.HasOne("Gamesbakery.Core.Entities.User", "Sender")
+                        .WithMany("SentGifts")
                         .HasForeignKey("SenderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("OrderItem");
+
+                    b.Navigation("Recipient");
+
+                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.Order", b =>
                 {
-                    b.HasOne("Gamesbakery.Core.Entities.User", null)
-                        .WithMany()
+                    b.HasOne("Gamesbakery.Core.Entities.User", "User")
+                        .WithMany("Orders")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.OrderItem", b =>
                 {
-                    b.HasOne("Gamesbakery.Core.Entities.Game", null)
-                        .WithMany()
+                    b.HasOne("Gamesbakery.Core.Entities.Game", "Game")
+                        .WithMany("OrderItems")
                         .HasForeignKey("GameId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Gamesbakery.Core.Entities.Order", null)
-                        .WithMany()
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .WithMany("OrderItems")
+                        .HasForeignKey("OrderId");
 
-                    b.HasOne("Gamesbakery.Core.Entities.Seller", null)
-                        .WithMany()
+                    b.HasOne("Gamesbakery.Core.Entities.Seller", "Seller")
+                        .WithMany("OrderItems")
                         .HasForeignKey("SellerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Game");
+
+                    b.Navigation("Seller");
                 });
 
             modelBuilder.Entity("Gamesbakery.Core.Entities.Review", b =>
                 {
-                    b.HasOne("Gamesbakery.Core.Entities.Game", null)
-                        .WithMany()
+                    b.HasOne("Gamesbakery.Core.Entities.Game", "Game")
+                        .WithMany("Reviews")
                         .HasForeignKey("GameId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Gamesbakery.Core.Entities.User", null)
-                        .WithMany()
+                    b.HasOne("Gamesbakery.Core.Entities.User", "User")
+                        .WithMany("Reviews")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Game");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Gamesbakery.Core.Entities.Cart", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Gamesbakery.Core.Entities.Category", b =>
+                {
+                    b.Navigation("Games");
+                });
+
+            modelBuilder.Entity("Gamesbakery.Core.Entities.Game", b =>
+                {
+                    b.Navigation("OrderItems");
+
+                    b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("Gamesbakery.Core.Entities.Order", b =>
+                {
+                    b.Navigation("OrderItems");
+                });
+
+            modelBuilder.Entity("Gamesbakery.Core.Entities.OrderItem", b =>
+                {
+                    b.Navigation("CartItems");
+                });
+
+            modelBuilder.Entity("Gamesbakery.Core.Entities.Seller", b =>
+                {
+                    b.Navigation("OrderItems");
+                });
+
+            modelBuilder.Entity("Gamesbakery.Core.Entities.User", b =>
+                {
+                    b.Navigation("Cart")
+                        .IsRequired();
+
+                    b.Navigation("Orders");
+
+                    b.Navigation("ReceivedGifts");
+
+                    b.Navigation("Reviews");
+
+                    b.Navigation("SentGifts");
                 });
 #pragma warning restore 612, 618
         }

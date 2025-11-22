@@ -1,14 +1,12 @@
-﻿using Gamesbakery.Core.DTOs.GiftDTO;
-using Gamesbakery.Core;
-using Gamesbakery.Core.Entities;
-using Gamesbakery.Core.Repositories;
-using Gamesbakery.DataAccess;
-using Microsoft.EntityFrameworkCore;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.GiftDTO;
+using Gamesbakery.Core.Entities;
+using Gamesbakery.Core.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace Gamesbakery.DataAccess.Repositories
 {
@@ -18,145 +16,117 @@ namespace Gamesbakery.DataAccess.Repositories
 
         public GiftRepository(GamesbakeryDbContext context)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _context = context;
         }
 
-        public async Task<Gift> AddAsync(Gift gift)
+        public async Task<GiftDTO> AddAsync(GiftDTO dto, UserRole role)
         {
-            try
-            {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "INSERT INTO Gifts (GiftID, SenderID, RecipientID, OrderItemID, GiftDate) " +
-                    "VALUES (@GiftID, @SenderID, @RecipientID, @OrderItemID, @GiftDate)",
-                    new SqlParameter("@GiftID", gift.Id),
-                    new SqlParameter("@SenderID", gift.SenderId),
-                    new SqlParameter("@RecipientID", gift.RecipientId),
-                    new SqlParameter("@OrderItemID", gift.OrderItemId),
-                    new SqlParameter("@GiftDate", gift.GiftDate));
-                return gift;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to add gift to the database.", ex);
-            }
+            if (role != UserRole.User && role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Access denied.");
+            var entity = new Gift(dto.GiftId, dto.SenderId, dto.RecipientId, dto.OrderItemId, dto.GiftDate, dto.Type, dto.GameTitle, dto.Key);
+            _context.Gifts.Add(entity);
+            await _context.SaveChangesAsync();
+            return MapToDTO(entity);
         }
 
-        public async Task<Gift> GetByIdAsync(Guid giftId, UserRole role, GiftSource source, Guid? currentUserId)
+        public async Task DeleteAsync(Guid id, UserRole role)
         {
-            try
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can delete gifts.");
+            var entity = await _context.Gifts.FindAsync(id);
+            if (entity != null)
             {
-                string query;
-                SqlParameter[] parameters;
-
-                if (role == UserRole.Admin)
-                {
-                    query = source == GiftSource.Sent
-                        ? "SELECT GiftID, SenderID, RecipientID, OrderItemID, GiftDate " +
-                          "FROM UserSentGifts WHERE GiftID = @GiftID"
-                        : "SELECT GiftID, SenderID, RecipientID, OrderItemID, GiftDate " +
-                          "FROM UserReceivedGifts WHERE GiftID = @GiftID";
-                    parameters = new[] { new SqlParameter("@GiftID", giftId) };
-                }
-                else if (source == GiftSource.Sent)
-                {
-                    if (currentUserId == null)
-                        throw new ArgumentNullException(nameof(currentUserId), "CurrentUserId is required for non-admin roles.");
-                    query = "SELECT GiftID, SenderID, RecipientID, OrderItemID, GiftDate " +
-                            "FROM UserSentGifts WHERE GiftID = @GiftID AND SenderID = @SenderID";
-                    parameters = new[]
-                    {
-                    new SqlParameter("@GiftID", giftId),
-                    new SqlParameter("@SenderID", currentUserId.Value)
-                };
-                }
-                else // GiftSource.Received
-                {
-                    if (currentUserId == null)
-                        throw new ArgumentNullException(nameof(currentUserId), "CurrentUserId is required for non-admin roles.");
-                    query = "SELECT GiftID, SenderID, RecipientID, OrderItemID, GiftDate " +
-                            "FROM UserReceivedGifts WHERE GiftID = @GiftID AND RecipientID = @RecipientID";
-                    parameters = new[]
-                    {
-                    new SqlParameter("@GiftID", giftId),
-                    new SqlParameter("@RecipientID", currentUserId.Value)
-                };
-                }
-
-                Gift gift;
-                if (source == GiftSource.Sent)
-                {
-                    var sentGift = await _context.UserSentGifts
-                        .FromSqlRaw(query, parameters)
-                        .Select(g => new Gift(g.Id, g.SenderId, g.RecipientId, g.OrderItemId, g.GiftDate))
-                        .FirstOrDefaultAsync();
-                    gift = sentGift;
-                }
-                else
-                {
-                    var receivedGift = await _context.UserReceivedGifts
-                        .FromSqlRaw(query, parameters)
-                        .Select(g => new Gift(g.Id, g.SenderId, g.RecipientId, g.OrderItemId, g.GiftDate))
-                        .FirstOrDefaultAsync();
-                    gift = receivedGift;
-                }
-
-                return gift ?? throw new KeyNotFoundException($"Gift with ID {giftId} not found.");
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve gift with ID {giftId}.", ex);
+                _context.Gifts.Remove(entity);
+                await _context.SaveChangesAsync();
             }
         }
 
-        public async Task<IEnumerable<SentGift>> GetBySenderIdAsync(Guid senderId, UserRole role)
+        public async Task<GiftDTO?> GetByIdAsync(Guid id, UserRole role, Guid? userId = null)
         {
-            try
+            var query = _context.Gifts.AsQueryable();
+            if (role == UserRole.User || role == UserRole.Seller)
             {
-                return await _context.UserSentGifts
-                    .FromSqlRaw("SELECT GiftID, SenderID, RecipientID, OrderItemID, GiftDate " +
-                                "FROM UserSentGifts WHERE SenderID = @SenderID " +
-                                "ORDER BY GiftDate DESC",
-                        new SqlParameter("@SenderID", senderId))
-                    .ToListAsync();
+                if (!userId.HasValue)
+                    throw new UnauthorizedAccessException("User ID required for non-admin access.");
+                query = query.Where(g => g.SenderId == userId.Value || g.RecipientId == userId.Value);
             }
-            catch (Exception ex)
+            else if (role != UserRole.Admin)
             {
-                throw new InvalidOperationException($"Failed to retrieve gifts for sender {senderId}.", ex);
+                throw new UnauthorizedAccessException("Access denied.");
             }
+            var entity = await query.FirstOrDefaultAsync(g => g.Id == id);
+            return entity != null ? MapToDTO(entity) : null;
         }
 
-        public async Task<IEnumerable<ReceivedGift>> GetByRecipientIdAsync(Guid recipientId, UserRole role)
+        public async Task<GiftDTO> UpdateAsync(GiftDTO dto, UserRole role)
         {
-            try
-            {
-                return await _context.UserReceivedGifts
-                    .FromSqlRaw("SELECT GiftID, SenderID, RecipientID, OrderItemID, GiftDate " +
-                                "FROM UserReceivedGifts WHERE RecipientID = @RecipientID " +
-                                "ORDER BY GiftDate DESC",
-                        new SqlParameter("@RecipientID", recipientId))
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve gifts for recipient {recipientId}.", ex);
-            }
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can update gifts.");
+            var entity = await _context.Gifts.FindAsync(dto.GiftId);
+            if (entity == null)
+                throw new KeyNotFoundException($"Gift {dto.GiftId} not found");
+            entity.SenderId = dto.SenderId;
+            entity.RecipientId = dto.RecipientId;
+            entity.OrderItemId = dto.OrderItemId;
+            entity.GiftDate = dto.GiftDate;
+            entity.Type = dto.Type;
+            _context.Gifts.Update(entity);
+            await _context.SaveChangesAsync();
+            return MapToDTO(entity);
         }
 
-        public async Task DeleteAsync(Guid giftId)
+        public async Task<List<GiftDTO>> GetBySenderIdAsync(Guid senderId, UserRole role)
         {
-            try
-            {
-                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
-                    "DELETE FROM Gifts WHERE GiftID = @GiftID",
-                    new SqlParameter("@GiftID", giftId));
+            if (role != UserRole.User && role != UserRole.Seller && role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Access denied.");
+            var gifts = await _context.Gifts.Where(g => g.SenderId == senderId).ToListAsync();
+            return gifts.Select(MapToDTO).ToList();
+        }
 
-                if (rowsAffected == 0)
-                    throw new KeyNotFoundException($"Gift with ID {giftId} not found.");
-            }
-            catch (Exception ex)
+        public async Task<List<GiftDTO>> GetByRecipientIdAsync(Guid recipientId, UserRole role)
+        {
+            if (role != UserRole.User && role != UserRole.Seller && role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Access denied.");
+            var gifts = await _context.Gifts.Where(g => g.RecipientId == recipientId).ToListAsync();
+            return gifts.Select(MapToDTO).ToList();
+        }
+
+        public async Task<List<GiftDTO>> GetAllForUserAsync(Guid userId, UserRole role, GiftSource source)
+        {
+            if (role != UserRole.User && role != UserRole.Seller && role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Access denied.");
+            var query = _context.Gifts.AsQueryable();
+            switch (source)
             {
-                throw new InvalidOperationException($"Failed to delete gift with ID {giftId}.", ex);
+                case GiftSource.Sent:
+                    query = query.Where(g => g.SenderId == userId && g.Type == GiftSource.Sent);
+                    break;
+                case GiftSource.Received:
+                    query = query.Where(g => g.RecipientId == userId && g.Type == GiftSource.Received);
+                    break;
+                case GiftSource.All:
+                    query = query.Where(g => g.SenderId == userId || g.RecipientId == userId);
+                    break;
+                default:
+                    throw new ArgumentException("Invalid source");
             }
+            var gifts = await query.ToListAsync();
+            return gifts.Select(MapToDTO).ToList();
+        }
+
+        private GiftDTO MapToDTO(Gift entity)
+        {
+            return new GiftDTO
+            {
+                GiftId = entity.Id,
+                SenderId = entity.SenderId,
+                RecipientId = entity.RecipientId,
+                OrderItemId = entity.OrderItemId,
+                GiftDate = entity.GiftDate,
+                Type = entity.Type,
+                GameTitle = entity.GameTitle,
+                Key = entity.Key
+            };
         }
     }
 }

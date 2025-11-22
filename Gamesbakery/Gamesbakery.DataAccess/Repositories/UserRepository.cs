@@ -1,188 +1,104 @@
-﻿using Gamesbakery.Core;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.UserDTO;
 using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-
 namespace Gamesbakery.DataAccess.Repositories
 {
     public class UserRepository : IUserRepository
     {
         private readonly GamesbakeryDbContext _context;
-
         public UserRepository(GamesbakeryDbContext context)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _context = context;
         }
-
-        public async Task<IEnumerable<User>> GetAllAsync()
+        public async Task<UserProfileDTO> AddAsync(UserProfileDTO dto, UserRole role)
         {
-            try
-            {
-                return await _context.Users
-                    .FromSqlRaw("SELECT UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance FROM Users")
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to retrieve users from the database.", ex);
-            }
+            var entity = new User(dto.Id, dto.Username, dto.Email, dto.RegistrationDate, dto.Country, dto.Password, dto.IsBlocked, dto.Balance);
+            _context.Users.Add(entity);
+            await _context.SaveChangesAsync();
+            return MapToProfileDTO(entity);
         }
-
-        public async Task<User> AddAsync(User user, UserRole role)
+        public async Task DeleteAsync(Guid id, UserRole role)
         {
-            try
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can delete users.");
+            var entity = await _context.Users.FindAsync(id);
+            if (entity != null)
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "INSERT INTO Users (UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance) " +
-                    "VALUES (@UserID, @Name, @Email, @RegistrationDate, @Country, @Password, @IsBlocked, @Balance)",
-                    new SqlParameter("@UserID", user.Id),
-                    new SqlParameter("@Name", user.Username),
-                    new SqlParameter("@Email", user.Email),
-                    new SqlParameter("@RegistrationDate", user.RegistrationDate),
-                    new SqlParameter("@Country", user.Country),
-                    new SqlParameter("@Password", user.Password),
-                    new SqlParameter("@IsBlocked", user.IsBlocked),
-                    new SqlParameter("@Balance", user.Balance));
-                return user;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to add user to the database.", ex);
+                _context.Users.Remove(entity);
+                await _context.SaveChangesAsync();
             }
         }
-
-        public async Task<User> AddAsync(Guid userId, string username, string email, string password, string country, DateTime registrationDate, bool isBlocked, decimal balance, UserRole role)
+        public async Task<IEnumerable<UserProfileDTO>> GetAllAsync(UserRole role)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "INSERT INTO Users (UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance) " +
-                    "VALUES (@UserID, @Name, @Email, @RegistrationDate, @Country, @Password, @IsBlocked, @Balance)",
-                    new SqlParameter("@UserID", userId),
-                    new SqlParameter("@Name", username),
-                    new SqlParameter("@Email", email),
-                    new SqlParameter("@RegistrationDate", registrationDate),
-                    new SqlParameter("@Country", country),
-                    new SqlParameter("@Password", password),
-                    new SqlParameter("@IsBlocked", isBlocked),
-                    new SqlParameter("@Balance", balance));
-
-                await transaction.CommitAsync();
-                return await GetByIdAsync(userId, role);
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                throw new InvalidOperationException($"Failed to add user with ID {userId}: {ex.Message}", ex);
-            }
+            if (role != UserRole.Admin)
+                throw new UnauthorizedAccessException("Only admins can access all users.");
+            var users = await _context.Users.ToListAsync();
+            return users.Select(MapToProfileDTO);
         }
-
-        public async Task<User> GetByIdAsync(Guid userId, UserRole role)
+        public async Task<UserProfileDTO?> GetByIdAsync(Guid id, UserRole role)
         {
-            try
-            {
-                string query = role == UserRole.Admin
-                    ? "SELECT UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance FROM Users WHERE UserID = @UserID"
-                    : "SELECT UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance FROM UserProfile WHERE UserID = @UserID";
-
-                var users = await _context.Users
-                    .FromSqlRaw(query, new SqlParameter("@UserID", userId))
-                    .ToListAsync();
-                var user = users.FirstOrDefault();
-                if (user == null)
-                    throw new KeyNotFoundException($"User with ID {userId} not found.");
-                return user;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve user with ID {userId}: {ex.Message}", ex);
-            }
+            var entity = await _context.Users.FindAsync(id);
+            return entity != null ? MapToProfileDTO(entity) : null;
         }
-
-        public async Task<User> UpdateAsync(User user, UserRole role)
+        public async Task<UserProfileDTO> UpdateAsync(UserProfileDTO dto, UserRole role)
         {
-            if (user == null)
-                throw new ArgumentNullException(nameof(user));
-
-            try
-            {
-                string query = role == UserRole.Admin
-                    ? "UPDATE Users SET Name = @Name, Email = @Email, RegistrationDate = @RegistrationDate, Country = @Country, " +
-                      "Password = @Password, IsBlocked = @IsBlocked, Balance = @Balance WHERE UserID = @UserID"
-                    : "UPDATE Users SET Balance = @Balance WHERE UserID = @UserID";
-
-                SqlParameter[] parameters = role == UserRole.Admin
-                    ? new[]
-                    {
-                    new SqlParameter("@Name", user.Username),
-                    new SqlParameter("@Email", user.Email),
-                    new SqlParameter("@RegistrationDate", user.RegistrationDate),
-                    new SqlParameter("@Country", user.Country),
-                    new SqlParameter("@Password", user.Password),
-                    new SqlParameter("@IsBlocked", user.IsBlocked),
-                    new SqlParameter("@Balance", user.Balance),
-                    new SqlParameter("@UserID", user.Id)
-                    }
-                    : new[]
-                    {
-                    new SqlParameter("@Balance", user.Balance),
-                    new SqlParameter("@UserID", user.Id)
-                    };
-
-                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(query, parameters);
-                if (rowsAffected == 0)
-                    throw new KeyNotFoundException($"User with ID {user.Id} not found.");
-
-                return await GetByIdAsync(user.Id, role);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to update user in the database: {ex.Message}", ex);
-            }
+            var entity = await _context.Users.FindAsync(dto.Id);
+            if (entity == null)
+                throw new KeyNotFoundException($"User {dto.Id} not found");
+            entity.UpdateBalance(dto.Balance);
+            entity.UpdateCountry(dto.Country);
+            entity.Username = dto.Username;
+            entity.Email = dto.Email;
+            entity.IsBlocked = dto.IsBlocked;
+            _context.Users.Update(entity);
+            await _context.SaveChangesAsync();
+            return MapToProfileDTO(entity);
         }
-
-        public async Task<User> GetByEmailAsync(string email, UserRole role)
+        public async Task<UserProfileDTO?> GetByUsernameAsync(string username, UserRole role)
         {
-            try
-            {
-                string query = role == UserRole.Admin
-                    ? "SELECT UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance FROM Users WHERE Email = @Email"
-                    : "SELECT UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance FROM UserProfile WHERE Email = @Email";
-
-                var users = await _context.Users
-                    .FromSqlRaw(query, new SqlParameter("@Email", email))
-                    .ToListAsync();
-                return users.FirstOrDefault();
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve user with email {email}: {ex.Message}", ex);
-            }
+            var entity = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            return entity != null ? MapToProfileDTO(entity) : null;
         }
-
-        public async Task<User> GetByUsernameAsync(string username, UserRole role)
+        public async Task<UserProfileDTO?> GetProfileAsync(Guid id, UserRole role)
         {
-            try
+            var entity = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (entity != null)
             {
-                string query = role == UserRole.Admin
-                    ? "SELECT UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance FROM Users WHERE Name = @Name"
-                    : "SELECT UserID, Name, Email, RegistrationDate, Country, Password, IsBlocked, Balance FROM UserProfile WHERE Name = @Name";
-
-                var users = await _context.Users
-                    .FromSqlRaw(query, new SqlParameter("@Name", username))
-                    .ToListAsync();
-                return users.FirstOrDefault();
+                entity.UpdateTotalSpent(GetTotalSpent(id));
+                return MapToProfileDTO(entity);
             }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve user with username {username}: {ex.Message}", ex);
-            }
+            return null;
         }
-        public decimal GetUserTotalSpent(Guid userId)
+        public decimal GetTotalSpent(Guid userId)
         {
-            return _context.GetUserTotalSpent(userId);
+            return _context.Orders
+            .Where(o => o.UserId == userId && o.IsCompleted)
+            .Sum(o => o.TotalAmount);
+        }
+        public async Task<UserProfileDTO?> GetByEmailAsync(string email, UserRole role)
+        {
+            var entity = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            return entity != null ? MapToProfileDTO(entity) : null;
+        }
+        private UserProfileDTO MapToProfileDTO(User entity)
+        {
+            return new UserProfileDTO
+            {
+                Id = entity.Id,
+                Username = entity.Username,
+                Email = entity.Email,
+                RegistrationDate = entity.RegistrationDate,
+                Country = entity.Country,
+                IsBlocked = entity.IsBlocked,
+                Balance = entity.Balance,
+                TotalSpent = GetTotalSpent(entity.Id)
+            };
         }
     }
 }

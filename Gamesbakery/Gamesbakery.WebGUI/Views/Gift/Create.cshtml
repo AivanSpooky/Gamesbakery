@@ -1,30 +1,43 @@
 ﻿@model Gamesbakery.WebGUI.Models.GiftCreateViewModel
-
-@{
-    ViewData["Title"] = "Send Gift";
-}
-
-<h1>Send Gift</h1>
-
+<h2>Отправить подарок</h2>
 <form asp-action="Create" method="post">
     <div class="form-group">
-        <label for="RecipientId">Recipient</label>
-        <select asp-for="RecipientId" class="form-control" asp-items="ViewBag.Recipients" required>
-            <option value="">Select a recipient</option>
+        <label asp-for="RecipientId">Получатель</label>
+        <select asp-for="RecipientId" class="form-control">
+            <option value="">Выберите получателя</option>
+            @{
+                var users = ViewBag.RecipientUsers as IEnumerable<Gamesbakery.Core.DTOs.UserDTO.UserListDTO>;
+            }
+            @if (users != null)
+            {
+                @foreach (var user in users)
+                {
+                    <option value="@user.Id">@user.Username</option>
+                }
+            }
         </select>
         <span asp-validation-for="RecipientId" class="text-danger"></span>
     </div>
     <div class="form-group">
-        <label for="OrderItemId">Game Key</label>
-        <select asp-for="OrderItemId" class="form-control" asp-items="ViewBag.OrderItems" required>
-            <option value="">Select a game key</option>
+        <label asp-for="OrderItemId">Товар</label>
+        <select asp-for="OrderItemId" class="form-control">
+            <option value="">Выберите товар</option>
+            @{
+                var orderItems = ViewBag.OrderItems as IEnumerable<Gamesbakery.Core.DTOs.Response.OrderItemResponseDTO>;
+            }
+            @if (orderItems != null)
+            {
+                @foreach (var item in orderItems)
+                {
+                    <option value="@item.Id">@item.GameTitle (Продавец: @item.SellerName)</option>
+                }
+            }
         </select>
         <span asp-validation-for="OrderItemId" class="text-danger"></span>
     </div>
-    <button type="submit" class="btn btn-primary">Send Gift</button>
-    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">Отправить</button>
+    <a asp-action="Index" class="btn btn-secondary">Отмена</a>
 </form>
-
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
