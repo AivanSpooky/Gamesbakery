@@ -1,0 +1,5 @@
+#!/bin/sh
+dotnet format --verify-no-changes
+dotnet build
+multimetric **/*.cs > report.json
+python parse_metrics.py || exit 1  # Fail если CC >10

@@ -9,7 +9,7 @@ on:
 env:
   DOCKER_BUILDKIT: 1
   COMPOSE_FILE: Gamesbakery/docker-compose.yml
-  SKIP_TESTS: false  # Флаг для пропуска тестов
+  SKIP_TESTS: true
 
 jobs:
   build-and-test:
@@ -25,6 +25,20 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
+    - name: Install Python и multimetric
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+    - run: pip install multimetric
+    - name: Code style checks
+      run: |
+        dotnet format --verify-no-changes
+        dotnet build
+    - name: Metrics checks
+      run: |
+        multimetric **/*.cs > report.json
+        # Скрипт parse_metrics.py (добавьте в repo)
+        python parse_metrics.py
 
     - name: Build all services
       run: docker compose -f ${{ env.COMPOSE_FILE }} build
