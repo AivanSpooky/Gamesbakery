@@ -1,0 +1,38 @@
+{
+  "files": {
+    "C:\\Users\\User\\Desktop\\study\\bauman\\6-sem\\Gamesbakery\\**\\*.cs": {}
+  },
+  "overall": {
+    "comment_ratio": 0.0,
+    "cyclomatic_complexity": 2,
+    "fanout_external": 0,
+    "fanout_internal": 0,
+    "halstead_bugprop": 0.001,
+    "halstead_difficulty": 0.5,
+    "halstead_effort": 1.0,
+    "halstead_timerequired": 0.056,
+    "halstead_volume": 2.0,
+    "loc": 0,
+    "maintainability_index": 0,
+    "operands_sum": 0,
+    "operands_uniq": 0,
+    "operators_sum": 0,
+    "operators_uniq": 0,
+    "pylint": 100.0,
+    "tiobe": 49.328,
+    "tiobe_compiler": 0.0,
+    "tiobe_complexity": 95.522,
+    "tiobe_coverage": 100.0,
+    "tiobe_duplication": 100.0,
+    "tiobe_fanout": 100.0,
+    "tiobe_functional": 0.0,
+    "tiobe_security": 0.0,
+    "tiobe_standard": 0.0
+  },
+  "stats": {
+    "max": {},
+    "mean": {},
+    "median": {},
+    "min": {}
+  }
+}

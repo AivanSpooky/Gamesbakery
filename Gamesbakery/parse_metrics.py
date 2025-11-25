@@ -7,9 +7,9 @@ failed = False
 for file, metrics in data.items():
     cc = metrics.get('cyclomatic_complexity', 0)
     if cc > 10:
-        print(f"Файл {file} превышает CC: {cc}")
+        print(f"File {file} doesn't satisfy cyclomatic complexity: {cc}")
         failed = True
     else:
-        print(f"Файл {file} в норме (CC): {cc}")
+        print(f"File {file} satisfies cyclomatic complexity: {cc}")
 if failed:
     sys.exit(1)
