@@ -104,6 +104,7 @@ jobs:
 
     - name: Apply EF Core Migrations
       id: apply-migrations
+      if: env.SKIP_TESTS != 'true'
       run: |
         echo "Applying EF Core migrations..."
         docker compose -f ${{ env.COMPOSE_FILE }} run --rm tests sh -c "
