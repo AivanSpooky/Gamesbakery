@@ -1,7 +1,7 @@
 root = true
 
 [*]
-end_of_line = crlf
+end_of_line = lf
 trim_trailing_whitespace = true
 insert_final_newline = true
 
@@ -9,12 +9,14 @@ insert_final_newline = true
 indent_style = space
 indent_size = 4
 csharp_indent_braces = false
+trim_trailing_whitespace = false
 csharp_space_after_keywords_in_control_flow_statements = true
 csharp_max_line_length = 120
 dotnet_diagnostic.CS0618.severity = none
 dotnet_diagnostic.CS8600.severity = none
 dotnet_diagnostic.CS8601.severity = none
 dotnet_diagnostic.CS8602.severity = none
+dotnet_diagnostic.CS8603.severity = none
 dotnet_diagnostic.CS8604.severity = none
 dotnet_diagnostic.CS8618.severity = none
 dotnet_diagnostic.CS8625.severity = none
