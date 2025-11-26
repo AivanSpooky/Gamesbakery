@@ -31,8 +31,11 @@ jobs:
       with:
         python-version: '3.x'
        
-    - run: pip install multimetric
+    - name: Install multimetric
+      run: pip install multimetric
+    - name: Install lizard
       run: pip install lizard
+      
     - name: Restore packages
       if: ${{ env.SKIP_CHECKS != 'true' }}
       run: dotnet restore ./Gamesbakery/Gamesbakery.sln
