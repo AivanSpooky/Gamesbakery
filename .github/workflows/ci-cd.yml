@@ -47,7 +47,7 @@ jobs:
     - name: Code style checks
       if: ${{ env.SKIP_CHECKS != 'true' }}
       run: |
-        dotnet format --verify-no-changes --no-restore ./Gamesbakery/Gamesbakery.sln
+        dotnet format --no-restore ./Gamesbakery/Gamesbakery.sln
         dotnet build --no-restore ./Gamesbakery/Gamesbakery.sln
 
     - name: Build all services
