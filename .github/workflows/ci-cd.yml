@@ -60,7 +60,7 @@ jobs:
         docker volume rm $(docker volume ls -q | grep gamesbakery_sql-data) 2>/dev/null || true
 
     - name: Start services
-      run: docker compose -f ${{ env.COMPOSE_FILE }} up -d db web
+      run: docker compose -f ${{ env.COMPOSE_FILE }} up -d db web-master
 
     - name: Wait for database server
       run: |
