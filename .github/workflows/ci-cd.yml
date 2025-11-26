@@ -10,6 +10,7 @@ env:
   DOCKER_BUILDKIT: 1
   COMPOSE_FILE: Gamesbakery/docker-compose.yml
   SKIP_TESTS: true
+  SKIP_CHECKS: false
 
 jobs:
   build-and-test:
@@ -29,16 +30,21 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.x'
+       
     - run: pip install multimetric
-    - name: Code style checks
-      run: |
-        dotnet format --verify-no-changes
-        dotnet build
+    - name: Restore packages
+      if: ${{ env.SKIP_CHECKS != 'true' }}
+      run: dotnet restore ./Gamesbakery/Gamesbakery.sln
     - name: Metrics checks
+      if: ${{ env.SKIP_CHECKS != 'true' }}
       run: |
-        multimetric **/*.cs > report.json
-        # Скрипт parse_metrics.py (добавьте в repo)
+        find . -name "*.cs" ! -path "*/bin/*" ! -path "*/obj/*" -exec multimetric {} + > report.json
         python parse_metrics.py
+    - name: Code style checks
+      if: ${{ env.SKIP_CHECKS != 'true' }}
+      run: |
+        dotnet format --verify-no-changes --no-restore ./Gamesbakery/Gamesbakery.sln
+        dotnet build --no-restore ./Gamesbakery/Gamesbakery.sln
 
     - name: Build all services
       run: docker compose -f ${{ env.COMPOSE_FILE }} build

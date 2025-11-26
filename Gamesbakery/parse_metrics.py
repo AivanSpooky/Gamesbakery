@@ -48,4 +48,4 @@ for file, metrics in data.get('files', {}).items():
 if failed:
     sys.exit(1)
 else:
-    print("All CC <=10, max=", max_cc)
+    print("All CC <=10! Success!")
