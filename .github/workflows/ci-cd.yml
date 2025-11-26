@@ -32,14 +32,15 @@ jobs:
         python-version: '3.x'
        
     - run: pip install multimetric
+      run: pip install lizard
     - name: Restore packages
       if: ${{ env.SKIP_CHECKS != 'true' }}
       run: dotnet restore ./Gamesbakery/Gamesbakery.sln
     - name: Metrics checks
       if: ${{ env.SKIP_CHECKS != 'true' }}
       run: |
-        find . -name "*.cs" ! -path "*/bin/*" ! -path "*/obj/*" -exec multimetric {} + > report.json
-        python parse_metrics.py
+        find . -name "*.cs" ! -path "*/bin/*" ! -path "*/obj/*" -exec multimetric {} + > ./Gamesbakery/report.json
+        python ./Gamesbakery/parse_metrics.py
     - name: Code style checks
       if: ${{ env.SKIP_CHECKS != 'true' }}
       run: |
