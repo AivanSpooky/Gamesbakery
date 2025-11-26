@@ -14,24 +14,24 @@ using System.Threading.Tasks;
 
 namespace Gamesbakery.BusinessLogic.Tests
 {
-    [Collection(TestCollections.SqlServer)]
-    [AllureTag("Integration")]
-    public class OrderServiceIT : IClassFixture<SqlServerDbContextFixture>
-    {
-        private readonly GamesbakeryDbContext _context;
-        private readonly OrderService _orderService;
+    //[Collection(TestCollections.SqlServer)]
+    //[AllureTag("Integration")]
+    //public class OrderServiceIT : IClassFixture<SqlServerDbContextFixture>
+    //{
+    //    private readonly GamesbakeryDbContext _context;
+    //    private readonly OrderService _orderService;
 
-        public OrderServiceIT(SqlServerDbContextFixture fixture)
-        {
-            _context = fixture.Context;
-            var orderRepo = new OrderRepository(_context);
-            var orderItemRepo = new OrderItemRepository(_context);
-            var userRepo = new UserRepository(_context);
-            var gameRepo = new GameRepository(_context);
-            var sellerRepo = new SellerRepository(_context);
-            var authService = new TestAuthenticationService();
-            _orderService = new OrderService(orderRepo, orderItemRepo, userRepo, gameRepo, sellerRepo, authService);
-        }
+    //    public OrderServiceIT(SqlServerDbContextFixture fixture)
+    //    {
+    //        _context = fixture.Context;
+    //        var orderRepo = new OrderRepository(_context);
+    //        var orderItemRepo = new OrderItemRepository(_context);
+    //        var userRepo = new UserRepository(_context);
+    //        var gameRepo = new GameRepository(_context);
+    //        var sellerRepo = new SellerRepository(_context);
+    //        var authService = new TestAuthenticationService();
+    //        _orderService = new OrderService(orderRepo, orderItemRepo, userRepo, gameRepo, sellerRepo, authService);
+    //    }
 
         //[AllureXunit(DisplayName = "ЗАКАЗ: СОЗДАНИЕ (SQL Server)")]
         //[Trait("Category", "Integration")]
@@ -145,5 +145,5 @@ namespace Gamesbakery.BusinessLogic.Tests
         //        await transaction.RollbackAsync();
         //    }
         //}
-    }
+    //}
 }

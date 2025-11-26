@@ -14,20 +14,20 @@ using Xunit;
 
 namespace Gamesbakery.BusinessLogic.Tests
 {
-    [Collection(TestCollections.SqlServer)]
-    [AllureTag("Integration")]
-    public class UserServiceIntTests : IClassFixture<SqlServerDbContextFixture>
-    {
-        private readonly GamesbakeryDbContext _context;
-        private readonly UserService _userService;
+    //[Collection(TestCollections.SqlServer)]
+    //[AllureTag("Integration")]
+    //public class UserServiceIntTests : IClassFixture<SqlServerDbContextFixture>
+    //{
+    //    private readonly GamesbakeryDbContext _context;
+    //    private readonly UserService _userService;
 
-        public UserServiceIntTests(SqlServerDbContextFixture fixture)
-        {
-            _context = fixture.Context;
-            var userRepo = new UserRepository(_context);
-            var authService = new TestAuthenticationService();
-            _userService = new UserService(userRepo, authService);
-        }
+    //    public UserServiceIntTests(SqlServerDbContextFixture fixture)
+    //    {
+    //        _context = fixture.Context;
+    //        var userRepo = new UserRepository(_context);
+    //        var authService = new TestAuthenticationService();
+    //        _userService = new UserService(userRepo, authService);
+    //    }
 
         //[AllureXunit(DisplayName = "ПОЛЬЗОВАТЕЛЬ: РЕГИСТРАЦИЯ (SQL Server)")]
         //[Trait("Category", "Integration")]
@@ -98,5 +98,5 @@ namespace Gamesbakery.BusinessLogic.Tests
         //        await transaction.RollbackAsync();
         //    }
         //}
-    }
+    //}
 }
