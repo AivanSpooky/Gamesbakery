@@ -2,22 +2,22 @@
 using System.Threading.Tasks;
 using Gamesbakery.BusinessLogic.Services;
 using Gamesbakery.Core;
+using Gamesbakery.WebGUI.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Gamesbakery.WebGUI.Extensions;
 
-namespace Gamesbakery.WebGUI.Controllers.v1
+namespace Gamesbakery.WebGUI.Controllers.V1
 {
     [ApiController]
     [Route("api/v1/users")]
     [Authorize]
     public class UsersController : ControllerBase
     {
-        private readonly IUserService _userService;
+        private readonly IUserService userService;
 
         public UsersController(IUserService userService)
         {
-            _userService = userService;
+            this.userService = userService;
         }
 
         [HttpGet("me")]
@@ -25,17 +25,17 @@ namespace Gamesbakery.WebGUI.Controllers.v1
         {
             try
             {
-                var userId = User.GetUserId();
+                var userId = this.User.GetUserId();
                 if (userId == null)
-                    return Unauthorized();
+                    return this.Unauthorized();
 
-                var role = User.GetRole();
-                var profile = await _userService.GetUserByIdAsync(userId.Value, userId, role);
-                return Ok(profile);
+                var role = this.User.GetRole();
+                var profile = await this.userService.GetUserByIdAsync(userId.Value, userId, role);
+                return this.Ok(profile);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { error = "Failed to get user profile" });
+                return this.StatusCode(500, new { error = "Failed to get user profile" });
             }
         }
 
@@ -45,21 +45,16 @@ namespace Gamesbakery.WebGUI.Controllers.v1
         {
             try
             {
-                var userId = User.GetUserId();
-                var role = User.GetRole();
+                var userId = this.User.GetUserId();
+                var role = this.User.GetRole();
 
-                var profile = await _userService.UpdateBalanceAsync(userId.Value, request.Balance, userId, role);
-                return Ok(profile);
+                var profile = await this.userService.UpdateBalanceAsync(userId.Value, request.Balance, userId, role);
+                return this.Ok(profile);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return this.BadRequest(new { error = ex.Message });
             }
         }
-    }
-
-    public class UpdateBalanceDTO
-    {
-        public decimal Balance { get; set; }
     }
 }

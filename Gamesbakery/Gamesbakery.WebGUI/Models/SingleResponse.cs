@@ -3,12 +3,12 @@
     public class SingleResponse<T>
     {
         /// <summary>
-        /// The requested item.
+        /// Gets or sets the requested item.
         /// </summary>
         public T Item { get; set; }
 
         /// <summary>
-        /// A message describing the result of the operation.
+        /// Gets or sets a message describing the result of the operation.
         /// </summary>
         public string Message { get; set; }
     }

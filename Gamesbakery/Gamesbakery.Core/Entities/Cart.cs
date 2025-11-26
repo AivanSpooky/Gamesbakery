@@ -6,8 +6,11 @@ namespace Gamesbakery.Core.Entities
     public class Cart
     {
         public Guid CartId { get; private set; }
+
         public Guid UserId { get; set; }
+
         public List<CartItem> Items { get; private set; } = new List<CartItem>();
+
         public User User { get; private set; } // Added
 
         public Cart()
@@ -18,22 +21,22 @@ namespace Gamesbakery.Core.Entities
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("UserId cannot be empty.", nameof(userId));
-            CartId = cartId;
-            UserId = userId;
+            this.CartId = cartId;
+            this.UserId = userId;
         }
 
         public void AddItem(CartItem item)
         {
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
-            Items.Add(item);
+            this.Items.Add(item);
         }
 
         public void RemoveItem(Guid orderItemId)
         {
-            var item = Items.FirstOrDefault(i => i.OrderItemID == orderItemId);
+            var item = this.Items.FirstOrDefault(i => i.OrderItemID == orderItemId);
             if (item != null)
-                Items.Remove(item);
+                this.Items.Remove(item);
         }
     }
 }

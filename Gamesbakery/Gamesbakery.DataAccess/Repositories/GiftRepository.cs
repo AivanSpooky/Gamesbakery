@@ -125,7 +125,7 @@ namespace Gamesbakery.DataAccess.Repositories
                 GiftDate = entity.GiftDate,
                 Type = entity.Type,
                 GameTitle = entity.GameTitle,
-                Key = entity.Key
+                Key = entity.Key,
             };
         }
     }

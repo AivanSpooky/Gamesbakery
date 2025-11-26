@@ -18,42 +18,42 @@ namespace Gamesbakery.Controllers
     [AllowAnonymous]
     public class AccountController : Controller
     {
-        private readonly IAuthenticationService _authService;
-        private readonly IConfiguration _configuration;
+        private readonly IAuthenticationService authService;
+        private readonly IConfiguration configuration;
 
         public AccountController(IAuthenticationService authService, IConfiguration configuration)
         {
-            _authService = authService;
-            _configuration = configuration;
+            this.authService = authService;
+            this.configuration = configuration;
         }
 
         [HttpGet]
         public IActionResult Login()
         {
-            if (User.Identity.IsAuthenticated)
-                return RedirectToAction("Index", "Home");
-            return View(new LoginViewModel());
+            if (this.User.Identity.IsAuthenticated)
+                return this.RedirectToAction("Index", "Home");
+            return this.View(new LoginViewModel());
         }
 
         public async Task<IActionResult> ApiLogin([FromBody] LoginDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { error = "Invalid input" });
-            var (role, userId, sellerId) = await _authService.AuthenticateAsync(dto.Username, dto.Password);
+            if (!this.ModelState.IsValid)
+                return this.BadRequest(new { error = "Invalid input" });
+            var (role, userId, sellerId) = await this.authService.AuthenticateAsync(dto.Username, dto.Password);
             if (role == UserRole.Guest)
-                return Unauthorized(new { error = "Неверное имя пользователя или пароль" });
-            var token = GenerateJwtToken(dto.Username, role, userId, sellerId);
-            Response.Cookies.Append("JwtToken", token, new CookieOptions
+                return this.Unauthorized(new { error = "Неверное имя пользователя или пароль" });
+            var token = this.GenerateJwtToken(dto.Username, role, userId, sellerId);
+            this.Response.Cookies.Append("JwtToken", token, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = Request.IsHttps,
+                Secure = this.Request.IsHttps,
                 SameSite = SameSiteMode.Lax,
-                Expires = DateTime.UtcNow.AddHours(8)
+                Expires = DateTime.UtcNow.AddHours(8),
             });
-            return Ok(new SingleResponse<object>
+            return this.Ok(new SingleResponse<object>
             {
                 Item = new { token, role = role.ToString(), userId, sellerId },
-                Message = "Login successful"
+                Message = "Login successful",
             });
         }
 
@@ -61,30 +61,30 @@ namespace Gamesbakery.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
-            if (!ModelState.IsValid)
-                return View(model);
-            var result = await ApiLogin(new LoginDTO
+            if (!this.ModelState.IsValid)
+                return this.View(model);
+            var result = await this.ApiLogin(new LoginDTO
             {
                 Username = model.Username,
-                Password = model.Password
+                Password = model.Password,
             });
             if (result is OkObjectResult)
-                return RedirectToAction("Index", "Home");
-            ModelState.AddModelError("", "Неверное имя пользователя или пароль.");
-            return View(model);
+                return this.RedirectToAction("Index", "Home");
+            this.ModelState.AddModelError(string.Empty, "Неверное имя пользователя или пароль.");
+            return this.View(model);
         }
 
         [HttpPost]
         [IgnoreAntiforgeryToken]
         public IActionResult Logout()
         {
-            Response.Cookies.Delete("JwtToken", new CookieOptions
+            this.Response.Cookies.Delete("JwtToken", new CookieOptions
             {
                 HttpOnly = true,
-                Secure = Request.IsHttps,
-                SameSite = SameSiteMode.Lax
+                Secure = this.Request.IsHttps,
+                SameSite = SameSiteMode.Lax,
             });
-            return RedirectToAction("Index", "Home");
+            return this.RedirectToAction("Index", "Home");
         }
 
         private string GenerateJwtToken(string username, UserRole role, Guid? userId, Guid? sellerId)
@@ -92,17 +92,17 @@ namespace Gamesbakery.Controllers
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, username),
-                new Claim(ClaimTypes.Role, role.ToString())
+                new Claim(ClaimTypes.Role, role.ToString()),
             };
             if (userId.HasValue && userId != Guid.Empty)
                 claims.Add(new Claim("UserId", userId.Value.ToString()));
             if (sellerId.HasValue && sellerId != Guid.Empty)
                 claims.Add(new Claim("SellerId", sellerId.Value.ToString()));
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(this.configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: this.configuration["Jwt:Issuer"],
+                audience: this.configuration["Jwt:Audience"],
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(8),
                 signingCredentials: creds);

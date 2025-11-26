@@ -9,6 +9,7 @@ namespace Gamesbakery.Core.DTOs.UserDTO
     public class UserUpdateDTO
     {
         public decimal? Balance { get; set; }
+
         public string? Country { get; set; }
     }
 }

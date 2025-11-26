@@ -11,7 +11,7 @@ using Gamesbakery.WebGUI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gamesbakery.WebGUI.Controllers.v2
+namespace Gamesbakery.WebGUI.Controllers.V2
 {
     /// <summary>
     /// Controller for managing games.
@@ -21,11 +21,11 @@ namespace Gamesbakery.WebGUI.Controllers.v2
     [ApiConventionType(typeof(DefaultApiConventions))]
     public class GamesController : ControllerBase
     {
-        private readonly IGameService _gameService;
+        private readonly IGameService gameService;
 
         public GamesController(IGameService gameService)
         {
-            _gameService = gameService ?? throw new ArgumentNullException(nameof(gameService));
+            this.gameService = gameService ?? throw new ArgumentNullException(nameof(gameService));
         }
 
         /// <summary>
@@ -47,29 +47,29 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var role = User.GetRole();
-                var games = await _gameService.GetFilteredGamesAsync(genre, minPrice, maxPrice, role);
-                var totalCount = await _gameService.GetFilteredGamesCountAsync(genre, minPrice, maxPrice, role);
+                var role = this.User.GetRole();
+                var games = await this.gameService.GetFilteredGamesAsync(genre, minPrice, maxPrice, role);
+                var totalCount = await this.gameService.GetFilteredGamesCountAsync(genre, minPrice, maxPrice, role);
                 var pagedGames = games.Skip((page - 1) * limit).Take(limit).Select(g => new GameListResponseDTO
                 {
                     Id = g.Id,
                     Title = g.Title,
                     Price = g.Price,
-                    IsForSale = g.IsForSale
+                    IsForSale = g.IsForSale,
                 }).ToList();
-                return Ok(new PaginatedResponse<GameListResponseDTO>
+                return this.Ok(new PaginatedResponse<GameListResponseDTO>
                 {
                     TotalCount = totalCount,
                     Items = pagedGames,
                     NextPage = pagedGames.Count == limit ? page + 1 : null,
                     PreviousPage = page > 1 ? page - 1 : null,
                     CurrentPage = page,
-                    PageSize = limit
+                    PageSize = limit,
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Failed to retrieve games", details = ex.Message });
+                return this.StatusCode(500, new { error = "Failed to retrieve games", details = ex.Message });
             }
         }
 
@@ -92,8 +92,8 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var role = User.GetRole();
-                var gameDetails = await _gameService.AddGameAsync(
+                var role = this.User.GetRole();
+                var gameDetails = await this.gameService.AddGameAsync(
                     dto.CategoryId,
                     dto.Title,
                     dto.Price,
@@ -101,10 +101,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     dto.Description ?? string.Empty,
                     dto.OriginalPublisher ?? string.Empty,
                     role,
-                    dto.IsForSale
-                );
-                return CreatedAtAction(
-                    nameof(GetGame),
+                    dto.IsForSale);
+                return this.CreatedAtAction(
+                    nameof(this.GetGame),
                     new { id = gameDetails.Id },
                     new SingleResponse<GameDetailsResponseDTO>
                     {
@@ -118,22 +117,22 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                             Description = gameDetails.Description,
                             IsForSale = gameDetails.IsForSale,
                             OriginalPublisher = gameDetails.OriginalPublisher,
-                            AverageRating = gameDetails.AverageRating
+                            AverageRating = gameDetails.AverageRating,
                         },
-                        Message = "Game created successfully"
+                        Message = "Game created successfully",
                     });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return this.Forbid(ex.Message);
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { error = ex.Message });
+                return this.NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return this.BadRequest(new { error = ex.Message });
             }
         }
 
@@ -155,9 +154,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var role = User.GetRole();
-                var gameDetails = await _gameService.GetGameByIdAsync(id, role, includeOrderItems);
-                return Ok(new SingleResponse<GameDetailsResponseDTO>
+                var role = this.User.GetRole();
+                var gameDetails = await this.gameService.GetGameByIdAsync(id, role, includeOrderItems);
+                return this.Ok(new SingleResponse<GameDetailsResponseDTO>
                 {
                     Item = new GameDetailsResponseDTO
                     {
@@ -169,18 +168,18 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                         Description = gameDetails.Description,
                         IsForSale = gameDetails.IsForSale,
                         OriginalPublisher = gameDetails.OriginalPublisher,
-                        AverageRating = gameDetails.AverageRating
+                        AverageRating = gameDetails.AverageRating,
                     },
-                    Message = "Game retrieved successfully"
+                    Message = "Game retrieved successfully",
                 });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { error = ex.Message });
+                return this.NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Failed to retrieve game", details = ex.Message });
+                return this.StatusCode(500, new { error = "Failed to retrieve game", details = ex.Message });
             }
         }
 
@@ -204,8 +203,8 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var role = User.GetRole();
-                var updatedGame = await _gameService.UpdateGameAsync(
+                var role = this.User.GetRole();
+                var updatedGame = await this.gameService.UpdateGameAsync(
                     id,
                     dto.CategoryId,
                     dto.Title,
@@ -214,9 +213,8 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     dto.Description,
                     dto.OriginalPublisher,
                     dto.IsForSale,
-                    role
-                );
-                return Ok(new SingleResponse<GameDetailsResponseDTO>
+                    role);
+                return this.Ok(new SingleResponse<GameDetailsResponseDTO>
                 {
                     Item = new GameDetailsResponseDTO
                     {
@@ -228,22 +226,22 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                         Description = updatedGame.Description,
                         IsForSale = updatedGame.IsForSale,
                         OriginalPublisher = updatedGame.OriginalPublisher,
-                        AverageRating = updatedGame.AverageRating
+                        AverageRating = updatedGame.AverageRating,
                     },
-                    Message = "Game updated successfully"
+                    Message = "Game updated successfully",
                 });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return this.Forbid(ex.Message);
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { error = ex.Message });
+                return this.NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return this.BadRequest(new { error = ex.Message });
             }
         }
 
@@ -267,9 +265,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var role = User.GetRole();
-                var updatedGame = await _gameService.PartialUpdateGameAsync(id, updates, role);
-                return Ok(new SingleResponse<GameDetailsResponseDTO>
+                var role = this.User.GetRole();
+                var updatedGame = await this.gameService.PartialUpdateGameAsync(id, updates, role);
+                return this.Ok(new SingleResponse<GameDetailsResponseDTO>
                 {
                     Item = new GameDetailsResponseDTO
                     {
@@ -281,22 +279,22 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                         Description = updatedGame.Description,
                         IsForSale = updatedGame.IsForSale,
                         OriginalPublisher = updatedGame.OriginalPublisher,
-                        AverageRating = updatedGame.AverageRating
+                        AverageRating = updatedGame.AverageRating,
                     },
-                    Message = "Game partially updated successfully"
+                    Message = "Game partially updated successfully",
                 });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return this.Forbid(ex.Message);
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { error = ex.Message });
+                return this.NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return this.BadRequest(new { error = ex.Message });
             }
         }
 
@@ -319,21 +317,21 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var role = User.GetRole();
-                await _gameService.DeleteGameAsync(id, role);
-                return NoContent();
+                var role = this.User.GetRole();
+                await this.gameService.DeleteGameAsync(id, role);
+                return this.NoContent();
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return this.Forbid(ex.Message);
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { error = ex.Message });
+                return this.NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Failed to delete game", details = ex.Message });
+                return this.StatusCode(500, new { error = "Failed to delete game", details = ex.Message });
             }
         }
 
@@ -355,9 +353,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var role = User.GetRole();
-                var gameDetails = await _gameService.SetGameForSaleAsync(id, isForSale, role);
-                return Ok(new SingleResponse<GameDetailsResponseDTO>
+                var role = this.User.GetRole();
+                var gameDetails = await this.gameService.SetGameForSaleAsync(id, isForSale, role);
+                return this.Ok(new SingleResponse<GameDetailsResponseDTO>
                 {
                     Item = new GameDetailsResponseDTO
                     {
@@ -369,22 +367,22 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                         Description = gameDetails.Description,
                         IsForSale = gameDetails.IsForSale,
                         OriginalPublisher = gameDetails.OriginalPublisher,
-                        AverageRating = gameDetails.AverageRating
+                        AverageRating = gameDetails.AverageRating,
                     },
-                    Message = "Game sale status updated successfully"
+                    Message = "Game sale status updated successfully",
                 });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return this.Forbid(ex.Message);
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { error = ex.Message });
+                return this.NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Failed to update game sale status", details = ex.Message });
+                return this.StatusCode(500, new { error = "Failed to update game sale status", details = ex.Message });
             }
         }
     }

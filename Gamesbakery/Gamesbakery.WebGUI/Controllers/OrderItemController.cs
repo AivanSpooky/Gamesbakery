@@ -15,22 +15,22 @@ namespace Gamesbakery.Controllers
     [Authorize(Roles = "Admin,Seller")]
     public class OrderItemController : BaseController
     {
-        private readonly IOrderItemService _orderItemService;
+        private readonly IOrderItemService orderItemService;
 
         public OrderItemController(IOrderItemService orderItemService, IConfiguration configuration)
             : base(Log.ForContext<OrderItemController>(), configuration)
         {
-            _orderItemService = orderItemService;
+            this.orderItemService = orderItemService;
         }
 
         public async Task<IActionResult> Index(int page = 1, int limit = 10, Guid? sellerId = null, Guid? gameId = null)
         {
             try
             {
-                var role = GetCurrentRole();
+                var role = this.GetCurrentRole();
                 if (role == UserRole.Seller)
-                    sellerId = GetCurrentSellerId();
-                var filteredItems = await _orderItemService.GetFilteredAsync(sellerId, gameId, GetCurrentSellerId(), role);
+                    sellerId = this.GetCurrentSellerId();
+                var filteredItems = await this.orderItemService.GetFilteredAsync(sellerId, gameId, this.GetCurrentSellerId(), role);
                 var totalCount = filteredItems.Count;
                 var paginatedItems = filteredItems.Skip((page - 1) * limit).Take(limit).Select(oi => new OrderItemResponseDTO
                 {
@@ -38,25 +38,25 @@ namespace Gamesbakery.Controllers
                     GameId = oi.GameId,
                     GameTitle = oi.GameTitle,
                     SellerId = oi.SellerId,
-                    SellerName = oi.SellerName
+                    SellerName = oi.SellerName,
                 }).ToList();
-                ViewBag.TotalCount = totalCount;
-                ViewBag.Page = page;
-                ViewBag.Limit = limit;
-                return View(paginatedItems);
+                this.ViewBag.TotalCount = totalCount;
+                this.ViewBag.Page = page;
+                this.ViewBag.Limit = limit;
+                return this.View(paginatedItems);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading order items");
-                ViewBag.ErrorMessage = $"Ошибка загрузки товаров: {ex.Message}";
-                return View(new List<OrderItemResponseDTO>());
+                this.LogError(ex, "Error loading order items");
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки товаров: {ex.Message}";
+                return this.View(new List<OrderItemResponseDTO>());
             }
         }
 
         [HttpGet]
         public IActionResult Create()
         {
-            return View(new OrderItemCreateDTO());
+            return this.View(new OrderItemCreateDTO());
         }
 
         [HttpPost]
@@ -65,19 +65,19 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return View(dto);
-                var role = GetCurrentRole();
-                var curSellerId = GetCurrentSellerId();
-                await _orderItemService.CreateAsync(dto, curSellerId, role);
-                TempData["SuccessMessage"] = "Товар успешно создан.";
-                return RedirectToAction("Index");
+                if (!this.ModelState.IsValid)
+                    return this.View(dto);
+                var role = this.GetCurrentRole();
+                var curSellerId = this.GetCurrentSellerId();
+                await this.orderItemService.CreateAsync(dto, curSellerId, role);
+                this.TempData["SuccessMessage"] = "Товар успешно создан.";
+                return this.RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error creating order item");
-                ModelState.AddModelError("", $"Ошибка при создании товара: {ex.Message}");
-                return View(dto);
+                this.LogError(ex, "Error creating order item");
+                this.ModelState.AddModelError(string.Empty, $"Ошибка при создании товара: {ex.Message}");
+                return this.View(dto);
             }
         }
 
@@ -85,24 +85,24 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                var role = GetCurrentRole();
-                var curUserId = GetCurrentUserId();
-                var item = await _orderItemService.GetByIdAsync(id, curUserId, role);
+                var role = this.GetCurrentRole();
+                var curUserId = this.GetCurrentUserId();
+                var item = await this.orderItemService.GetByIdAsync(id, curUserId, role);
                 var itemResponse = new OrderItemResponseDTO
                 {
                     Id = item.Id,
                     GameId = item.GameId,
                     GameTitle = item.GameTitle,
                     SellerId = item.SellerId,
-                    SellerName = item.SellerName
+                    SellerName = item.SellerName,
                 };
-                return View(itemResponse);
+                return this.View(itemResponse);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading order item details {Id}", id);
-                ViewBag.ErrorMessage = $"Ошибка загрузки деталей: {ex.Message}";
-                return View();
+                this.LogError(ex, "Error loading order item details {Id}", id);
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки деталей: {ex.Message}";
+                return this.View();
             }
         }
 
@@ -111,18 +111,18 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                var role = GetCurrentRole();
-                var curUserId = GetCurrentUserId();
-                var item = await _orderItemService.GetByIdAsync(id, curUserId, role);
+                var role = this.GetCurrentRole();
+                var curUserId = this.GetCurrentUserId();
+                var item = await this.orderItemService.GetByIdAsync(id, curUserId, role);
                 if (item == null)
-                    return NotFound();
-                return View(new OrderItemUpdateDTO { Key = item.Key });
+                    return this.NotFound();
+                return this.View(new OrderItemUpdateDTO { Key = item.Key });
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading order item for edit {Id}", id);
-                ViewBag.ErrorMessage = $"Ошибка загрузки формы редактирования: {ex.Message}";
-                return View();
+                this.LogError(ex, "Error loading order item for edit {Id}", id);
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки формы редактирования: {ex.Message}";
+                return this.View();
             }
         }
 
@@ -132,19 +132,19 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return View(dto);
-                var role = GetCurrentRole();
-                var curSellerId = GetCurrentSellerId();
-                await _orderItemService.UpdateAsync(id, dto, curSellerId, role);
-                TempData["SuccessMessage"] = "Товар успешно обновлен.";
-                return RedirectToAction("Index");
+                if (!this.ModelState.IsValid)
+                    return this.View(dto);
+                var role = this.GetCurrentRole();
+                var curSellerId = this.GetCurrentSellerId();
+                await this.orderItemService.UpdateAsync(id, dto, curSellerId, role);
+                this.TempData["SuccessMessage"] = "Товар успешно обновлен.";
+                return this.RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error updating order item {Id}", id);
-                ModelState.AddModelError("", $"Ошибка при обновлении товара: {ex.Message}");
-                return View(dto);
+                this.LogError(ex, "Error updating order item {Id}", id);
+                this.ModelState.AddModelError(string.Empty, $"Ошибка при обновлении товара: {ex.Message}");
+                return this.View(dto);
             }
         }
 
@@ -155,16 +155,16 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                var role = GetCurrentRole();
-                await _orderItemService.DeleteAsync(id, role);
-                TempData["SuccessMessage"] = "Товар удален успешно.";
-                return RedirectToAction("Index");
+                var role = this.GetCurrentRole();
+                await this.orderItemService.DeleteAsync(id, role);
+                this.TempData["SuccessMessage"] = "Товар удален успешно.";
+                return this.RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error deleting order item {Id}", id);
-                TempData["ErrorMessage"] = $"Ошибка удаления товара: {ex.Message}";
-                return RedirectToAction("Index");
+                this.LogError(ex, "Error deleting order item {Id}", id);
+                this.TempData["ErrorMessage"] = $"Ошибка удаления товара: {ex.Message}";
+                return this.RedirectToAction("Index");
             }
         }
     }

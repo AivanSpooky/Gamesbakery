@@ -11,7 +11,7 @@ using Gamesbakery.WebGUI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gamesbakery.WebGUI.Controllers.v2
+namespace Gamesbakery.WebGUI.Controllers.V2
 {
     /// <summary>
     /// Controller for managing user orders.
@@ -21,15 +21,15 @@ namespace Gamesbakery.WebGUI.Controllers.v2
     [ApiConventionType(typeof(DefaultApiConventions))]
     public class OrdersController : ControllerBase
     {
-        private readonly IOrderRepository _orderRepository;
-        private readonly IOrderService _orderService;
-        private readonly ICartService _cartService;
+        private readonly IOrderRepository orderRepository;
+        private readonly IOrderService orderService;
+        private readonly ICartService cartService;
 
         public OrdersController(IOrderRepository orderRepository, IOrderService orderService, ICartService cartService)
         {
-            _orderRepository = orderRepository;
-            _orderService = orderService;
-            _cartService = cartService;
+            this.orderRepository = orderRepository;
+            this.orderService = orderService;
+            this.cartService = cartService;
         }
 
         /// <summary>
@@ -47,10 +47,10 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> GetUserOrders(Guid userId, int page = 1, int limit = 10)
         {
-            var currentUserId = User.GetUserId();
-            var role = User.GetRole();
-            if (userId != currentUserId && role != UserRole.Admin) return Forbid();
-            var orders = await _orderService.GetOrdersByUserIdAsync(userId, role);
+            var currentUserId = this.User.GetUserId();
+            var role = this.User.GetRole();
+            if (userId != currentUserId && role != UserRole.Admin) return this.Forbid();
+            var orders = await this.orderService.GetOrdersByUserIdAsync(userId, role);
             var totalCount = orders.Count;
             var pagedOrders = orders.Skip((page - 1) * limit).Take(limit).Select(o => new OrderListResponseDTO
             {
@@ -58,16 +58,16 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                 OrderDate = o.OrderDate,
                 TotalAmount = o.TotalAmount,
                 IsCompleted = o.IsCompleted,
-                IsOverdue = o.IsOverdue
+                IsOverdue = o.IsOverdue,
             }).ToList();
-            return Ok(new PaginatedResponse<OrderListResponseDTO>
+            return this.Ok(new PaginatedResponse<OrderListResponseDTO>
             {
                 TotalCount = totalCount,
                 Items = pagedOrders,
                 NextPage = pagedOrders.Count == limit ? page + 1 : null,
                 PreviousPage = page > 1 ? page - 1 : null,
                 CurrentPage = page,
-                PageSize = limit
+                PageSize = limit,
             });
         }
 
@@ -89,13 +89,13 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var role = User.GetRole();
-                var currentUserId = User.GetUserId();
+                var role = this.User.GetRole();
+                var currentUserId = this.User.GetUserId();
                 if (userId != currentUserId)
-                    return Forbid("Can only create orders for yourself");
-                var orderDetails = await _orderService.CreateOrderAsync(userId, dto.CartItemIds, currentUserId, role);
-                return CreatedAtAction(
-                    nameof(GetOrder),
+                    return this.Forbid("Can only create orders for yourself");
+                var orderDetails = await this.orderService.CreateOrderAsync(userId, dto.CartItemIds, currentUserId, role);
+                return this.CreatedAtAction(
+                    nameof(this.GetOrder),
                     new { id = orderDetails.OrderId },
                     new SingleResponse<OrderListResponseDTO>
                     {
@@ -105,22 +105,22 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                             OrderDate = orderDetails.OrderDate,
                             TotalAmount = orderDetails.TotalAmount,
                             IsCompleted = orderDetails.IsCompleted,
-                            IsOverdue = orderDetails.IsOverdue
+                            IsOverdue = orderDetails.IsOverdue,
                         },
-                        Message = "Order created successfully"
+                        Message = "Order created successfully",
                     });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return this.BadRequest(new { error = ex.Message });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return this.Forbid(ex.Message);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Failed to create order", details = ex.Message });
+                return this.StatusCode(500, new { error = "Failed to create order", details = ex.Message });
             }
         }
 
@@ -139,12 +139,12 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> GetOrder(Guid id)
         {
-            var role = User.GetRole();
-            var currentUserId = User.GetUserId();
-            var order = await _orderService.GetOrderByIdAsync(id, currentUserId, role);
-            if (order == null) return NotFound();
-            if (order.UserId != currentUserId && role != UserRole.Admin) return Forbid();
-            return Ok(new SingleResponse<OrderDetailsResponseDTO>
+            var role = this.User.GetRole();
+            var currentUserId = this.User.GetUserId();
+            var order = await this.orderService.GetOrderByIdAsync(id, currentUserId, role);
+            if (order == null) return this.NotFound();
+            if (order.UserId != currentUserId && role != UserRole.Admin) return this.Forbid();
+            return this.Ok(new SingleResponse<OrderDetailsResponseDTO>
             {
                 Item = new OrderDetailsResponseDTO
                 {
@@ -160,10 +160,10 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                         GameId = oi.GameId,
                         GameTitle = oi.GameTitle,
                         SellerId = oi.SellerId,
-                        SellerName = oi.SellerName
-                    }).ToList()
+                        SellerName = oi.SellerName,
+                    }).ToList(),
                 },
-                Message = "Order retrieved successfully"
+                Message = "Order retrieved successfully",
             });
         }
     }

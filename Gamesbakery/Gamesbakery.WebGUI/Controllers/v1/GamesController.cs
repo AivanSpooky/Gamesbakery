@@ -7,17 +7,17 @@ using Gamesbakery.WebGUI.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gamesbakery.WebGUI.Controllers.v1
+namespace Gamesbakery.WebGUI.Controllers.V1
 {
     [ApiController]
     [Route("api/v1/games")]
     public class GamesController : ControllerBase
     {
-        private readonly IGameService _gameService;
+        private readonly IGameService gameService;
 
         public GamesController(IGameService gameService)
         {
-            _gameService = gameService;
+            this.gameService = gameService;
         }
 
         [HttpGet]
@@ -26,12 +26,12 @@ namespace Gamesbakery.WebGUI.Controllers.v1
         {
             try
             {
-                var games = await _gameService.GetAllGamesAsync();
-                return Ok(new { games });
+                var games = await this.gameService.GetAllGamesAsync();
+                return this.Ok(new { games });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { error = "Failed to get games" });
+                return this.StatusCode(500, new { error = "Failed to get games" });
             }
         }
 
@@ -41,13 +41,13 @@ namespace Gamesbakery.WebGUI.Controllers.v1
         {
             try
             {
-                var role = User.GetRole();
-                var game = await _gameService.GetGameByIdAsync(id, role);
-                return Ok(game);
+                var role = this.User.GetRole();
+                var game = await this.gameService.GetGameByIdAsync(id, role);
+                return this.Ok(game);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return NotFound(new { error = "Game not found" });
+                return this.NotFound(new { error = "Game not found" });
             }
         }
     }

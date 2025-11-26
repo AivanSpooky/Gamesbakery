@@ -6,13 +6,21 @@ namespace Gamesbakery.Core.Entities
     public class Order
     {
         public Guid Id { get; private set; }
+
         public Guid UserId { get; private set; }
+
         public DateTime OrderDate { get; private set; }
+
         public decimal TotalAmount { get; private set; }
+
         public string Status { get; private set; }
+
         public bool IsCompleted { get; private set; }
+
         public bool IsOverdue { get; private set; }
+
         public List<OrderItem> OrderItems { get; private set; } = new List<OrderItem>();
+
         public User User { get; private set; } // Added
 
         public Order()
@@ -27,41 +35,43 @@ namespace Gamesbakery.Core.Entities
                 throw new ArgumentException("TotalAmount cannot be negative.", nameof(totalAmount));
             if (string.IsNullOrWhiteSpace(status))
                 throw new ArgumentException("Status cannot be empty.", nameof(status));
-            Id = id;
-            UserId = userId;
-            OrderDate = orderDate;
-            TotalAmount = totalAmount;
-            Status = status;
-            IsCompleted = isCompleted;
-            IsOverdue = isOverdue;
+            this.Id = id;
+            this.UserId = userId;
+            this.OrderDate = orderDate;
+            this.TotalAmount = totalAmount;
+            this.Status = status;
+            this.IsCompleted = isCompleted;
+            this.IsOverdue = isOverdue;
         }
 
         public void Complete()
         {
-            Status = "Completed"; IsCompleted = true;
+            this.Status = "Completed";
+            this.IsCompleted = true;
         }
-        public void MarkAsOverdue() => IsOverdue = true;
+
+        public void MarkAsOverdue() => this.IsOverdue = true;
 
         public void AddOrderItem(OrderItem item)
         {
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
-            OrderItems.Add(item);
-            item.SetOrderId(Id);
+            this.OrderItems.Add(item);
+            item.SetOrderId(this.Id);
         }
 
         public void UpdateTotalAmount(decimal newTotal)
         {
             if (newTotal < 0)
                 throw new ArgumentException("TotalAmount cannot be negative.", nameof(newTotal));
-            TotalAmount = newTotal;
+            this.TotalAmount = newTotal;
         }
 
         public void UpdateStatus(string newStatus)
         {
             if (string.IsNullOrWhiteSpace(newStatus))
                 throw new ArgumentException("Status cannot be empty.", nameof(newStatus));
-            Status = newStatus;
+            this.Status = newStatus;
         }
     }
 }

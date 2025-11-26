@@ -1,32 +1,33 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace Gamesbakery.WebGUI.Middleware
 {
     public class JwtCookieMiddleware
     {
-        private readonly RequestDelegate _next;
-        private readonly IConfiguration _configuration;
+        private readonly RequestDelegate next;
+        private readonly IConfiguration configuration;
 
         public JwtCookieMiddleware(RequestDelegate next, IConfiguration configuration)
         {
-            _next = next;
-            _configuration = configuration;
+            this.next = next;
+            this.configuration = configuration;
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
-            var publicPaths = new[] {
+            var publicPaths = new[]
+            {
                 "/api/v2/auth",
                 "/swagger",
                 "/swagger.json",
                 "/health",
                 "/Account/Login",
-                "/User/Register"
+                "/User/Register",
             };
             if (publicPaths.Any(path => context.Request.Path.StartsWithSegments(path)))
             {
-                await _next(context);
+                await this.next(context);
                 return;
             }
 
@@ -36,11 +37,11 @@ namespace Gamesbakery.WebGUI.Middleware
                 var token = context.Request.Cookies["JwtToken"];
                 if (!string.IsNullOrEmpty(token))
                 {
-                    context.Request.Headers.Add("Authorization", $"Bearer {token}");
+                    context.Request.Headers.Append("Authorization", $"Bearer {token}");
                 }
             }
 
-            await _next(context);
+            await this.next(context);
         }
     }
 }

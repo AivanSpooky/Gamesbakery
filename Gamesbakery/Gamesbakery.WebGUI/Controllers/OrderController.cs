@@ -16,66 +16,67 @@ namespace Gamesbakery.Controllers
     [Authorize(Roles = "User,Admin")]
     public class OrderController : BaseController
     {
-        private readonly IOrderService _orderService;
-        private readonly ICartService _cartService;
+        private readonly IOrderService orderService;
+        private readonly ICartService cartService;
 
         public OrderController(IOrderService orderService, ICartService cartService, IConfiguration configuration)
             : base(Log.ForContext<OrderController>(), configuration)
         {
-            _orderService = orderService;
-            _cartService = cartService;
+            this.orderService = orderService;
+            this.cartService = cartService;
         }
 
         public async Task<IActionResult> Index()
         {
             try
             {
-                var userId = GetCurrentUserId();
+                var userId = this.GetCurrentUserId();
                 if (userId == null)
                 {
-                    LogError(new UnauthorizedAccessException("User not authenticated"), "User not authenticated for order index");
-                    return RedirectToAction("Login", "Account");
+                    this.LogError(new UnauthorizedAccessException("User not authenticated"), "User not authenticated for order index");
+                    return this.RedirectToAction("Login", "Account");
                 }
-                var orders = await _orderService.GetOrdersByUserIdAsync(userId.Value, GetCurrentRole());
+
+                var orders = await this.orderService.GetOrdersByUserIdAsync(userId.Value, this.GetCurrentRole());
                 var ordersResponse = orders.Select(o => new OrderListResponseDTO
                 {
                     OrderId = o.OrderId,
                     OrderDate = o.OrderDate,
                     TotalAmount = o.TotalAmount,
                     IsCompleted = o.IsCompleted,
-                    IsOverdue = o.IsOverdue
+                    IsOverdue = o.IsOverdue,
                 }).ToList();
                 if (!ordersResponse.Any())
-                {
-                    ViewBag.Message = "У вас нет заказов.";
-                }
-                return View(ordersResponse);
+                    this.ViewBag.Message = "У вас нет заказов.";
+                return this.View(ordersResponse);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading orders for UserId={UserId}", GetCurrentUserId());
-                ViewBag.ErrorMessage = $"Ошибка загрузки заказов: {ex.Message}";
-                return View(new List<OrderListResponseDTO>());
+                this.LogError(ex, "Error loading orders for UserId={UserId}", this.GetCurrentUserId());
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки заказов: {ex.Message}";
+                return this.View(new List<OrderListResponseDTO>());
             }
         }
 
         public async Task<IActionResult> Details(Guid id)
         {
-            var role = GetCurrentRole();
-            var userId = GetCurrentUserId();
+            var role = this.GetCurrentRole();
+            var userId = this.GetCurrentUserId();
             try
             {
                 if (userId == null)
                 {
-                    LogError(new UnauthorizedAccessException("User not authenticated"), "User not authenticated for order details");
-                    return RedirectToAction("Login", "Account");
+                    this.LogError(new UnauthorizedAccessException("User not authenticated"), "User not authenticated for order details");
+                    return this.RedirectToAction("Login", "Account");
                 }
-                var order = await _orderService.GetOrderByIdAsync(id, userId, role);
-                if (order == null || (order.UserId != userId && GetCurrentRole() != UserRole.Admin))
+
+                var order = await this.orderService.GetOrderByIdAsync(id, userId, role);
+                if (order == null || (order.UserId != userId && this.GetCurrentRole() != UserRole.Admin))
                 {
-                    LogError(new KeyNotFoundException($"Order {id} not found or access denied"), "Order not found or access denied");
-                    return NotFound();
+                    this.LogError(new KeyNotFoundException($"Order {id} not found or access denied"), "Order not found or access denied");
+                    return this.NotFound();
                 }
+
                 var orderResponse = new OrderDetailsResponseDTO
                 {
                     Id = order.Id,
@@ -90,16 +91,16 @@ namespace Gamesbakery.Controllers
                         GameId = oi.GameId,
                         GameTitle = oi.GameTitle,
                         SellerId = oi.SellerId,
-                        SellerName = oi.SellerName
-                    }).ToList()
+                        SellerName = oi.SellerName,
+                    }).ToList(),
                 };
-                return View(orderResponse);
+                return this.View(orderResponse);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading order details {Id}", id);
-                ViewBag.ErrorMessage = $"Ошибка загрузки деталей заказа: {ex.Message}";
-                return View();
+                this.LogError(ex, "Error loading order details {Id}", id);
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки деталей заказа: {ex.Message}";
+                return this.View();
             }
         }
 
@@ -107,32 +108,34 @@ namespace Gamesbakery.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Checkout()
         {
-            var role = GetCurrentRole();
-            var userId = GetCurrentUserId();
+            var role = this.GetCurrentRole();
+            var userId = this.GetCurrentUserId();
             try
             {
                 if (userId == null)
                 {
-                    LogError(new UnauthorizedAccessException("User not authenticated"), "User not authenticated for checkout");
-                    return RedirectToAction("Login", "Account");
+                    this.LogError(new UnauthorizedAccessException("User not authenticated"), "User not authenticated for checkout");
+                    return this.RedirectToAction("Login", "Account");
                 }
-                var cartItems = await _cartService.GetCartItemsAsync(userId);
+
+                var cartItems = await this.cartService.GetCartItemsAsync(userId);
                 var orderItemIds = cartItems.Select(ci => ci.OrderItemId).ToList();
                 if (!orderItemIds.Any())
                 {
-                    TempData["ErrorMessage"] = "Корзина пуста.";
-                    return RedirectToAction("Index", "Cart");
+                    this.TempData["ErrorMessage"] = "Корзина пуста.";
+                    return this.RedirectToAction("Index", "Cart");
                 }
-                var order = await _orderService.CreateOrderAsync(userId.Value, orderItemIds, userId, role);
-                await _cartService.ClearCartAsync(userId);
-                TempData["SuccessMessage"] = "Заказ успешно оформлен!";
-                return RedirectToAction("Details", new { id = order.OrderId });
+
+                var order = await this.orderService.CreateOrderAsync(userId.Value, orderItemIds, userId, role);
+                await this.cartService.ClearCartAsync(userId);
+                this.TempData["SuccessMessage"] = "Заказ успешно оформлен!";
+                return this.RedirectToAction("Details", new { id = order.OrderId });
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error creating order for UserId={UserId}", GetCurrentUserId());
-                TempData["ErrorMessage"] = $"Ошибка при оформлении заказа: {ex.Message}";
-                return RedirectToAction("Index", "Cart");
+                this.LogError(ex, "Error creating order for UserId={UserId}", this.GetCurrentUserId());
+                this.TempData["ErrorMessage"] = $"Ошибка при оформлении заказа: {ex.Message}";
+                return this.RedirectToAction("Index", "Cart");
             }
         }
     }

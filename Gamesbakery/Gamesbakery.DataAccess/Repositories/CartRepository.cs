@@ -12,43 +12,43 @@ namespace Gamesbakery.DataAccess.Repositories
 {
     public class CartRepository : ICartRepository
     {
-        private readonly GamesbakeryDbContext _context;
+        private readonly GamesbakeryDbContext context;
 
         public CartRepository(GamesbakeryDbContext context)
         {
-            _context = context;
+            this.context = context;
         }
 
         public async Task<CarTDTO> AddAsync(CarTDTO dto, UserRole role)
         {
             var entity = new Cart(dto.CartId, dto.UserId);
-            _context.Carts.Add(entity);
-            await _context.SaveChangesAsync();
-            return MapToDTO(entity);
+            this.context.Carts.Add(entity);
+            await this.context.SaveChangesAsync();
+            return this.MapToDTO(entity);
         }
 
         public async Task DeleteAsync(Guid id, UserRole role)
         {
-            var entity = await _context.Carts.FindAsync(id);
+            var entity = await this.context.Carts.FindAsync(id);
             if (entity != null)
             {
-                _context.Carts.Remove(entity);
-                await _context.SaveChangesAsync();
+                this.context.Carts.Remove(entity);
+                await this.context.SaveChangesAsync();
             }
         }
 
         public async Task<IEnumerable<CarTDTO>> GetAllAsync(UserRole role)
         {
-            var carts = await _context.Carts
+            var carts = await this.context.Carts
                 .Include(c => c.Items)
                 .ThenInclude(ci => ci.OrderItem)
                 .ToListAsync();
-            return carts.Select(MapToDTO);
+            return carts.Select(this.MapToDTO);
         }
 
         public async Task<CarTDTO?> GetByIdAsync(Guid id, UserRole role, Guid? userId = null)
         {
-            var query = _context.Carts
+            var query = this.context.Carts
                 .Include(c => c.Items)
                 .ThenInclude(ci => ci.OrderItem)
                 .ThenInclude(oi => oi.Game)
@@ -58,91 +58,91 @@ namespace Gamesbakery.DataAccess.Repositories
             var cart = await query.FirstOrDefaultAsync(c => c.CartId == id);
             if (cart != null && role == UserRole.User && userId.HasValue && cart.UserId != userId.Value)
                 return null;
-            return cart != null ? MapToDTO(cart) : null;
+            return cart != null ? this.MapToDTO(cart) : null;
         }
 
         public async Task<CarTDTO> UpdateAsync(CarTDTO dto, UserRole role)
         {
-            var entity = await _context.Carts.FindAsync(dto.CartId);
+            var entity = await this.context.Carts.FindAsync(dto.CartId);
             if (entity == null)
                 throw new KeyNotFoundException($"Cart {dto.CartId} not found");
             entity.UserId = dto.UserId;
-            _context.Carts.Update(entity);
-            await _context.SaveChangesAsync();
-            return MapToDTO(entity);
+            this.context.Carts.Update(entity);
+            await this.context.SaveChangesAsync();
+            return this.MapToDTO(entity);
         }
 
         public async Task<CarTDTO?> GetByUserIdAsync(Guid userId, UserRole role)
         {
-            var query = _context.Carts
+            var query = this.context.Carts
                 .Include(c => c.Items)
                 .ThenInclude(ci => ci.OrderItem)
                 .AsQueryable();
             if (role == UserRole.User)
                 query = query.Where(c => c.UserId == userId);
             var cart = await query.FirstOrDefaultAsync(c => c.UserId == userId);
-            return cart != null ? MapToDTO(cart) : null;
+            return cart != null ? this.MapToDTO(cart) : null;
         }
 
         public async Task AddItemAsync(Guid cartId, Guid orderItemId, UserRole role)
         {
-            if (!await _context.Carts.AnyAsync(c => c.CartId == cartId))
+            if (!await this.context.Carts.AnyAsync(c => c.CartId == cartId))
                 throw new KeyNotFoundException($"Cart {cartId} not found");
-            if (await _context.CartItems.AnyAsync(ci => ci.CartID == cartId && ci.OrderItemID == orderItemId))
+            if (await this.context.CartItems.AnyAsync(ci => ci.CartID == cartId && ci.OrderItemID == orderItemId))
                 return;
-            if (!await _context.OrderItems.AnyAsync(oi => oi.Id == orderItemId && oi.OrderId == null && !oi.IsGifted))
+            if (!await this.context.OrderItems.AnyAsync(oi => oi.Id == orderItemId && oi.OrderId == null && !oi.IsGifted))
                 throw new InvalidOperationException($"OrderItem {orderItemId} not available");
             var cartItem = new CartItem(Guid.NewGuid(), cartId, orderItemId);
-            _context.CartItems.Add(cartItem);
-            await _context.SaveChangesAsync();
+            this.context.CartItems.Add(cartItem);
+            await this.context.SaveChangesAsync();
         }
 
         public async Task RemoveItemAsync(Guid cartId, Guid orderItemId, UserRole role)
         {
-            var cart = await GetByIdAsync(cartId, role);
+            var cart = await this.GetByIdAsync(cartId, role);
             if (cart != null)
             {
-                var item = await _context.CartItems
+                var item = await this.context.CartItems
                     .FirstOrDefaultAsync(ci => ci.CartID == cartId && ci.OrderItemID == orderItemId);
                 if (item != null)
                 {
-                    _context.CartItems.Remove(item);
-                    await _context.SaveChangesAsync();
+                    this.context.CartItems.Remove(item);
+                    await this.context.SaveChangesAsync();
                 }
             }
         }
 
         public async Task ClearAsync(Guid cartId, UserRole role)
         {
-            var cart = await GetByIdAsync(cartId, role);
+            var cart = await this.GetByIdAsync(cartId, role);
             if (cart != null)
             {
-                var items = await _context.CartItems.Where(ci => ci.CartID == cartId).ToListAsync();
-                _context.CartItems.RemoveRange(items);
-                await _context.SaveChangesAsync();
+                var items = await this.context.CartItems.Where(ci => ci.CartID == cartId).ToListAsync();
+                this.context.CartItems.RemoveRange(items);
+                await this.context.SaveChangesAsync();
             }
         }
 
         public async Task RemoveCartItemsAsync(Guid cartId, List<Guid> orderItemIds, UserRole role)
         {
-            var cartItemsToRemove = await _context.CartItems
+            var cartItemsToRemove = await this.context.CartItems
                 .Where(ci => ci.CartID == cartId && orderItemIds.Contains(ci.OrderItemID))
                 .ToListAsync();
             if (cartItemsToRemove.Any())
             {
-                _context.CartItems.RemoveRange(cartItemsToRemove);
-                await _context.SaveChangesAsync();
+                this.context.CartItems.RemoveRange(cartItemsToRemove);
+                await this.context.SaveChangesAsync();
             }
         }
 
         public async Task<List<CartItemDTO>> GetItemsAsync(Guid userId, UserRole role)
         {
-            var cart = await GetByUserIdAsync(userId, role);
+            var cart = await this.GetByUserIdAsync(userId, role);
             if (cart == null) return new List<CartItemDTO>();
             var items = new List<CartItemDTO>();
             foreach (var cartItem in cart.Items)
             {
-                var orderItem = await _context.OrderItems
+                var orderItem = await this.context.OrderItems
                     .Include(oi => oi.Game)
                     .Include(oi => oi.Seller)
                     .FirstOrDefaultAsync(oi => oi.Id == cartItem.OrderItemId);
@@ -156,10 +156,11 @@ namespace Gamesbakery.DataAccess.Repositories
                         GamePrice = orderItem.Game.Price,
                         Key = orderItem.Key,
                         SellerId = orderItem.SellerId,
-                        SellerName = orderItem.Seller?.SellerName ?? "Unknown"
+                        SellerName = orderItem.Seller?.SellerName ?? "Unknown",
                     });
                 }
             }
+
             return items;
         }
 
@@ -169,7 +170,7 @@ namespace Gamesbakery.DataAccess.Repositories
             {
                 CartId = entity.CartId,
                 UserId = entity.UserId,
-                Items = entity.Items.Select(MapToCartItemDTO).ToList()
+                Items = entity.Items.Select(this.MapToCartItemDTO).ToList(),
             };
         }
 
@@ -186,7 +187,7 @@ namespace Gamesbakery.DataAccess.Repositories
                 GamePrice = game.Price,
                 Key = orderItem.Key,
                 SellerId = orderItem.SellerId,
-                SellerName = seller.SellerName ?? "Unknown"
+                SellerName = seller.SellerName ?? "Unknown",
             };
         }
     }

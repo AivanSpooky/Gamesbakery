@@ -12,57 +12,57 @@ namespace Gamesbakery.DataAccess.Repositories
 {
     public class CategoryRepository : ICategoryRepository
     {
-        private readonly GamesbakeryDbContext _context;
+        private readonly GamesbakeryDbContext context;
 
         public CategoryRepository(GamesbakeryDbContext context)
         {
-            _context = context;
+            this.context = context;
         }
 
         public async Task<CategoryDTO> AddAsync(CategoryDTO dto, UserRole role)
         {
             var entity = new Category(dto.Id, dto.GenreName, dto.Description);
-            _context.Categories.Add(entity);
-            await _context.SaveChangesAsync();
-            return MapToDTO(entity);
+            this.context.Categories.Add(entity);
+            await this.context.SaveChangesAsync();
+            return this.MapToDTO(entity);
         }
 
         public async Task DeleteAsync(Guid id, UserRole role)
         {
-            var entity = await _context.Categories.FindAsync(id);
+            var entity = await this.context.Categories.FindAsync(id);
             if (entity != null)
             {
-                _context.Categories.Remove(entity);
-                await _context.SaveChangesAsync();
+                this.context.Categories.Remove(entity);
+                await this.context.SaveChangesAsync();
             }
         }
 
         public async Task<IEnumerable<CategoryDTO>> GetAllAsync(UserRole role)
         {
-            var categories = await _context.Categories.ToListAsync();
-            return categories.Select(MapToDTO);
+            var categories = await this.context.Categories.ToListAsync();
+            return categories.Select(this.MapToDTO);
         }
 
         public async Task<CategoryDTO?> GetByIdAsync(Guid id, UserRole role)
         {
-            var entity = await _context.Categories.FindAsync(id);
-            return entity != null ? MapToDTO(entity) : null;
+            var entity = await this.context.Categories.FindAsync(id);
+            return entity != null ? this.MapToDTO(entity) : null;
         }
 
         public async Task<CategoryDTO> UpdateAsync(CategoryDTO dto, UserRole role)
         {
-            var entity = await _context.Categories.FindAsync(dto.Id);
+            var entity = await this.context.Categories.FindAsync(dto.Id);
             if (entity == null)
                 throw new KeyNotFoundException($"Category {dto.Id} not found");
             entity.Update(dto.GenreName, dto.Description);
-            _context.Categories.Update(entity);
-            await _context.SaveChangesAsync();
-            return MapToDTO(entity);
+            this.context.Categories.Update(entity);
+            await this.context.SaveChangesAsync();
+            return this.MapToDTO(entity);
         }
 
         public async Task<int> GetCountAsync(UserRole role)
         {
-            return await _context.Categories.CountAsync();
+            return await this.context.Categories.CountAsync();
         }
 
         private CategoryDTO MapToDTO(Category entity)
@@ -71,7 +71,7 @@ namespace Gamesbakery.DataAccess.Repositories
             {
                 Id = entity.Id,
                 GenreName = entity.GenreName,
-                Description = entity.Description
+                Description = entity.Description,
             };
         }
     }

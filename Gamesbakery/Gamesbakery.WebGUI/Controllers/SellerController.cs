@@ -14,41 +14,41 @@ namespace Gamesbakery.Controllers
     [Authorize(Roles = "Seller,Admin")]
     public class SellerController : BaseController
     {
-        private readonly ISellerService _sellerService;
-        private readonly IGameService _gameService;
+        private readonly ISellerService sellerService;
+        private readonly IGameService gameService;
 
         public SellerController(ISellerService sellerService, IGameService gameService, IConfiguration configuration)
             : base(Log.ForContext<SellerController>(), configuration)
         {
-            _sellerService = sellerService;
-            _gameService = gameService;
+            this.sellerService = sellerService;
+            this.gameService = gameService;
         }
 
         public async Task<IActionResult> Profile()
         {
             try
             {
-                var role = GetCurrentRole();
-                var sellerId = GetCurrentSellerId();
+                var role = this.GetCurrentRole();
+                var sellerId = this.GetCurrentSellerId();
                 if (sellerId == null)
-                    return RedirectToAction("Login", "Account");
-                var seller = await _sellerService.GetSellerByIdAsync(sellerId.Value, sellerId, role);
+                    return this.RedirectToAction("Login", "Account");
+                var seller = await this.sellerService.GetSellerByIdAsync(sellerId.Value, sellerId, role);
                 if (seller == null)
-                    return NotFound();
+                    return this.NotFound();
                 var sellerResponse = new SellerResponseDTO
                 {
                     Id = seller.Id,
                     SellerName = seller.SellerName,
                     RegistrationDate = seller.RegistrationDate,
-                    AvgRating = seller.AvgRating
+                    AvgRating = seller.AvgRating,
                 };
-                return View(sellerResponse);
+                return this.View(sellerResponse);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error retrieving seller profile");
-                ViewBag.ErrorMessage = $"Ошибка загрузки профиля: {ex.Message}";
-                return View();
+                this.LogError(ex, "Error retrieving seller profile");
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки профиля: {ex.Message}";
+                return this.View();
             }
         }
 
@@ -56,18 +56,18 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                var role = GetCurrentRole();
-                var sellerId = GetCurrentSellerId();
+                var role = this.GetCurrentRole();
+                var sellerId = this.GetCurrentSellerId();
                 if (sellerId == null)
-                    return RedirectToAction("Login", "Account");
-                var games = await _gameService.GetAllGamesAsync();
-                var orderItems = await _sellerService.GetOrderItemsBySellerIdAsync(sellerId.Value, sellerId, role);
-                ViewBag.Games = games.Select(g => new GameListResponseDTO
+                    return this.RedirectToAction("Login", "Account");
+                var games = await this.gameService.GetAllGamesAsync();
+                var orderItems = await this.sellerService.GetOrderItemsBySellerIdAsync(sellerId.Value, sellerId, role);
+                this.ViewBag.Games = games.Select(g => new GameListResponseDTO
                 {
                     Id = g.Id,
                     Title = g.Title,
                     Price = g.Price,
-                    IsForSale = g.IsForSale
+                    IsForSale = g.IsForSale,
                 }).ToList();
                 var orderItemsResponse = orderItems.Select(oi => new OrderItemResponseDTO
                 {
@@ -75,15 +75,15 @@ namespace Gamesbakery.Controllers
                     GameId = oi.GameId,
                     GameTitle = oi.GameTitle,
                     SellerId = oi.SellerId,
-                    SellerName = oi.SellerName
+                    SellerName = oi.SellerName,
                 }).ToList();
-                return View(orderItemsResponse);
+                return this.View(orderItemsResponse);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error retrieving seller order items");
-                ViewBag.ErrorMessage = $"Ошибка загрузки товаров: {ex.Message}";
-                return View(new List<OrderItemResponseDTO>());
+                this.LogError(ex, "Error retrieving seller order items");
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки товаров: {ex.Message}";
+                return this.View(new List<OrderItemResponseDTO>());
             }
         }
 
@@ -93,24 +93,25 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                var role = GetCurrentRole();
-                var sellerId = GetCurrentSellerId();
+                var role = this.GetCurrentRole();
+                var sellerId = this.GetCurrentSellerId();
                 if (sellerId == null)
-                    return RedirectToAction("Login", "Account");
+                    return this.RedirectToAction("Login", "Account");
                 if (string.IsNullOrWhiteSpace(key))
                 {
-                    TempData["ErrorMessage"] = "Ключ не может быть пустым.";
-                    return RedirectToAction("OrderItems");
+                    this.TempData["ErrorMessage"] = "Ключ не может быть пустым.";
+                    return this.RedirectToAction("OrderItems");
                 }
-                var orderItem = await _sellerService.CreateKeyAsync(gameId, key, sellerId, role);
-                TempData["SuccessMessage"] = "Ключ успешно создан!";
-                return RedirectToAction("OrderItems");
+
+                var orderItem = await this.sellerService.CreateKeyAsync(gameId, key, sellerId, role);
+                this.TempData["SuccessMessage"] = "Ключ успешно создан!";
+                return this.RedirectToAction("OrderItems");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error creating key for game {GameId}", gameId);
-                TempData["ErrorMessage"] = $"Ошибка создания ключа: {ex.Message}";
-                return RedirectToAction("OrderItems");
+                this.LogError(ex, "Error creating key for game {GameId}", gameId);
+                this.TempData["ErrorMessage"] = $"Ошибка создания ключа: {ex.Message}";
+                return this.RedirectToAction("OrderItems");
             }
         }
 
@@ -120,24 +121,25 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                var role = GetCurrentRole();
-                var sellerId = GetCurrentSellerId();
+                var role = this.GetCurrentRole();
+                var sellerId = this.GetCurrentSellerId();
                 if (sellerId == null)
-                    return RedirectToAction("Login", "Account");
+                    return this.RedirectToAction("Login", "Account");
                 if (string.IsNullOrWhiteSpace(key))
                 {
-                    TempData["ErrorMessage"] = "Ключ не может быть пустым.";
-                    return RedirectToAction("OrderItems");
+                    this.TempData["ErrorMessage"] = "Ключ не может быть пустым.";
+                    return this.RedirectToAction("OrderItems");
                 }
-                await _sellerService.SetOrderItemKeyAsync(orderItemId, key, sellerId.Value, sellerId, role);
-                TempData["SuccessMessage"] = "Ключ успешно установлен!";
-                return RedirectToAction("OrderItems");
+
+                await this.sellerService.SetOrderItemKeyAsync(orderItemId, key, sellerId.Value, sellerId, role);
+                this.TempData["SuccessMessage"] = "Ключ успешно установлен!";
+                return this.RedirectToAction("OrderItems");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error setting key for order item {OrderItemId}", orderItemId);
-                TempData["ErrorMessage"] = $"Ошибка установки ключа: {ex.Message}";
-                return RedirectToAction("OrderItems");
+                this.LogError(ex, "Error setting key for order item {OrderItemId}", orderItemId);
+                this.TempData["ErrorMessage"] = $"Ошибка установки ключа: {ex.Message}";
+                return this.RedirectToAction("OrderItems");
             }
         }
     }

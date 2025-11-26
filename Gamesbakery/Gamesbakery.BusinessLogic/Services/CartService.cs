@@ -11,6 +11,7 @@ namespace Gamesbakery.BusinessLogic.Services
     public class CartService : ICartService
     {
         private readonly ICartRepository _cartRepository;
+
         private readonly IOrderItemRepository _orderItemRepository;
 
         public CartService(ICartRepository cartRepository, IOrderItemRepository orderItemRepository)

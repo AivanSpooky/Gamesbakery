@@ -11,7 +11,7 @@ using Gamesbakery.WebGUI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gamesbakery.WebGUI.Controllers.v2
+namespace Gamesbakery.WebGUI.Controllers.V2
 {
     /// <summary>
     /// Controller for managing user cart items.
@@ -22,11 +22,11 @@ namespace Gamesbakery.WebGUI.Controllers.v2
     [ApiConventionType(typeof(DefaultApiConventions))]
     public class CartsController : ControllerBase
     {
-        private readonly ICartService _cartService;
+        private readonly ICartService cartService;
 
         public CartsController(ICartService cartService)
         {
-            _cartService = cartService;
+            this.cartService = cartService;
         }
 
         /// <summary>
@@ -44,9 +44,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> GetCartItems(Guid userId, int page = 1, int limit = 10)
         {
-            var currentUserId = User.GetUserId();
-            if (userId != currentUserId) return Forbid();
-            var items = await _cartService.GetCartItemsAsync(currentUserId);
+            var currentUserId = this.User.GetUserId();
+            if (userId != currentUserId) return this.Forbid();
+            var items = await this.cartService.GetCartItemsAsync(currentUserId);
             var totalCount = items.Count;
             var pagedItems = items.Skip((page - 1) * limit).Take(limit).Select(item => new CartItemResponseDTO
             {
@@ -54,16 +54,16 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                 GameId = item.GameId,
                 GameTitle = item.GameTitle,
                 GamePrice = item.GamePrice,
-                SellerName = item.SellerName
+                SellerName = item.SellerName,
             }).ToList();
-            return Ok(new PaginatedResponse<CartItemResponseDTO>
+            return this.Ok(new PaginatedResponse<CartItemResponseDTO>
             {
                 TotalCount = totalCount,
                 Items = pagedItems,
                 NextPage = pagedItems.Count == limit ? page + 1 : null,
                 PreviousPage = page > 1 ? page - 1 : null,
                 CurrentPage = page,
-                PageSize = limit
+                PageSize = limit,
             });
         }
 
@@ -81,13 +81,13 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> AddItem(Guid userId, [FromBody] AddToCartDTO dto)
         {
-            var currentUserId = User.GetUserId();
-            if (userId != currentUserId) return Forbid();
-            await _cartService.AddToCartAsync(dto.OrderItemId, currentUserId);
-            return CreatedAtAction(nameof(GetCartItems), new { userId }, new SingleResponse<object>
+            var currentUserId = this.User.GetUserId();
+            if (userId != currentUserId) return this.Forbid();
+            await this.cartService.AddToCartAsync(dto.OrderItemId, currentUserId);
+            return this.CreatedAtAction(nameof(this.GetCartItems), new { userId }, new SingleResponse<object>
             {
                 Item = null,
-                Message = "Item added to cart"
+                Message = "Item added to cart",
             });
         }
 
@@ -105,10 +105,10 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> RemoveItem(Guid userId, Guid itemId)
         {
-            var currentUserId = User.GetUserId();
-            if (userId != currentUserId) return Forbid();
-            await _cartService.RemoveFromCartAsync(itemId, currentUserId);
-            return NoContent();
+            var currentUserId = this.User.GetUserId();
+            if (userId != currentUserId) return this.Forbid();
+            await this.cartService.RemoveFromCartAsync(itemId, currentUserId);
+            return this.NoContent();
         }
 
         /// <summary>
@@ -124,10 +124,10 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> ClearCart(Guid userId)
         {
-            var currentUserId = User.GetUserId();
-            if (userId != currentUserId) return Forbid();
-            await _cartService.ClearCartAsync(currentUserId);
-            return NoContent();
+            var currentUserId = this.User.GetUserId();
+            if (userId != currentUserId) return this.Forbid();
+            await this.cartService.ClearCartAsync(currentUserId);
+            return this.NoContent();
         }
     }
 }

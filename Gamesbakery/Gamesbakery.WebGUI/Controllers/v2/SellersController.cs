@@ -11,7 +11,7 @@ using Gamesbakery.WebGUI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gamesbakery.WebGUI.Controllers.v2
+namespace Gamesbakery.WebGUI.Controllers.V2
 {
     /// <summary>
     /// Controller for managing sellers.
@@ -21,15 +21,15 @@ namespace Gamesbakery.WebGUI.Controllers.v2
     [ApiConventionType(typeof(DefaultApiConventions))]
     public class SellersController : ControllerBase
     {
-        private readonly ISellerRepository _sellerRepository;
-        private readonly ISellerService _sellerService;
-        private readonly IOrderItemRepository _orderItemRepository;
+        private readonly ISellerRepository sellerRepository;
+        private readonly ISellerService sellerService;
+        private readonly IOrderItemRepository orderItemRepository;
 
         public SellersController(ISellerRepository sellerRepository, ISellerService sellerService, IOrderItemRepository orderItemRepository)
         {
-            _sellerRepository = sellerRepository;
-            _sellerService = sellerService;
-            _orderItemRepository = orderItemRepository;
+            this.sellerRepository = sellerRepository;
+            this.sellerService = sellerService;
+            this.orderItemRepository = orderItemRepository;
         }
 
         /// <summary>
@@ -37,6 +37,7 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         /// </summary>
         /// <param name="page">The page number for pagination (default is 1).</param>
         /// <param name="limit">The number of sellers per page (default is 10).</param>
+        /// <param name="getAll">WOW.</param>
         /// <returns>A paginated list of sellers.</returns>
         /// <response code="200">Returns the paginated list of sellers.</response>
         /// <response code="403">If the requesting user is not authorized.</response>
@@ -46,9 +47,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> GetSellers(int page = 1, int limit = 1000, bool getAll = false)
         {
-            var role = User.GetRole();
-            var sellers = await _sellerRepository.GetAllAsync(role);
-            var totalCount = await _sellerRepository.GetCountAsync(role);
+            var role = this.User.GetRole();
+            var sellers = await this.sellerRepository.GetAllAsync(role);
+            var totalCount = await this.sellerRepository.GetCountAsync(role);
 
             if (getAll)
             {
@@ -61,17 +62,17 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                 Id = s.Id,
                 SellerName = s.SellerName,
                 RegistrationDate = s.RegistrationDate,
-                AvgRating = s.AvgRating
+                AvgRating = s.AvgRating,
             }).ToList();
 
-            return Ok(new PaginatedResponse<SellerResponseDTO>
+            return this.Ok(new PaginatedResponse<SellerResponseDTO>
             {
                 TotalCount = totalCount,
                 Items = pagedSellers,
                 NextPage = (page * limit < totalCount) ? page + 1 : null,
                 PreviousPage = page > 1 ? page - 1 : null,
                 CurrentPage = page,
-                PageSize = limit
+                PageSize = limit,
             });
         }
 
@@ -88,22 +89,21 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> GetSeller(Guid id)
         {
-            var role = User.GetRole();
-            var seller = await _sellerRepository.GetByIdAsync(id, role);
+            var role = this.User.GetRole();
+            var seller = await this.sellerRepository.GetByIdAsync(id, role);
             if (seller == null)
-            {
-                return NotFound(new { error = "Seller not found" });
-            }
-            return Ok(new SingleResponse<SellerResponseDTO>
+                return this.NotFound(new { error = "Seller not found" });
+
+            return this.Ok(new SingleResponse<SellerResponseDTO>
             {
                 Item = new SellerResponseDTO
                 {
                     Id = seller.Id,
                     SellerName = seller.SellerName,
                     RegistrationDate = seller.RegistrationDate,
-                    AvgRating = seller.AvgRating
+                    AvgRating = seller.AvgRating,
                 },
-                Message = "Seller retrieved successfully"
+                Message = "Seller retrieved successfully",
             });
         }
 
@@ -120,29 +120,29 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> RegisterSeller([FromBody] SellerRegisterDTO dto)
         {
-            var role = User.GetRole();
+            var role = this.User.GetRole();
             try
             {
-                var seller = await _sellerService.RegisterSellerAsync(dto.SellerName, dto.Password, role);
-                return CreatedAtAction(nameof(GetSellers), new { id = seller.Id }, new SingleResponse<SellerResponseDTO>
+                var seller = await this.sellerService.RegisterSellerAsync(dto.SellerName, dto.Password, role);
+                return this.CreatedAtAction(nameof(this.GetSellers), new { id = seller.Id }, new SingleResponse<SellerResponseDTO>
                 {
                     Item = new SellerResponseDTO
                     {
                         Id = seller.Id,
                         SellerName = seller.SellerName,
                         RegistrationDate = seller.RegistrationDate,
-                        AvgRating = seller.AvgRating
+                        AvgRating = seller.AvgRating,
                     },
-                    Message = "Seller registered successfully"
+                    Message = "Seller registered successfully",
                 });
             }
             catch (UnauthorizedAccessException)
             {
-                return Forbid();
+                return this.Forbid();
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Failed to register seller", details = ex.Message });
+                return this.StatusCode(500, new { error = "Failed to register seller", details = ex.Message });
             }
         }
 
@@ -160,11 +160,11 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> CreateKey(Guid sellerId, [FromBody] CreateKeyDTO dto)
         {
-            var role = User.GetRole();
-            var currentSellerId = User.GetSellerId();
-            if (sellerId != currentSellerId) return Forbid();
-            var orderItem = await _sellerService.CreateKeyAsync(dto.GameId, dto.Key, currentSellerId, role);
-            return CreatedAtAction(nameof(OrderItemsController.GetOrderItem), "OrderItems", new { id = orderItem.Id }, new SingleResponse<OrderItemResponseDTO>
+            var role = this.User.GetRole();
+            var currentSellerId = this.User.GetSellerId();
+            if (sellerId != currentSellerId) return this.Forbid();
+            var orderItem = await this.sellerService.CreateKeyAsync(dto.GameId, dto.Key, currentSellerId, role);
+            return this.CreatedAtAction(nameof(OrderItemsController.GetOrderItem), "OrderItems", new { id = orderItem.Id }, new SingleResponse<OrderItemResponseDTO>
             {
                 Item = new OrderItemResponseDTO
                 {
@@ -172,9 +172,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     GameId = orderItem.GameId,
                     GameTitle = orderItem.GameTitle,
                     SellerId = orderItem.SellerId,
-                    SellerName = orderItem.SellerName
+                    SellerName = orderItem.SellerName,
                 },
-                Message = "Key created successfully"
+                Message = "Key created successfully",
             });
         }
     }

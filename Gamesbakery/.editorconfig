@@ -11,4 +11,52 @@ indent_size = 4
 csharp_indent_braces = false
 csharp_space_after_keywords_in_control_flow_statements = true
 csharp_max_line_length = 120
-dotnet_diagnostic.SA1200.severity = none  # Пример отключения rules
+dotnet_diagnostic.CS0618.severity = none
+dotnet_diagnostic.CS8600.severity = none
+dotnet_diagnostic.CS8601.severity = none
+dotnet_diagnostic.CS8602.severity = none
+dotnet_diagnostic.CS8604.severity = none
+dotnet_diagnostic.CS8618.severity = none
+dotnet_diagnostic.CS8625.severity = none
+dotnet_diagnostic.CS8629.severity = none
+
+dotnet_diagnostic.SA1200.severity = none
+dotnet_diagnostic.SA1201.severity = none
+dotnet_diagnostic.SA1401.severity = none
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1503.severity = none
+dotnet_diagnostic.SA1600.severity = none 
+dotnet_diagnostic.SA1633.severity = none
+dotnet_diagnostic.SA1649.severity = none
+
+# NEED TO COMMENT
+dotnet_diagnostic.SA1005.severity = none
+dotnet_diagnostic.SA1101.severity = none
+dotnet_diagnostic.SA1309.severity = none
+dotnet_diagnostic.SA1413.severity = none
+dotnet_diagnostic.SA1513.severity = none
+dotnet_diagnostic.SA1516.severity = none
+dotnet_diagnostic.SA1602.severity = none
+
+# NEED TO COMMENT TWICE
+dotnet_diagnostic.SA1008.severity = none
+dotnet_diagnostic.SA1009.severity = none
+dotnet_diagnostic.SA1111.severity = none
+dotnet_diagnostic.SA1122.severity = none
+dotnet_diagnostic.SA1202.severity = none
+dotnet_diagnostic.SA1208.severity = none
+dotnet_diagnostic.SA1210.severity = none
+dotnet_diagnostic.SA1500.severity = none
+dotnet_diagnostic.SA1515.severity = none
+
+
+
+
+
+
+
+
+
+
+
+

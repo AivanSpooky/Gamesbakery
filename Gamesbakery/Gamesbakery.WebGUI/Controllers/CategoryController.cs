@@ -17,32 +17,32 @@ namespace Gamesbakery.Controllers
     [AllowAnonymous]
     public class CategoryController : BaseController
     {
-        private readonly ICategoryService _categoryService;
+        private readonly ICategoryService categoryService;
 
         public CategoryController(ICategoryService categoryService, IConfiguration configuration)
             : base(Log.ForContext<CategoryController>(), configuration)
         {
-            _categoryService = categoryService;
+            this.categoryService = categoryService;
         }
 
         public async Task<IActionResult> Index()
         {
             try
             {
-                var categories = await _categoryService.GetAllCategoriesAsync();
+                var categories = await this.categoryService.GetAllCategoriesAsync();
                 var categoriesResponse = categories.Select(c => new CategoryResponseDTO
                 {
                     Id = c.Id,
                     GenreName = c.GenreName,
-                    Description = c.Description
+                    Description = c.Description,
                 }).ToList();
-                return View(categoriesResponse);
+                return this.View(categoriesResponse);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading categories");
-                ViewBag.ErrorMessage = "Ошибка загрузки категорий.";
-                return View(new List<CategoryResponseDTO>());
+                this.LogError(ex, "Error loading categories");
+                this.ViewBag.ErrorMessage = "Ошибка загрузки категорий.";
+                return this.View(new List<CategoryResponseDTO>());
             }
         }
 
@@ -50,7 +50,7 @@ namespace Gamesbakery.Controllers
         [Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
-            return View();
+            return this.View();
         }
 
         [HttpPost]
@@ -58,19 +58,19 @@ namespace Gamesbakery.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Create(CategoryCreateDTO model)
         {
-            var role = User.GetRole();
+            var role = this.User.GetRole();
             try
             {
-                if (!ModelState.IsValid)
-                    return View(model);
-                var category = await _categoryService.AddCategoryAsync(model.GenreName, model.Description, role);
-                return RedirectToAction("Index");
+                if (!this.ModelState.IsValid)
+                    return this.View(model);
+                var category = await this.categoryService.AddCategoryAsync(model.GenreName, model.Description, role);
+                return this.RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error creating category with GenreName={GenreName}", model.GenreName);
-                ModelState.AddModelError("", $"Ошибка при создании категории: {ex.Message}");
-                return View(model);
+                this.LogError(ex, "Error creating category with GenreName={GenreName}", model.GenreName);
+                this.ModelState.AddModelError(string.Empty, $"Ошибка при создании категории: {ex.Message}");
+                return this.View(model);
             }
         }
     }

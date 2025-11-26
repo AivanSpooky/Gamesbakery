@@ -10,7 +10,7 @@ using Gamesbakery.WebGUI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gamesbakery.WebGUI.Controllers.v2
+namespace Gamesbakery.WebGUI.Controllers.V2
 {
     /// <summary>
     /// Controller for managing game reviews.
@@ -20,11 +20,11 @@ namespace Gamesbakery.WebGUI.Controllers.v2
     [ApiConventionType(typeof(DefaultApiConventions))]
     public class ReviewsController : ControllerBase
     {
-        private readonly IReviewService _reviewService;
+        private readonly IReviewService reviewService;
 
         public ReviewsController(IReviewService reviewService)
         {
-            _reviewService = reviewService;
+            this.reviewService = reviewService;
         }
 
         /// <summary>
@@ -42,10 +42,10 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> CreateReview([FromBody] ReviewCreateDTO dto)
         {
-            var userId = User.GetUserId();
-            var role = User.GetRole();
-            var reviewDto = await _reviewService.AddReviewAsync((Guid)userId, dto.GameId, dto.Text, dto.Rating, userId, role);
-            return CreatedAtAction(nameof(GetReviewsByGame), new { gameId = dto.GameId }, new SingleResponse<ReviewResponseDTO>
+            var userId = this.User.GetUserId();
+            var role = this.User.GetRole();
+            var reviewDto = await this.reviewService.AddReviewAsync((Guid)userId, dto.GameId, dto.Text, dto.Rating, userId, role);
+            return this.CreatedAtAction(nameof(this.GetReviewsByGame), new { gameId = dto.GameId }, new SingleResponse<ReviewResponseDTO>
             {
                 Item = new ReviewResponseDTO
                 {
@@ -54,9 +54,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     GameId = reviewDto.GameId,
                     Text = reviewDto.Text,
                     Rating = reviewDto.Rating,
-                    CreationDate = reviewDto.CreationDate
+                    CreationDate = reviewDto.CreationDate,
                 },
-                Message = "Review created successfully"
+                Message = "Review created successfully",
             });
         }
 
@@ -80,8 +80,8 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var role = User.GetRole();
-                var reviews = await _reviewService.GetReviewsByGameIdAsync(gameId, role, userId, minRating, maxRating);
+                var role = this.User.GetRole();
+                var reviews = await this.reviewService.GetReviewsByGameIdAsync(gameId, role, userId, minRating, maxRating);
                 var totalCount = reviews.Count;
                 var pagedReviews = reviews.Skip((page - 1) * limit).Take(limit).Select(r => new ReviewResponseDTO
                 {
@@ -91,21 +91,21 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     Text = r.Text,
                     Rating = r.Rating,
                     CreationDate = r.CreationDate,
-                    Username = r.Username
+                    Username = r.Username,
                 }).ToList();
-                return Ok(new PaginatedResponse<ReviewResponseDTO>
+                return this.Ok(new PaginatedResponse<ReviewResponseDTO>
                 {
                     TotalCount = totalCount,
                     Items = pagedReviews,
                     NextPage = pagedReviews.Count == limit ? page + 1 : null,
                     PreviousPage = page > 1 ? page - 1 : null,
                     CurrentPage = page,
-                    PageSize = limit
+                    PageSize = limit,
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Failed to retrieve reviews", details = ex.Message });
+                return this.StatusCode(500, new { error = "Failed to retrieve reviews", details = ex.Message });
             }
         }
 
@@ -129,11 +129,11 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                var currentUserId = User.GetUserId();
-                var role = User.GetRole();
+                var currentUserId = this.User.GetUserId();
+                var role = this.User.GetRole();
                 if (userId != currentUserId && role != UserRole.Admin)
-                    return Forbid("Only admins can view other users' reviews");
-                var reviews = await _reviewService.GetByUserIdAsync(userId, sortByRating, role);
+                    return this.Forbid("Only admins can view other users' reviews");
+                var reviews = await this.reviewService.GetByUserIdAsync(userId, sortByRating, role);
                 var totalCount = reviews.Count;
                 var pagedReviews = reviews.Skip((page - 1) * limit).Take(limit).Select(r => new ReviewResponseDTO
                 {
@@ -142,25 +142,25 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     GameId = r.GameId,
                     Text = r.Text,
                     Rating = r.Rating,
-                    CreationDate = r.CreationDate
+                    CreationDate = r.CreationDate,
                 }).ToList();
-                return Ok(new PaginatedResponse<ReviewResponseDTO>
+                return this.Ok(new PaginatedResponse<ReviewResponseDTO>
                 {
                     TotalCount = totalCount,
                     Items = pagedReviews,
                     NextPage = pagedReviews.Count == limit ? page + 1 : null,
                     PreviousPage = page > 1 ? page - 1 : null,
                     CurrentPage = page,
-                    PageSize = limit
+                    PageSize = limit,
                 });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return this.Forbid(ex.Message);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Failed to retrieve reviews", details = ex.Message });
+                return this.StatusCode(500, new { error = "Failed to retrieve reviews", details = ex.Message });
             }
         }
     }

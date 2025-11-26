@@ -10,7 +10,7 @@ using Gamesbakery.WebGUI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gamesbakery.WebGUI.Controllers.v2
+namespace Gamesbakery.WebGUI.Controllers.V2
 {
     /// <summary>
     /// Controller for managing order items.
@@ -20,11 +20,11 @@ namespace Gamesbakery.WebGUI.Controllers.v2
     [ApiConventionType(typeof(DefaultApiConventions))]
     public class OrderItemsController : ControllerBase
     {
-        private readonly IOrderItemService _orderItemService;
+        private readonly IOrderItemService orderItemService;
 
         public OrderItemsController(IOrderItemService orderItemService)
         {
-            _orderItemService = orderItemService;
+            this.orderItemService = orderItemService;
         }
 
         /// <summary>
@@ -43,8 +43,8 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> GetOrderItems(int page = 1, int limit = 10, Guid? sellerId = null, Guid? gameId = null)
         {
-            var role = User.GetRole();
-            var items = await _orderItemService.GetFilteredAsync(sellerId, gameId, User.GetSellerId(), role);
+            var role = this.User.GetRole();
+            var items = await this.orderItemService.GetFilteredAsync(sellerId, gameId, this.User.GetSellerId(), role);
             var totalCount = items.Count;
             var pagedItems = items.Skip((page - 1) * limit).Take(limit).Select(item => new OrderItemResponseDTO
             {
@@ -54,16 +54,16 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                 SellerId = item.SellerId,
                 SellerName = item.SellerName,
                 OrderId = item.OrderId,
-                GamePrice = item.GamePrice
+                GamePrice = item.GamePrice,
             }).ToList();
-            return Ok(new PaginatedResponse<OrderItemResponseDTO>
+            return this.Ok(new PaginatedResponse<OrderItemResponseDTO>
             {
                 TotalCount = totalCount,
                 Items = pagedItems,
                 NextPage = pagedItems.Count == limit ? page + 1 : null,
                 PreviousPage = page > 1 ? page - 1 : null,
                 CurrentPage = page,
-                PageSize = limit
+                PageSize = limit,
             });
         }
 
@@ -80,9 +80,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> CreateOrderItem([FromBody] OrderItemCreateDTO dto)
         {
-            var role = User.GetRole();
-            var created = await _orderItemService.CreateAsync(dto, User.GetSellerId(), role);
-            return CreatedAtAction(nameof(GetOrderItem), new { id = created.Id }, new SingleResponse<OrderItemResponseDTO>
+            var role = this.User.GetRole();
+            var created = await this.orderItemService.CreateAsync(dto, this.User.GetSellerId(), role);
+            return this.CreatedAtAction(nameof(this.GetOrderItem), new { id = created.Id }, new SingleResponse<OrderItemResponseDTO>
             {
                 Item = new OrderItemResponseDTO
                 {
@@ -90,9 +90,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     GameId = created.GameId,
                     GameTitle = created.GameTitle,
                     SellerId = created.SellerId,
-                    SellerName = created.SellerName
+                    SellerName = created.SellerName,
                 },
-                Message = "Order item created successfully"
+                Message = "Order item created successfully",
             });
         }
 
@@ -111,11 +111,11 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> GetOrderItem(Guid id)
         {
-            var role = User.GetRole();
-            var curUser = User.GetUserId();
-            var item = await _orderItemService.GetByIdAsync(id, curUser, role);
-            if (item == null) return NotFound();
-            return Ok(new SingleResponse<OrderItemResponseDTO>
+            var role = this.User.GetRole();
+            var curUser = this.User.GetUserId();
+            var item = await this.orderItemService.GetByIdAsync(id, curUser, role);
+            if (item == null) return this.NotFound();
+            return this.Ok(new SingleResponse<OrderItemResponseDTO>
             {
                 Item = new OrderItemResponseDTO
                 {
@@ -123,11 +123,12 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     GameId = item.GameId,
                     GameTitle = item.GameTitle,
                     SellerId = item.SellerId,
-                    SellerName = item.SellerName
+                    SellerName = item.SellerName,
                 },
-                Message = "Order item retrieved successfully"
+                Message = "Order item retrieved successfully",
             });
         }
+
         /// <summary>
         /// Retrieves the key for a specific order item if the user is authorized.
         /// </summary>
@@ -143,20 +144,20 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> GetOrderItemKey(Guid id)
         {
-            var role = User.GetRole();
-            var currentUserId = User.GetUserId();
-            var item = await _orderItemService.GetByIdAsync(id, currentUserId, role);
-            if (item == null) return NotFound();
-            // Additional check: Ensure the item belongs to an order owned by the user
+            var role = this.User.GetRole();
+            var currentUserId = this.User.GetUserId();
+            var item = await this.orderItemService.GetByIdAsync(id, currentUserId, role);
+            if (item == null) return this.NotFound();
             if (role != UserRole.Admin && item.OrderId.HasValue)
             {
                 // You may need to inject IOrderService or add logic to verify order ownership
                 // For example: if (!await _orderService.IsOrderOwnedByUser(item.OrderId.Value, currentUserId)) return Forbid();
             }
-            return Ok(new SingleResponse<string>
+
+            return this.Ok(new SingleResponse<string>
             {
                 Item = item.Key,
-                Message = "Key retrieved successfully"
+                Message = "Key retrieved successfully",
             });
         }
 
@@ -176,12 +177,12 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> PatchOrderItem(Guid id, [FromBody] OrderItemUpdateDTO dto)
         {
-            var role = User.GetRole();
-            var curUser = User.GetUserId();
-            var curSeller = User.GetSellerId();
-            await _orderItemService.UpdateAsync(id, dto, curSeller, role);
-            var updated = await _orderItemService.GetByIdAsync(id, curUser, role);
-            return Ok(new SingleResponse<OrderItemResponseDTO>
+            var role = this.User.GetRole();
+            var curUser = this.User.GetUserId();
+            var curSeller = this.User.GetSellerId();
+            await this.orderItemService.UpdateAsync(id, dto, curSeller, role);
+            var updated = await this.orderItemService.GetByIdAsync(id, curUser, role);
+            return this.Ok(new SingleResponse<OrderItemResponseDTO>
             {
                 Item = new OrderItemResponseDTO
                 {
@@ -189,9 +190,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     GameId = updated.GameId,
                     GameTitle = updated.GameTitle,
                     SellerId = updated.SellerId,
-                    SellerName = updated.SellerName
+                    SellerName = updated.SellerName,
                 },
-                Message = "Order item updated successfully"
+                Message = "Order item updated successfully",
             });
         }
 
@@ -210,9 +211,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteOrderItem(Guid id)
         {
-            var role = User.GetRole();
-            await _orderItemService.DeleteAsync(id, role);
-            return NoContent();
+            var role = this.User.GetRole();
+            await this.orderItemService.DeleteAsync(id, role);
+            return this.NoContent();
         }
     }
 }

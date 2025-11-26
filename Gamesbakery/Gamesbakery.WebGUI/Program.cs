@@ -55,8 +55,7 @@ Log.Logger = new LoggerConfiguration()
         path: logPath,
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 7,
-        shared: true
-    )
+        shared: true)
     .CreateLogger();
 builder.Host.UseSerilog();
 
@@ -78,7 +77,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
-            ClockSkew = TimeSpan.FromMinutes(5)
+            ClockSkew = TimeSpan.FromMinutes(5),
         };
         options.Events = new JwtBearerEvents
         {
@@ -94,7 +93,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
                 return context.Response.WriteAsync("{\"error\":\"Unauthorized\"}");
-            }
+            },
         };
     });
 builder.Services.AddCors(options =>
@@ -117,6 +116,7 @@ catch (Exception ex)
 {
     Log.Warning(ex, "Could not create DataProtection directory");
 }
+
 builder.Services.Configure<AntiforgeryOptions>(options =>
 {
     options.HeaderName = null;
@@ -145,8 +145,9 @@ builder.Services.AddDbContext<GamesbakeryDbContext>((serviceProvider, options) =
     else
     {
         var useRoleBasedConnections = configuration.GetValue<bool>("USE_ROLE_BASED_CONNECTIONS", true);
-        //if (useRoleBasedConnections)
-        //{
+
+        // if (useRoleBasedConnections)
+        // {
         //    var role = httpContextAccessor.HttpContext?.Session.GetString("Role");
         //    var username = httpContextAccessor.HttpContext?.Session.GetString("Username");
         //    switch (role)
@@ -164,12 +165,14 @@ builder.Services.AddDbContext<GamesbakeryDbContext>((serviceProvider, options) =
         //            connectionString = configuration.GetConnectionString("GuestConnection");
         //            break;
         //    }
-        //}
-        //else
-        //{
-            connectionString = configuration.GetConnectionString("DefaultConnection");
-        //}
+        // }
+        // else
+        // {
+        connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        // }
     }
+
     Log.Information("Using connection string: {ConnectionString}", connectionString);
     options.UseSqlServer(connectionString, sqlOptions =>
     {
@@ -179,21 +182,22 @@ builder.Services.AddDbContext<GamesbakeryDbContext>((serviceProvider, options) =
 });
 
 builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddApiVersioning(c =>
-//{
+
+// builder.Services.AddApiVersioning(c =>
+// {
 //    c.DefaultApiVersion = new ApiVersion(2);
 //    c.AssumeDefaultVersionWhenUnspecified = true;
 //    c.ReportApiVersions = true;
 //    c.ApiVersionReader = new HeaderApiVersionReader("X-Version");
-//}).AddMvc(c =>
-//{
+// }).AddMvc(c =>
+// {
 //    c.Conventions.Add(new VersionByNamespaceConvention());
-//}).AddApiExplorer(c =>
-//{
+// }).AddApiExplorer(c =>
+// {
 //    c.GroupNameFormat = "'v'V";
 //    c.SubstituteApiVersionInUrl = true;
 //    c.AssumeDefaultVersionWhenUnspecified = true;
-//});
+// });
 // Configure Swagger
 builder.Services.AddSwaggerGen(c =>
 {
@@ -201,17 +205,17 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Gamesbakery API V1",
         Version = "v1",
-        Description = "API Version 1"
+        Description = "API Version 1",
     });
     c.SwaggerDoc("v2", new OpenApiInfo
     {
         Title = "Gamesbakery API V2",
         Version = "v2",
-        Description = "API Version 2"
+        Description = "API Version 2",
     });
     c.DocInclusionPredicate((docName, apiDesc) =>
     {
-        var routeTemplate = apiDesc.RelativePath?.ToLower() ?? "";
+        var routeTemplate = apiDesc.RelativePath?.ToLower() ?? string.Empty;
 
         if (docName == "v1")
         {
@@ -233,7 +237,7 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer",
-        BearerFormat = "JWT"
+        BearerFormat = "JWT",
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -243,11 +247,11 @@ builder.Services.AddSwaggerGen(c =>
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                    Id = "Bearer",
+                },
             },
             Array.Empty<string>()
-        }
+        },
     });
     c.OperationFilter<AuthorizeCheckOperationFilter>();
 });
@@ -310,7 +314,7 @@ Log.Information("=== Application built successfully ===");
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "healthy",
-    timestamp = DateTime.UtcNow.ToString("O")
+    timestamp = DateTime.UtcNow.ToString("O"),
 }));
 app.MapGet("/health/live", (IHostApplicationLifetime lifetime) =>
 {
@@ -326,6 +330,7 @@ app.MapGet("/health/ready", async (IHostApplicationLifetime lifetime, ILogger<Pr
         logger.LogWarning("Application not started yet");
         return Results.StatusCode(503);
     }
+
     try
     {
         using var scope = app.Services.CreateScope();
@@ -337,12 +342,13 @@ app.MapGet("/health/ready", async (IHostApplicationLifetime lifetime, ILogger<Pr
             logger.LogError("Database connection failed");
             return Results.StatusCode(503);
         }
+
         logger.LogInformation("Health check /health/ready successful");
         return Results.Ok(new
         {
             status = "healthy",
             timestamp = DateTime.UtcNow.ToString("O"),
-            checks = new[] { "liveness", "readiness" }
+            checks = new[] { "liveness", "readiness" },
         });
     }
     catch (Exception ex)
@@ -362,7 +368,7 @@ app.MapGet("/debug/db", async (ILogger<Program> logger) =>
         {
             connected = canConnect,
             connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? "Not set",
-            timestamp = DateTime.UtcNow
+            timestamp = DateTime.UtcNow,
         });
     }
     catch (Exception ex)
@@ -388,7 +394,8 @@ try
     app.UseMiddleware<JwtCookieMiddleware>();
     app.UseAuthentication();
     app.UseAuthorization();
-    //app.UseSession();
+
+    // app.UseSession();
     app.UseStaticFiles();
 
     if (uiMode == "api" || app.Environment.IsDevelopment())
@@ -403,7 +410,7 @@ try
             c.DocumentTitle = "Gamesbakery API";
         });
 
-        //V1
+        // V1
         app.UseSwaggerUI(c =>
         {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "Gamesbakery API V1");
@@ -411,7 +418,7 @@ try
             c.DocumentTitle = "Gamesbakery API V1";
         });
 
-        //V2
+        // V2
         app.UseSwaggerUI(c =>
         {
             c.SwaggerEndpoint("/swagger/v2/swagger.json", "Gamesbakery API V2");
@@ -419,6 +426,7 @@ try
             c.DocumentTitle = "Gamesbakery API V2";
         });
     }
+
     app.MapGet("/swagger-docs", (ISwaggerProvider provider) =>
     {
         var v1Info = provider.GetSwagger("v1");
@@ -429,32 +437,36 @@ try
             Documents = new[]
             {
             new { Name = "v1", Title = v1Info.Info.Title, Version = v1Info.Info.Version },
-            new { Name = "v2", Title = v2Info.Info.Title, Version = v2Info.Info.Version }
-        },
+            new { Name = "v2", Title = v2Info.Info.Title, Version = v2Info.Info.Version },
+            },
             Endpoints = new[]
             {
             "/swagger/v1/swagger.json",
-            "/swagger/v2/swagger.json"
-        }
+            "/swagger/v2/swagger.json",
+            },
         });
     });
     app.MapControllerRoute(
         name: "default",
         pattern: "{controller=Home}/{action=Index}/{id?}");
-    //app.MapRazorPages();
+
+    // app.MapRazorPages();
     var frontMode = builder.Configuration.GetValue<string>("UIMode")?.ToLower() ?? "razor";
     if (frontMode == "spa")
     {
         // SPA serving: Static files + fallback to index.html for Vue routing
         app.UseDefaultFiles();
         app.MapFallbackToFile("index.html"); // Handles Vue routes
-        //if (app.Environment.IsDevelopment())
+
+        // if (app.Environment.IsDevelopment())
         //    app.UseSpa(spa => {
         //        spa.UseProxyToSpaDevelopmentServer("http://localhost:5173");
         //    });
     }
     else
+    {
         app.MapRazorPages();
+    }
 
     // Fallback route for root URL
     app.MapGet("/", async context =>

@@ -12,7 +12,7 @@ using Gamesbakery.WebGUI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gamesbakery.WebGUI.Controllers.v2
+namespace Gamesbakery.WebGUI.Controllers.V2
 {
     /// <summary>
     /// Controller for managing game categories.
@@ -22,13 +22,13 @@ namespace Gamesbakery.WebGUI.Controllers.v2
     [ApiConventionType(typeof(DefaultApiConventions))]
     public class CategoriesController : ControllerBase
     {
-        private readonly ICategoryRepository _categoryRepository;
-        private readonly ICategoryService _categoryService;
+        private readonly ICategoryRepository categoryRepository;
+        private readonly ICategoryService categoryService;
 
         public CategoriesController(ICategoryRepository categoryRepository, ICategoryService categoryService)
         {
-            _categoryRepository = categoryRepository;
-            _categoryService = categoryService;
+            this.categoryRepository = categoryRepository;
+            this.categoryService = categoryService;
         }
 
         /// <summary>
@@ -43,23 +43,23 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PaginatedResponse<CategoryResponseDTO>))]
         public async Task<ActionResult> GetCategories(int page = 1, int limit = 10)
         {
-            var role = User.GetRole();
-            var categories = await _categoryRepository.GetAllAsync(role);
-            var totalCount = await _categoryRepository.GetCountAsync(role);
+            var role = this.User.GetRole();
+            var categories = await this.categoryRepository.GetAllAsync(role);
+            var totalCount = await this.categoryRepository.GetCountAsync(role);
             var pagedCategories = categories.Skip((page - 1) * limit).Take(limit).Select(c => new CategoryResponseDTO
             {
                 Id = c.Id,
                 GenreName = c.GenreName,
-                Description = c.Description
+                Description = c.Description,
             }).ToList();
-            return Ok(new PaginatedResponse<CategoryResponseDTO>
+            return this.Ok(new PaginatedResponse<CategoryResponseDTO>
             {
                 TotalCount = totalCount,
                 Items = pagedCategories,
                 NextPage = pagedCategories.Count == limit ? page + 1 : null,
                 PreviousPage = page > 1 ? page - 1 : null,
                 CurrentPage = page,
-                PageSize = limit
+                PageSize = limit,
             });
         }
 
@@ -76,16 +76,16 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> CreateCategory([FromBody] CategoryCreateDTO dto)
         {
-            var category = await _categoryService.AddCategoryAsync(dto.GenreName, dto.Description, User.GetRole());
-            return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, new SingleResponse<CategoryResponseDTO>
+            var category = await this.categoryService.AddCategoryAsync(dto.GenreName, dto.Description, this.User.GetRole());
+            return this.CreatedAtAction(nameof(this.GetCategory), new { id = category.Id }, new SingleResponse<CategoryResponseDTO>
             {
                 Item = new CategoryResponseDTO
                 {
                     Id = category.Id,
                     GenreName = category.GenreName,
-                    Description = category.Description
+                    Description = category.Description,
                 },
-                Message = "Category created successfully"
+                Message = "Category created successfully",
             });
         }
 
@@ -102,17 +102,17 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> GetCategory(Guid id)
         {
-            var category = await _categoryService.GetCategoryByIdAsync(id, User.GetRole());
-            if (category == null) return NotFound();
-            return Ok(new SingleResponse<CategoryResponseDTO>
+            var category = await this.categoryService.GetCategoryByIdAsync(id, this.User.GetRole());
+            if (category == null) return this.NotFound();
+            return this.Ok(new SingleResponse<CategoryResponseDTO>
             {
                 Item = new CategoryResponseDTO
                 {
                     Id = category.Id,
                     GenreName = category.GenreName,
-                    Description = category.Description
+                    Description = category.Description,
                 },
-                Message = "Category retrieved successfully"
+                Message = "Category retrieved successfully",
             });
         }
 
@@ -132,21 +132,21 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> UpdateCategory(Guid id, [FromBody] CategoryUpdateDTO dto)
         {
-            var role = User.GetRole();
-            var category = await _categoryRepository.GetByIdAsync(id, role);
-            if (category == null) return NotFound();
+            var role = this.User.GetRole();
+            var category = await this.categoryRepository.GetByIdAsync(id, role);
+            if (category == null) return this.NotFound();
             category.GenreName = dto.GenreName;
             category.Description = dto.Description;
-            var updated = await _categoryRepository.UpdateAsync(category, role);
-            return Ok(new SingleResponse<CategoryResponseDTO>
+            var updated = await this.categoryRepository.UpdateAsync(category, role);
+            return this.Ok(new SingleResponse<CategoryResponseDTO>
             {
                 Item = new CategoryResponseDTO
                 {
                     Id = updated.Id,
                     GenreName = updated.GenreName,
-                    Description = updated.Description
+                    Description = updated.Description,
                 },
-                Message = "Category updated successfully"
+                Message = "Category updated successfully",
             });
         }
     }

@@ -17,37 +17,37 @@ namespace Gamesbakery.Controllers
     [Authorize(Roles = "User,Admin")]
     public class CartController : BaseController
     {
-        private readonly ICartService _cartService;
-        private readonly IOrderService _orderService;
+        private readonly ICartService cartService;
+        private readonly IOrderService orderService;
 
         public CartController(ICartService cartService, IOrderService orderService, IConfiguration configuration)
             : base(Log.ForContext<CartController>(), configuration)
         {
-            _cartService = cartService;
-            _orderService = orderService;
+            this.cartService = cartService;
+            this.orderService = orderService;
         }
 
         public async Task<IActionResult> Index()
         {
-            var currentUserId = User.GetUserId();
+            var currentUserId = this.User.GetUserId();
             try
             {
-                var cartItems = await _cartService.GetCartItemsAsync(currentUserId);
+                var cartItems = await this.cartService.GetCartItemsAsync(currentUserId);
                 var cartItemsResponse = cartItems.Select(item => new CartItemResponseDTO
                 {
                     OrderItemId = item.OrderItemId,
                     GameId = item.GameId,
                     GameTitle = item.GameTitle,
                     GamePrice = item.GamePrice,
-                    SellerName = item.SellerName
+                    SellerName = item.SellerName,
                 }).ToList();
-                ViewBag.Total = await _cartService.GetCartTotalAsync(currentUserId);
-                return View(cartItemsResponse);
+                this.ViewBag.Total = await this.cartService.GetCartTotalAsync(currentUserId);
+                return this.View(cartItemsResponse);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading cart");
-                return View("Error", new ErrorViewModel { ErrorMessage = $"Ошибка загрузки корзины: {ex.Message}" });
+                this.LogError(ex, "Error loading cart");
+                return this.View("Error", new ErrorViewModel { ErrorMessage = $"Ошибка загрузки корзины: {ex.Message}" });
             }
         }
 
@@ -55,18 +55,18 @@ namespace Gamesbakery.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Add(Guid orderItemId)
         {
-            var currentUserId = User.GetUserId();
+            var currentUserId = this.User.GetUserId();
             try
             {
-                await _cartService.AddToCartAsync(orderItemId, currentUserId);
-                TempData["SuccessMessage"] = "Товар добавлен в корзину.";
-                return RedirectToAction("Index");
+                await this.cartService.AddToCartAsync(orderItemId, currentUserId);
+                this.TempData["SuccessMessage"] = "Товар добавлен в корзину.";
+                return this.RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error adding item to cart {OrderItemId}", orderItemId);
-                TempData["ErrorMessage"] = $"Ошибка при добавлении в корзину: {ex.Message}";
-                return RedirectToAction("Index", "Game");
+                this.LogError(ex, "Error adding item to cart {OrderItemId}", orderItemId);
+                this.TempData["ErrorMessage"] = $"Ошибка при добавлении в корзину: {ex.Message}";
+                return this.RedirectToAction("Index", "Game");
             }
         }
 
@@ -74,18 +74,18 @@ namespace Gamesbakery.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Remove(Guid orderItemId)
         {
-            var currentUserId = User.GetUserId();
+            var currentUserId = this.User.GetUserId();
             try
             {
-                await _cartService.RemoveFromCartAsync(orderItemId, currentUserId);
-                TempData["SuccessMessage"] = "Товар удален из корзины.";
-                return RedirectToAction("Index");
+                await this.cartService.RemoveFromCartAsync(orderItemId, currentUserId);
+                this.TempData["SuccessMessage"] = "Товар удален из корзины.";
+                return this.RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error removing item from cart {OrderItemId}", orderItemId);
-                TempData["ErrorMessage"] = $"Ошибка при удалении из корзины: {ex.Message}";
-                return RedirectToAction("Index");
+                this.LogError(ex, "Error removing item from cart {OrderItemId}", orderItemId);
+                this.TempData["ErrorMessage"] = $"Ошибка при удалении из корзины: {ex.Message}";
+                return this.RedirectToAction("Index");
             }
         }
 
@@ -93,18 +93,18 @@ namespace Gamesbakery.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Clear()
         {
-            var currentUserId = User.GetUserId();
+            var currentUserId = this.User.GetUserId();
             try
             {
-                await _cartService.ClearCartAsync(currentUserId);
-                TempData["SuccessMessage"] = "Корзина очищена.";
-                return RedirectToAction("Index");
+                await this.cartService.ClearCartAsync(currentUserId);
+                this.TempData["SuccessMessage"] = "Корзина очищена.";
+                return this.RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error clearing cart");
-                TempData["ErrorMessage"] = $"Ошибка при очистке корзины: {ex.Message}";
-                return RedirectToAction("Index");
+                this.LogError(ex, "Error clearing cart");
+                this.TempData["ErrorMessage"] = $"Ошибка при очистке корзины: {ex.Message}";
+                return this.RedirectToAction("Index");
             }
         }
 
@@ -112,29 +112,30 @@ namespace Gamesbakery.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Checkout()
         {
-            var currentUserId = User.GetUserId();
+            var currentUserId = this.User.GetUserId();
             try
             {
-                var userId = GetCurrentUserId();
+                var userId = this.GetCurrentUserId();
                 if (userId == null)
-                    return RedirectToAction("Login", "Account");
-                var cartItems = await _cartService.GetCartItemsAsync(currentUserId);
+                    return this.RedirectToAction("Login", "Account");
+                var cartItems = await this.cartService.GetCartItemsAsync(currentUserId);
                 var orderItemIds = cartItems.Select(ci => ci.OrderItemId).ToList();
                 if (!orderItemIds.Any())
                 {
-                    TempData["ErrorMessage"] = "Корзина пуста.";
-                    return RedirectToAction("Index");
+                    this.TempData["ErrorMessage"] = "Корзина пуста.";
+                    return this.RedirectToAction("Index");
                 }
-                var order = await _orderService.CreateOrderAsync(userId.Value, orderItemIds, userId, GetCurrentRole());
-                await _cartService.ClearCartAsync(currentUserId);
-                TempData["SuccessMessage"] = "Заказ успешно оформлен!";
-                return RedirectToAction("Details", "Order", new { id = order.OrderId });
+
+                var order = await this.orderService.CreateOrderAsync(userId.Value, orderItemIds, userId, this.GetCurrentRole());
+                await this.cartService.ClearCartAsync(currentUserId);
+                this.TempData["SuccessMessage"] = "Заказ успешно оформлен!";
+                return this.RedirectToAction("Details", "Order", new { id = order.OrderId });
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error creating order");
-                TempData["ErrorMessage"] = $"Ошибка при оформлении заказа: {ex.Message}";
-                return RedirectToAction("Index");
+                this.LogError(ex, "Error creating order");
+                this.TempData["ErrorMessage"] = $"Ошибка при оформлении заказа: {ex.Message}";
+                return this.RedirectToAction("Index");
             }
         }
     }

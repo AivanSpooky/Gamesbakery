@@ -39,7 +39,7 @@ namespace Gamesbakery.BusinessLogic.Services
                 ReleaseDate = releaseDate,
                 Description = description,
                 IsForSale = true,
-                OriginalPublisher = originalPublisher
+                OriginalPublisher = originalPublisher,
             };
             var createdGame = await _gameRepository.AddAsync(dto, role);
             if (needAvg)
@@ -141,7 +141,7 @@ namespace Gamesbakery.BusinessLogic.Services
                 ["title"] = value => game.Title = value?.ToString() ?? string.Empty,
                 ["description"] = value => game.Description = value?.ToString() ?? string.Empty,
                 ["categoryid"] = value => game.CategoryId = Guid.Parse(value.ToString()),
-                ["isforSale"] = value => game.IsForSale = Convert.ToBoolean(value)
+                ["isforSale"] = value => game.IsForSale = Convert.ToBoolean(value),
             };
 
             foreach (var update in updates)

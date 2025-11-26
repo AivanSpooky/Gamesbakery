@@ -5,6 +5,7 @@ namespace Gamesbakery.E2E.Tests.Fixtures
     public class DatabaseRollbackFixture : IDisposable
     {
         private readonly SqlConnection _connection;
+
         private readonly SqlTransaction _transaction;
 
         public DatabaseRollbackFixture(string connectionString)

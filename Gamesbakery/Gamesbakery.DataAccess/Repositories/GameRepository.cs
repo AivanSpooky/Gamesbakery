@@ -114,7 +114,7 @@ namespace Gamesbakery.DataAccess.Repositories
                 Description = entity.Description,
                 IsForSale = entity.IsForSale,
                 OriginalPublisher = entity.OriginalPublisher,
-                AverageRating = GetAverageRating(entity.Id)
+                AverageRating = GetAverageRating(entity.Id),
             };
         }
 
@@ -126,7 +126,7 @@ namespace Gamesbakery.DataAccess.Repositories
                 CategoryId = entity.CategoryId,
                 Title = entity.Title,
                 Price = entity.Price,
-                IsForSale = entity.IsForSale
+                IsForSale = entity.IsForSale,
             };
         }
     }

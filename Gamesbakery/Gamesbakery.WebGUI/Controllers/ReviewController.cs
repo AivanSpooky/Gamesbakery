@@ -15,14 +15,14 @@ namespace Gamesbakery.Controllers
     [AllowAnonymous]
     public class ReviewController : BaseController
     {
-        private readonly IReviewService _reviewService;
-        private readonly IGameService _gameService;
+        private readonly IReviewService reviewService;
+        private readonly IGameService gameService;
 
         public ReviewController(IReviewService reviewService, IGameService gameService, IConfiguration configuration)
             : base(Log.ForContext<ReviewController>(), configuration)
         {
-            _reviewService = reviewService;
-            _gameService = gameService;
+            this.reviewService = reviewService;
+            this.gameService = gameService;
         }
 
         [Authorize(Roles = "User,Admin")]
@@ -30,11 +30,11 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                var currentUserId = GetCurrentUserId();
-                var role = GetCurrentRole();
+                var currentUserId = this.GetCurrentUserId();
+                var role = this.GetCurrentRole();
                 if (currentUserId != userId && role != UserRole.Admin)
-                    return Forbid();
-                var reviews = await _reviewService.GetByUserIdAsync(userId, sortByRating, role);
+                    return this.Forbid();
+                var reviews = await this.reviewService.GetByUserIdAsync(userId, sortByRating, role);
                 var totalCount = reviews.Count;
                 var paginatedItems = reviews.Skip((page - 1) * limit).Take(limit).Select(r => new ReviewResponseDTO
                 {
@@ -43,20 +43,20 @@ namespace Gamesbakery.Controllers
                     GameId = r.GameId,
                     Text = r.Text,
                     Rating = r.Rating,
-                    CreationDate = r.CreationDate
+                    CreationDate = r.CreationDate,
                 }).ToList();
-                ViewBag.TotalCount = totalCount;
-                ViewBag.Page = page;
-                ViewBag.Limit = limit;
-                ViewBag.UserId = userId;
-                ViewBag.SortByRating = sortByRating;
-                return View(paginatedItems);
+                this.ViewBag.TotalCount = totalCount;
+                this.ViewBag.Page = page;
+                this.ViewBag.Limit = limit;
+                this.ViewBag.UserId = userId;
+                this.ViewBag.SortByRating = sortByRating;
+                return this.View(paginatedItems);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading user reviews for UserId={UserId}", userId);
-                ViewBag.ErrorMessage = $"Ошибка загрузки отзывов: {ex.Message}";
-                return View(new List<ReviewResponseDTO>());
+                this.LogError(ex, "Error loading user reviews for UserId={UserId}", userId);
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки отзывов: {ex.Message}";
+                return this.View(new List<ReviewResponseDTO>());
             }
         }
 
@@ -65,7 +65,7 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                var reviews = await _reviewService.GetReviewsByGameIdAsync(gameId);
+                var reviews = await this.reviewService.GetReviewsByGameIdAsync(gameId);
                 var reviewsResponse = reviews.Select(r => new ReviewResponseDTO
                 {
                     Id = r.Id,
@@ -73,16 +73,16 @@ namespace Gamesbakery.Controllers
                     GameId = r.GameId,
                     Text = r.Text,
                     Rating = r.Rating,
-                    CreationDate = r.CreationDate
+                    CreationDate = r.CreationDate,
                 }).ToList();
-                ViewBag.GameId = gameId;
-                return View(reviewsResponse);
+                this.ViewBag.GameId = gameId;
+                return this.View(reviewsResponse);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error retrieving reviews for GameId={GameId}", gameId);
-                ViewBag.ErrorMessage = $"Ошибка загрузки отзывов: {ex.Message}";
-                return View(new List<ReviewResponseDTO>());
+                this.LogError(ex, "Error retrieving reviews for GameId={GameId}", gameId);
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки отзывов: {ex.Message}";
+                return this.View(new List<ReviewResponseDTO>());
             }
         }
 
@@ -92,22 +92,22 @@ namespace Gamesbakery.Controllers
         {
             try
             {
-                var role = GetCurrentRole();
-                var userId = GetCurrentUserId();
+                var role = this.GetCurrentRole();
+                var userId = this.GetCurrentUserId();
                 if (userId == null)
-                    return RedirectToAction("Login", "Account");
-                var game = await _gameService.GetGameByIdAsync(gameId, role);
+                    return this.RedirectToAction("Login", "Account");
+                var game = await this.gameService.GetGameByIdAsync(gameId, role);
                 if (game == null)
-                    return NotFound();
-                ViewBag.GameTitle = game.Title;
-                ViewBag.GameId = gameId;
-                return View(new ReviewCreateDTO { GameId = gameId });
+                    return this.NotFound();
+                this.ViewBag.GameTitle = game.Title;
+                this.ViewBag.GameId = gameId;
+                return this.View(new ReviewCreateDTO { GameId = gameId });
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error accessing review creation page for GameId={GameId}", gameId);
-                ViewBag.ErrorMessage = $"Ошибка загрузки формы: {ex.Message}";
-                return View();
+                this.LogError(ex, "Error accessing review creation page for GameId={GameId}", gameId);
+                this.ViewBag.ErrorMessage = $"Ошибка загрузки формы: {ex.Message}";
+                return this.View();
             }
         }
 
@@ -116,31 +116,32 @@ namespace Gamesbakery.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Create(ReviewCreateDTO review)
         {
-            var role = GetCurrentRole();
-            var userId = GetCurrentUserId();
+            var role = this.GetCurrentRole();
+            var userId = this.GetCurrentUserId();
             try
             {
                 if (userId == null)
-                    return RedirectToAction("Login", "Account");
-                if (!ModelState.IsValid)
+                    return this.RedirectToAction("Login", "Account");
+                if (!this.ModelState.IsValid)
                 {
-                    var game = await _gameService.GetGameByIdAsync(review.GameId, role);
-                    ViewBag.GameTitle = game?.Title;
-                    ViewBag.GameId = review.GameId;
-                    return View(review);
+                    var game = await this.gameService.GetGameByIdAsync(review.GameId, role);
+                    this.ViewBag.GameTitle = game?.Title;
+                    this.ViewBag.GameId = review.GameId;
+                    return this.View(review);
                 }
-                var createdReview = await _reviewService.AddReviewAsync(userId.Value, review.GameId, review.Text, review.Rating, userId, role);
-                TempData["SuccessMessage"] = "Отзыв успешно добавлен!";
-                return RedirectToAction("Index", new { gameId = review.GameId });
+
+                var createdReview = await this.reviewService.AddReviewAsync(userId.Value, review.GameId, review.Text, review.Rating, userId, role);
+                this.TempData["SuccessMessage"] = "Отзыв успешно добавлен!";
+                return this.RedirectToAction("Index", new { gameId = review.GameId });
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error creating review for GameId={GameId}", review.GameId);
-                ModelState.AddModelError("", $"Ошибка при добавлении отзыва: {ex.Message}");
-                var game = await _gameService.GetGameByIdAsync(review.GameId, role);
-                ViewBag.GameTitle = game?.Title;
-                ViewBag.GameId = review.GameId;
-                return View(review);
+                this.LogError(ex, "Error creating review for GameId={GameId}", review.GameId);
+                this.ModelState.AddModelError(string.Empty, $"Ошибка при добавлении отзыва: {ex.Message}");
+                var game = await this.gameService.GetGameByIdAsync(review.GameId, role);
+                this.ViewBag.GameTitle = game?.Title;
+                this.ViewBag.GameId = review.GameId;
+                return this.View(review);
             }
         }
     }

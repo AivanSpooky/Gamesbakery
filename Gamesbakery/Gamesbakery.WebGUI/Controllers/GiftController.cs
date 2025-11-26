@@ -20,27 +20,27 @@ namespace Gamesbakery.WebGUI.Controllers
     [Authorize(Roles = "User,Admin")]
     public class GiftController : BaseController
     {
-        private readonly IGiftService _giftService;
-        private readonly IUserService _userService;
+        private readonly IGiftService giftService;
+        private readonly IUserService userService;
 
         public GiftController(IGiftService giftService, IUserService userService, IConfiguration configuration)
             : base(Log.ForContext<GiftController>(), configuration)
         {
-            _giftService = giftService;
-            _userService = userService;
+            this.giftService = giftService;
+            this.userService = userService;
         }
 
         public async Task<IActionResult> Index()
         {
             try
             {
-                var userId = GetCurrentUserId();
+                var userId = this.GetCurrentUserId();
                 if (userId == null)
-                    return RedirectToAction("Login", "Account");
-                var role = GetCurrentRole();
-                var curUserId = GetCurrentUserId();
-                var sentGifts = await _giftService.GetGiftsBySenderAsync(userId.Value, curUserId, role);
-                var receivedGifts = await _giftService.GetGiftsByRecipientAsync(userId.Value, curUserId, role);
+                    return this.RedirectToAction("Login", "Account");
+                var role = this.GetCurrentRole();
+                var curUserId = this.GetCurrentUserId();
+                var sentGifts = await this.giftService.GetGiftsBySenderAsync(userId.Value, curUserId, role);
+                var receivedGifts = await this.giftService.GetGiftsByRecipientAsync(userId.Value, curUserId, role);
                 var viewModel = new GiftIndexViewModel
                 {
                     SentGifts = sentGifts.Select(g => new GiftResponseDTO
@@ -50,7 +50,7 @@ namespace Gamesbakery.WebGUI.Controllers
                         RecipientId = g.RecipientId,
                         OrderItemId = g.OrderItemId,
                         GiftDate = g.GiftDate,
-                        GameTitle = g.GameTitle
+                        GameTitle = g.GameTitle,
                     }),
                     ReceivedGifts = receivedGifts.Select(g => new GiftResponseDTO
                     {
@@ -59,51 +59,56 @@ namespace Gamesbakery.WebGUI.Controllers
                         RecipientId = g.RecipientId,
                         OrderItemId = g.OrderItemId,
                         GiftDate = g.GiftDate,
-                        GameTitle = g.GameTitle
-                    })
+                        GameTitle = g.GameTitle,
+                    }),
                 };
-                return View(viewModel);
+                return this.View(viewModel);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading gifts");
-                TempData["ErrorMessage"] = "Ошибка загрузки подарков.";
-                return View(new GiftIndexViewModel());
+                this.LogError(ex, "Error loading gifts");
+                this.TempData["ErrorMessage"] = "Ошибка загрузки подарков.";
+                return this.View(new GiftIndexViewModel());
             }
         }
 
         [Authorize(Roles = "User")]
         public async Task<IActionResult> Create()
         {
-            var userId = GetCurrentUserId();
-            var role = GetCurrentRole();
+            var userId = this.GetCurrentUserId();
+            var role = this.GetCurrentRole();
             try
             {
                 if (userId == null)
-                    return RedirectToAction("Login", "Account");
-                var users = await _userService.GetAllUsersExceptAsync(userId.Value, role);
-                var orderItems = await _giftService.GetAvailableOrderItemsAsync(userId.Value, role);
-                ViewBag.RecipientUsers = new SelectList(users.Select(u => new UserListDTO
-                {
-                    Id = u.Id,
-                    Username = u.Username,
-                    Email = u.Email
-                }), "Id", "Username");
-                ViewBag.OrderItems = new SelectList(orderItems.Select(oi => new OrderItemResponseDTO
-                {
-                    Id = oi.Id,
-                    GameId = oi.GameId,
-                    GameTitle = oi.GameTitle,
-                    SellerId = oi.SellerId,
-                    SellerName = oi.SellerName
-                }), "Id", "GameTitle");
-                return View(new GiftCreateViewModel());
+                    return this.RedirectToAction("Login", "Account");
+                var users = await this.userService.GetAllUsersExceptAsync(userId.Value, role);
+                var orderItems = await this.giftService.GetAvailableOrderItemsAsync(userId.Value, role);
+                this.ViewBag.RecipientUsers = new SelectList(
+                    users.Select(u => new UserListDTO
+                    {
+                        Id = u.Id,
+                        Username = u.Username,
+                        Email = u.Email,
+                    }), "Id",
+                    "Username");
+                this.ViewBag.OrderItems = new SelectList(
+                    orderItems.Select(oi => new OrderItemResponseDTO
+                    {
+                        Id = oi.Id,
+                        GameId = oi.GameId,
+                        GameTitle = oi.GameTitle,
+                        SellerId = oi.SellerId,
+                        SellerName = oi.SellerName,
+                    }),
+                    "Id",
+                    "GameTitle");
+                return this.View(new GiftCreateViewModel());
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error loading create gift form");
-                TempData["ErrorMessage"] = "Ошибка загрузки формы.";
-                return View(new GiftCreateViewModel());
+                this.LogError(ex, "Error loading create gift form");
+                this.TempData["ErrorMessage"] = "Ошибка загрузки формы.";
+                return this.View(new GiftCreateViewModel());
             }
         }
 
@@ -112,57 +117,66 @@ namespace Gamesbakery.WebGUI.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Create(GiftCreateViewModel model)
         {
-            var userId = GetCurrentUserId();
-            var role = GetCurrentRole();
+            var userId = this.GetCurrentUserId();
+            var role = this.GetCurrentRole();
             try
             {
                 if (userId == null)
-                    return RedirectToAction("Login", "Account");
-                if (!ModelState.IsValid)
+                    return this.RedirectToAction("Login", "Account");
+                if (!this.ModelState.IsValid)
                 {
-                    var users = await _userService.GetAllUsersExceptAsync(userId.Value, role);
-                    var orderItems = await _giftService.GetAvailableOrderItemsAsync(userId.Value, role);
-                    ViewBag.RecipientUsers = new SelectList(users.Select(u => new UserListDTO
+                    var users = await this.userService.GetAllUsersExceptAsync(userId.Value, role);
+                    var orderItems = await this.giftService.GetAvailableOrderItemsAsync(userId.Value, role);
+                    this.ViewBag.RecipientUsers = new SelectList(
+                        users.Select(u => new UserListDTO
+                        {
+                            Id = u.Id,
+                            Username = u.Username,
+                            Email = u.Email,
+                        }), "Id",
+                        "Username");
+                    this.ViewBag.OrderItems = new SelectList(
+                        orderItems.Select(oi => new OrderItemResponseDTO
+                        {
+                            Id = oi.Id,
+                            GameId = oi.GameId,
+                            GameTitle = oi.GameTitle,
+                            SellerId = oi.SellerId,
+                            SellerName = oi.SellerName,
+                        }), "Id",
+                        "GameTitle");
+                    return this.View(model);
+                }
+
+                var gift = await this.giftService.CreateGiftAsync(userId.Value, model.RecipientId, model.OrderItemId, userId, role);
+                this.TempData["SuccessMessage"] = "Подарок успешно отправлен!";
+                return this.RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                this.LogError(ex, "Error creating gift");
+                this.TempData["ErrorMessage"] = $"Ошибка отправки подарка: {ex.Message}";
+                var users = await this.userService.GetAllUsersExceptAsync(userId.Value, role);
+                var orderItems = await this.giftService.GetAvailableOrderItemsAsync(userId.Value, role);
+                this.ViewBag.RecipientUsers = new SelectList(
+                    users.Select(u => new UserListDTO
                     {
                         Id = u.Id,
                         Username = u.Username,
-                        Email = u.Email
-                    }), "Id", "Username");
-                    ViewBag.OrderItems = new SelectList(orderItems.Select(oi => new OrderItemResponseDTO
+                        Email = u.Email,
+                    }), "Id",
+                    "Username");
+                this.ViewBag.OrderItems = new SelectList(
+                    orderItems.Select(oi => new OrderItemResponseDTO
                     {
                         Id = oi.Id,
                         GameId = oi.GameId,
                         GameTitle = oi.GameTitle,
                         SellerId = oi.SellerId,
-                        SellerName = oi.SellerName
-                    }), "Id", "GameTitle");
-                    return View(model);
-                }
-                var gift = await _giftService.CreateGiftAsync(userId.Value, model.RecipientId, model.OrderItemId, userId, role);
-                TempData["SuccessMessage"] = "Подарок успешно отправлен!";
-                return RedirectToAction("Index");
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, "Error creating gift");
-                TempData["ErrorMessage"] = $"Ошибка отправки подарка: {ex.Message}";
-                var users = await _userService.GetAllUsersExceptAsync(userId.Value, role);
-                var orderItems = await _giftService.GetAvailableOrderItemsAsync(userId.Value, role);
-                ViewBag.RecipientUsers = new SelectList(users.Select(u => new UserListDTO
-                {
-                    Id = u.Id,
-                    Username = u.Username,
-                    Email = u.Email
-                }), "Id", "Username");
-                ViewBag.OrderItems = new SelectList(orderItems.Select(oi => new OrderItemResponseDTO
-                {
-                    Id = oi.Id,
-                    GameId = oi.GameId,
-                    GameTitle = oi.GameTitle,
-                    SellerId = oi.SellerId,
-                    SellerName = oi.SellerName
-                }), "Id", "GameTitle");
-                return View(model);
+                        SellerName = oi.SellerName,
+                    }), "Id",
+                    "GameTitle");
+                return this.View(model);
             }
         }
 
@@ -170,16 +184,17 @@ namespace Gamesbakery.WebGUI.Controllers
         {
             try
             {
-                var userId = GetCurrentUserId();
+                var userId = this.GetCurrentUserId();
                 if (userId == null)
-                    return RedirectToAction("Login", "Account");
-                var role = GetCurrentRole();
-                var gift = await _giftService.GetGiftByIdAsync(id, userId, role);
+                    return this.RedirectToAction("Login", "Account");
+                var role = this.GetCurrentRole();
+                var gift = await this.giftService.GetGiftByIdAsync(id, userId, role);
                 if (gift == null || (gift.SenderId != userId && gift.RecipientId != userId && role != UserRole.Admin))
                 {
-                    TempData["ErrorMessage"] = "Подарок не найден или доступ запрещен.";
-                    return RedirectToAction("Index");
+                    this.TempData["ErrorMessage"] = "Подарок не найден или доступ запрещен.";
+                    return this.RedirectToAction("Index");
                 }
+
                 var giftResponse = new GiftResponseDTO
                 {
                     GiftId = gift.GiftId,
@@ -187,15 +202,15 @@ namespace Gamesbakery.WebGUI.Controllers
                     RecipientId = gift.RecipientId,
                     OrderItemId = gift.OrderItemId,
                     GiftDate = gift.GiftDate,
-                    GameTitle = gift.GameTitle
+                    GameTitle = gift.GameTitle,
                 };
-                return View(giftResponse);
+                return this.View(giftResponse);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error retrieving gift {GiftId}", id);
-                TempData["ErrorMessage"] = $"Ошибка загрузки подарка: {ex.Message}";
-                return RedirectToAction("Index");
+                this.LogError(ex, "Error retrieving gift {GiftId}", id);
+                this.TempData["ErrorMessage"] = $"Ошибка загрузки подарка: {ex.Message}";
+                return this.RedirectToAction("Index");
             }
         }
 
@@ -206,16 +221,16 @@ namespace Gamesbakery.WebGUI.Controllers
         {
             try
             {
-                var role = GetCurrentRole();
-                await _giftService.DeleteGiftAsync(id, role);
-                TempData["SuccessMessage"] = "Подарок удален успешно.";
-                return RedirectToAction("Index");
+                var role = this.GetCurrentRole();
+                await this.giftService.DeleteGiftAsync(id, role);
+                this.TempData["SuccessMessage"] = "Подарок удален успешно.";
+                return this.RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error deleting gift {GiftId}", id);
-                TempData["ErrorMessage"] = $"Ошибка удаления подарка: {ex.Message}";
-                return RedirectToAction("Index");
+                this.LogError(ex, "Error deleting gift {GiftId}", id);
+                this.TempData["ErrorMessage"] = $"Ошибка удаления подарка: {ex.Message}";
+                return this.RedirectToAction("Index");
             }
         }
     }

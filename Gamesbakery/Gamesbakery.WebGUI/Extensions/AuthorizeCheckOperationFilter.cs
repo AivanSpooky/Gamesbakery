@@ -28,12 +28,12 @@ namespace Gamesbakery.WebGUI.Extensions
                             Reference = new OpenApiReference
                             {
                                 Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
+                                Id = "Bearer",
+                            },
                         },
                         Array.Empty<string>()
-                    }
-                }
+                    },
+                },
             };
             }
         }

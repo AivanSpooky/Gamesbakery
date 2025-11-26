@@ -21,7 +21,7 @@ using Serilog;
 using Serilog.Context;
 using IAuthenticationService = Gamesbakery.Core.IAuthenticationService;
 
-namespace Gamesbakery.WebGUI.Controllers.v2
+namespace Gamesbakery.WebGUI.Controllers.V2
 {
     /// <summary>
     /// Controller for handling authentication-related operations such as login, logout, and registration.
@@ -32,18 +32,18 @@ namespace Gamesbakery.WebGUI.Controllers.v2
     [IgnoreAntiforgeryToken]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthenticationService _authService;
-        private readonly IConfiguration _configuration;
-        private readonly IUserService _userService;
+        private readonly IAuthenticationService authService;
+        private readonly IConfiguration configuration;
+        private readonly IUserService userService;
 
         public AuthController(
             IAuthenticationService authService,
             IUserService userService,
             IConfiguration configuration)
         {
-            _userService = userService;
-            _authService = authService;
-            _configuration = configuration;
+            this.userService = userService;
+            this.authService = authService;
+            this.configuration = configuration;
         }
 
         /// <summary>
@@ -66,33 +66,33 @@ namespace Gamesbakery.WebGUI.Controllers.v2
             try
             {
                 if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
-                    return BadRequest(new { error = "Username and password required" });
-                var (role, userId, sellerId) = await _authService.AuthenticateAsync(request.Username, request.Password);
+                    return this.BadRequest(new { error = "Username and password required" });
+                var (role, userId, sellerId) = await this.authService.AuthenticateAsync(request.Username, request.Password);
                 if (role == UserRole.Guest)
-                    return Unauthorized(new { error = "Invalid credentials" });
-                var token = GenerateJwtToken(request.Username, role, userId, sellerId);
-                Response.Cookies.Append("JwtToken", token, new CookieOptions
+                    return this.Unauthorized(new { error = "Invalid credentials" });
+                var token = this.GenerateJwtToken(request.Username, role, userId, sellerId);
+                this.Response.Cookies.Append("JwtToken", token, new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = Request.Scheme == "https",
+                    Secure = this.Request.Scheme == "https",
                     SameSite = SameSiteMode.Lax,
-                    Expires = DateTime.UtcNow.AddHours(8)
+                    Expires = DateTime.UtcNow.AddHours(8),
                 });
-                return Ok(new SingleResponse<object>
+                return this.Ok(new SingleResponse<object>
                 {
                     Item = new
                     {
                         token,
                         role = role.ToString(),
                         userId,
-                        sellerId
+                        sellerId,
                     },
-                    Message = "Login successful"
+                    Message = "Login successful",
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+                return this.StatusCode(500, new { error = "Internal server error", details = ex.Message });
             }
         }
 
@@ -110,23 +110,23 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                Response.Cookies.Delete("JwtToken", new CookieOptions
+                this.Response.Cookies.Delete("JwtToken", new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = Request.Scheme == "https",
-                    SameSite = SameSiteMode.Lax
+                    Secure = this.Request.Scheme == "https",
+                    SameSite = SameSiteMode.Lax,
                 });
-                await HttpContext.SignOutAsync(JwtBearerDefaults.AuthenticationScheme);
-                return Ok(new SingleResponse<object>
+                await this.HttpContext.SignOutAsync(JwtBearerDefaults.AuthenticationScheme);
+                return this.Ok(new SingleResponse<object>
                 {
                     Item = null,
-                    Message = "Successfully logged out"
+                    Message = "Successfully logged out",
                 });
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Logout failed");
-                return StatusCode(500, new { error = "Logout failed", details = ex.Message });
+                return this.StatusCode(500, new { error = "Logout failed", details = ex.Message });
             }
         }
 
@@ -145,18 +145,18 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
-                var user = await _userService.RegisterUserAsync(dto.Username, dto.Email, dto.Password, dto.Country);
-                var token = GenerateJwtToken(dto.Username, UserRole.User, user.Id, null);
-                Response.Cookies.Append("JwtToken", token, new CookieOptions
+                if (!this.ModelState.IsValid)
+                    return this.BadRequest(this.ModelState);
+                var user = await this.userService.RegisterUserAsync(dto.Username, dto.Email, dto.Password, dto.Country);
+                var token = this.GenerateJwtToken(dto.Username, UserRole.User, user.Id, null);
+                this.Response.Cookies.Append("JwtToken", token, new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = Request.Scheme == "https",
+                    Secure = this.Request.Scheme == "https",
                     SameSite = SameSiteMode.Lax,
-                    Expires = DateTime.UtcNow.AddHours(8)
+                    Expires = DateTime.UtcNow.AddHours(8),
                 });
-                return Ok(new SingleResponse<UserResponseDTO>
+                return this.Ok(new SingleResponse<UserResponseDTO>
                 {
                     Item = new UserResponseDTO
                     {
@@ -166,14 +166,14 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                         RegistrationDate = user.RegistrationDate,
                         Country = user.Country,
                         Balance = user.Balance,
-                        TotalSpent = user.TotalSpent
+                        TotalSpent = user.TotalSpent,
                     },
-                    Message = "Registration successful"
+                    Message = "Registration successful",
                 });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return this.BadRequest(new { error = ex.Message });
             }
         }
 
@@ -182,18 +182,18 @@ namespace Gamesbakery.WebGUI.Controllers.v2
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, username),
-                new Claim(ClaimTypes.Role, role.ToString())
+                new Claim(ClaimTypes.Role, role.ToString()),
             };
             if (userId.HasValue)
                 claims.Add(new Claim("UserId", userId.Value.ToString()));
             if (sellerId.HasValue)
                 claims.Add(new Claim("SellerId", sellerId.Value.ToString()));
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(this.configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: this.configuration["Jwt:Issuer"],
+                audience: this.configuration["Jwt:Audience"],
                 claims: claims,
                 expires: DateTime.Now.AddHours(8),
                 signingCredentials: creds);

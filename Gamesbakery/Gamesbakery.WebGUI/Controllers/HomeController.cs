@@ -16,43 +16,43 @@ namespace Gamesbakery.Controllers
     [AllowAnonymous]
     public class HomeController : BaseController
     {
-        private readonly ICategoryService _categoryService;
+        private readonly ICategoryService categoryService;
 
         public HomeController(ICategoryService categoryService, IConfiguration configuration)
             : base(Log.ForContext<HomeController>(), configuration)
         {
-            _categoryService = categoryService;
+            this.categoryService = categoryService;
         }
 
         public async Task<IActionResult> Index()
         {
             try
             {
-                LogInformation("User accessed home page");
-                var categories = await _categoryService.GetAllCategoriesAsync();
+                this.LogInformation("User accessed home page");
+                var categories = await this.categoryService.GetAllCategoriesAsync();
                 var model = new HomeIndexViewModel
                 {
-                    Role = User.GetRole().ToString(),
+                    Role = this.User.GetRole().ToString(),
                     Categories = categories.Select(c => new CategoryResponseDTO
                     {
                         Id = c.Id,
                         GenreName = c.GenreName,
-                        Description = c.Description
-                    })
+                        Description = c.Description,
+                    }),
                 };
-                return View(model);
+                return this.View(model);
             }
             catch (Exception ex)
             {
-                LogError(ex, "Error accessing home page");
-                ViewBag.ErrorMessage = "Ошибка загрузки главной страницы.";
-                return View(new HomeIndexViewModel());
+                this.LogError(ex, "Error accessing home page");
+                this.ViewBag.ErrorMessage = "Ошибка загрузки главной страницы.";
+                return this.View(new HomeIndexViewModel());
             }
         }
 
         public IActionResult Error()
         {
-            return View();
+            return this.View();
         }
     }
 }

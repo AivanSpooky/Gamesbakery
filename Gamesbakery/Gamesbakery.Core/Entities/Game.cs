@@ -6,29 +6,45 @@ namespace Gamesbakery.Core.Entities
     public class Game
     {
         public Guid Id { get; private set; }
+
         public Guid CategoryId { get; private set; }
+
         public Category Category { get; private set; }
-        public void SetCategoryId(Guid categoryId) => CategoryId = categoryId;
+
+        public void SetCategoryId(Guid categoryId) => this.CategoryId = categoryId;
+
         public string Title { get; private set; }
-        public void SetTitle(string title) => Title = title ?? throw new ArgumentNullException(nameof(title));
+
+        public void SetTitle(string title) => this.Title = title ?? throw new ArgumentNullException(nameof(title));
+
         public decimal Price { get; private set; }
-        public void SetPrice(decimal price) => Price = price >= 0 ? price : throw new ArgumentException("Price cannot be negative.", nameof(price));
+
+        public void SetPrice(decimal price) => this.Price = price >= 0 ? price : throw new ArgumentException("Price cannot be negative.", nameof(price));
+
         public DateTime ReleaseDate { get; private set; }
-        public void SetReleaseDate(DateTime rd) => ReleaseDate = rd;
+
+        public void SetReleaseDate(DateTime rd) => this.ReleaseDate = rd;
+
         public string Description { get; private set; }
-        public void SetDescription(string desc) => Description = desc ?? throw new ArgumentNullException(nameof(desc));
+
+        public void SetDescription(string desc) => this.Description = desc ?? throw new ArgumentNullException(nameof(desc));
+
         public bool IsForSale { get; private set; }
-        public void SetForSale(bool isForSale) => IsForSale = isForSale;
+
+        public void SetForSale(bool isForSale) => this.IsForSale = isForSale;
+
         public string OriginalPublisher { get; private set; }
-        public void SetOriginalPublisher(string op) => OriginalPublisher = op ?? throw new ArgumentNullException(nameof(op));
+
+        public void SetOriginalPublisher(string op) => this.OriginalPublisher = op ?? throw new ArgumentNullException(nameof(op));
 
         public List<OrderItem> OrderItems { get; private set; } // Added
+
         public List<Review> Reviews { get; private set; } // Added
 
         public Game()
         {
-            OrderItems = new List<OrderItem>();
-            Reviews = new List<Review>();
+            this.OrderItems = new List<OrderItem>();
+            this.Reviews = new List<Review>();
         }
 
         public Game(Guid id, Guid categoryId, string title, decimal price, DateTime releaseDate, string description, bool isForSale, string originalPublisher)
@@ -43,30 +59,30 @@ namespace Gamesbakery.Core.Entities
                 throw new ArgumentException("Description cannot be empty.", nameof(description));
             if (string.IsNullOrWhiteSpace(originalPublisher))
                 throw new ArgumentException("OriginalPublisher cannot be empty.", nameof(originalPublisher));
-            Id = id;
-            CategoryId = categoryId;
-            Title = title;
-            Price = price;
-            ReleaseDate = releaseDate;
-            Description = description;
-            IsForSale = isForSale;
-            OriginalPublisher = originalPublisher;
-            OrderItems = new List<OrderItem>();
-            Reviews = new List<Review>();
+            this.Id = id;
+            this.CategoryId = categoryId;
+            this.Title = title;
+            this.Price = price;
+            this.ReleaseDate = releaseDate;
+            this.Description = description;
+            this.IsForSale = isForSale;
+            this.OriginalPublisher = originalPublisher;
+            this.OrderItems = new List<OrderItem>();
+            this.Reviews = new List<Review>();
         }
 
         public void UpdatePrice(decimal newPrice)
         {
             if (newPrice < 0)
                 throw new ArgumentException("Price cannot be negative.", nameof(newPrice));
-            Price = newPrice;
+            this.Price = newPrice;
         }
 
         public void UpdateTitle(string newTitle)
         {
             if (string.IsNullOrWhiteSpace(newTitle))
                 throw new ArgumentException("newTitle cannot be empty.", nameof(newTitle));
-            Title = newTitle;
+            this.Title = newTitle;
         }
     }
 }

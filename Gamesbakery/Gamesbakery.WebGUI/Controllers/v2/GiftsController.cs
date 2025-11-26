@@ -10,7 +10,7 @@ using Gamesbakery.WebGUI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gamesbakery.WebGUI.Controllers.v2
+namespace Gamesbakery.WebGUI.Controllers.V2
 {
     /// <summary>
     /// Controller for managing user gifts.
@@ -20,11 +20,11 @@ namespace Gamesbakery.WebGUI.Controllers.v2
     [ApiConventionType(typeof(DefaultApiConventions))]
     public class GiftsController : ControllerBase
     {
-        private readonly IGiftService _giftService;
+        private readonly IGiftService giftService;
 
         public GiftsController(IGiftService giftService)
         {
-            _giftService = giftService;
+            this.giftService = giftService;
         }
 
         /// <summary>
@@ -43,14 +43,14 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> GetUserGifts(Guid userId, int page = 1, int limit = 10, string type = "all")
         {
-            var currentUserId = User.GetUserId();
-            var role = User.GetRole();
-            if (userId != currentUserId && role != UserRole.Admin) return Forbid();
+            var currentUserId = this.User.GetUserId();
+            var role = this.User.GetRole();
+            if (userId != currentUserId && role != UserRole.Admin) return this.Forbid();
             var gifts = type switch
             {
-                "sent" => await _giftService.GetGiftsBySenderAsync(userId, currentUserId, role),
-                "received" => await _giftService.GetGiftsByRecipientAsync(userId, currentUserId, role),
-                _ => (await _giftService.GetGiftsBySenderAsync(userId, currentUserId, role)).Concat(await _giftService.GetGiftsByRecipientAsync(userId, currentUserId, role))
+                "sent" => await this.giftService.GetGiftsBySenderAsync(userId, currentUserId, role),
+                "received" => await this.giftService.GetGiftsByRecipientAsync(userId, currentUserId, role),
+                _ => (await this.giftService.GetGiftsBySenderAsync(userId, currentUserId, role)).Concat(await this.giftService.GetGiftsByRecipientAsync(userId, currentUserId, role))
             };
             var totalCount = gifts.Count();
             var pagedGifts = gifts.Skip((page - 1) * limit).Take(limit).Select(g => new GiftResponseDTO
@@ -60,16 +60,16 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                 RecipientId = g.RecipientId,
                 OrderItemId = g.OrderItemId,
                 GiftDate = g.GiftDate,
-                GameTitle = g.GameTitle
+                GameTitle = g.GameTitle,
             }).ToList();
-            return Ok(new PaginatedResponse<GiftResponseDTO>
+            return this.Ok(new PaginatedResponse<GiftResponseDTO>
             {
                 TotalCount = totalCount,
                 Items = pagedGifts,
                 NextPage = pagedGifts.Count == limit ? page + 1 : null,
                 PreviousPage = page > 1 ? page - 1 : null,
                 CurrentPage = page,
-                PageSize = limit
+                PageSize = limit,
             });
         }
 
@@ -87,11 +87,11 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> SendGift(Guid userId, [FromBody] GiftCreateDTO dto)
         {
-            var currentUserId = User.GetUserId();
-            var role = User.GetRole();
-            if (userId != currentUserId) return Forbid();
-            var gift = await _giftService.SendGiftAsync(userId, dto.RecipientId, dto.OrderItemId, currentUserId, role);
-            return CreatedAtAction(nameof(GetGift), new { id = gift.GiftId }, new SingleResponse<GiftResponseDTO>
+            var currentUserId = this.User.GetUserId();
+            var role = this.User.GetRole();
+            if (userId != currentUserId) return this.Forbid();
+            var gift = await this.giftService.SendGiftAsync(userId, dto.RecipientId, dto.OrderItemId, currentUserId, role);
+            return this.CreatedAtAction(nameof(this.GetGift), new { id = gift.GiftId }, new SingleResponse<GiftResponseDTO>
             {
                 Item = new GiftResponseDTO
                 {
@@ -100,9 +100,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     RecipientId = gift.RecipientId,
                     OrderItemId = gift.OrderItemId,
                     GiftDate = gift.GiftDate,
-                    GameTitle = gift.GameTitle
+                    GameTitle = gift.GameTitle,
                 },
-                Message = "Gift sent successfully"
+                Message = "Gift sent successfully",
             });
         }
 
@@ -121,12 +121,12 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> GetGift(Guid id)
         {
-            var role = User.GetRole();
-            var currentUserId = User.GetUserId();
-            var gift = await _giftService.GetGiftByIdAsync(id, currentUserId, role);
-            if (gift == null) return NotFound();
-            if ((gift.SenderId != currentUserId && gift.RecipientId != currentUserId) && role != UserRole.Admin) return Forbid();
-            return Ok(new SingleResponse<GiftResponseDTO>
+            var role = this.User.GetRole();
+            var currentUserId = this.User.GetUserId();
+            var gift = await this.giftService.GetGiftByIdAsync(id, currentUserId, role);
+            if (gift == null) return this.NotFound();
+            if ((gift.SenderId != currentUserId && gift.RecipientId != currentUserId) && role != UserRole.Admin) return this.Forbid();
+            return this.Ok(new SingleResponse<GiftResponseDTO>
             {
                 Item = new GiftResponseDTO
                 {
@@ -135,9 +135,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
                     RecipientId = gift.RecipientId,
                     OrderItemId = gift.OrderItemId,
                     GiftDate = gift.GiftDate,
-                    GameTitle = gift.GameTitle
+                    GameTitle = gift.GameTitle,
                 },
-                Message = "Gift retrieved successfully"
+                Message = "Gift retrieved successfully",
             });
         }
 
@@ -154,9 +154,9 @@ namespace Gamesbakery.WebGUI.Controllers.v2
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> DeleteGift(Guid id)
         {
-            var role = User.GetRole();
-            await _giftService.DeleteGiftAsync(id, role);
-            return NoContent();
+            var role = this.User.GetRole();
+            await this.giftService.DeleteGiftAsync(id, role);
+            return this.NoContent();
         }
     }
-}   
+}
