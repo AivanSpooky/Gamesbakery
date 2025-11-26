@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Gamesbakery.Core;
 using Gamesbakery.Core.DTOs.GameDTO;
 using Gamesbakery.Core.DTOs.OrderItemDTO;
+using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
 
 namespace Gamesbakery.BusinessLogic.Services
@@ -118,35 +119,37 @@ namespace Gamesbakery.BusinessLogic.Services
 
         public async Task<GameDetailsDTO> PartialUpdateGameAsync(Guid id, Dictionary<string, object> updates, UserRole role)
         {
-            if (role != UserRole.Admin && role != UserRole.Seller)
-                throw new UnauthorizedAccessException("Only admins and sellers can update games");
-            var game = await _gameRepository.GetByIdAsync(id, role);
-            if (game == null)
-                throw new KeyNotFoundException($"Game {id} not found");
-            foreach (var update in updates)
-            {
-                switch (update.Key.ToLower())
-                {
-                    case "price":
-                        game.Price = Convert.ToDecimal(update.Value);
-                        break;
-                    case "title":
-                        game.Title = update.Value?.ToString() ?? string.Empty;
-                        break;
-                    case "description":
-                        game.Description = update.Value?.ToString() ?? string.Empty;
-                        break;
-                    case "categoryid":
-                        game.CategoryId = Guid.Parse(update.Value.ToString());
-                        break;
-                    case "isforSale":
-                        game.IsForSale = Convert.ToBoolean(update.Value);
-                        break;
-                }
-            }
+            ValidateRoleForUpdate(role);
+            var game = await _gameRepository.GetByIdAsync(id, role) ?? throw new KeyNotFoundException($"Game {id} not found");
+            ApplyUpdates(game, updates);
             var updatedGame = await _gameRepository.UpdateAsync(game, role);
             updatedGame.AverageRating = _gameRepository.GetAverageRating(updatedGame.Id);
             return updatedGame;
+        }
+
+        private void ValidateRoleForUpdate(UserRole role)
+        {
+            if (role is not (UserRole.Admin or UserRole.Seller))
+                throw new UnauthorizedAccessException("Only admins and sellers can update games");
+        }
+
+        private void ApplyUpdates(GameDetailsDTO game, Dictionary<string, object> updates)
+        {
+            var updateActions = new Dictionary<string, Action<object>>
+            {
+                ["price"] = value => game.Price = Convert.ToDecimal(value),
+                ["title"] = value => game.Title = value?.ToString() ?? string.Empty,
+                ["description"] = value => game.Description = value?.ToString() ?? string.Empty,
+                ["categoryid"] = value => game.CategoryId = Guid.Parse(value.ToString()),
+                ["isforSale"] = value => game.IsForSale = Convert.ToBoolean(value)
+            };
+
+            foreach (var update in updates)
+            {
+                var key = update.Key.ToLower();
+                if (updateActions.TryGetValue(key, out var action))
+                    action(update.Value);
+            }
         }
 
         public async Task DeleteGameAsync(Guid id, UserRole role)

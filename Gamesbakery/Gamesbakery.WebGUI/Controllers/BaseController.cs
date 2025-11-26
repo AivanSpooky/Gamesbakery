@@ -5,10 +5,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Context;
-using ILogger = Serilog.ILogger;
+
 
 namespace Gamesbakery.Controllers
 {
+    using ILogger = Serilog.ILogger;
+
     public abstract class BaseController : Controller
     {
         protected readonly ILogger Logger;

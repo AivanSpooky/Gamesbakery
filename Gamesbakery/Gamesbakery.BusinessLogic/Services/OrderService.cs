@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Gamesbakery.Core;
+using Gamesbakery.Core.DTOs.CartDTO;
 using Gamesbakery.Core.DTOs.OrderDTO;
 using Gamesbakery.Core.DTOs.OrderItemDTO;
+using Gamesbakery.Core.DTOs.UserDTO;
+using Gamesbakery.Core.Entities;
 using Gamesbakery.Core.Repositories;
 
 namespace Gamesbakery.BusinessLogic.Services
@@ -33,37 +36,58 @@ namespace Gamesbakery.BusinessLogic.Services
 
         public async Task<OrderListDTO> CreateOrderAsync(Guid userId, List<Guid> orderItemIds, Guid? curUserId, UserRole role)
         {
-            if (role != UserRole.Admin && userId != curUserId)
-                throw new UnauthorizedAccessException("Can only create orders for yourself");
-            var cart = await _cartRepository.GetByUserIdAsync(userId, role);
-            if (cart == null)
-                throw new InvalidOperationException("Cart not found");
+            ValidateOrderCreationAccess(role, userId, curUserId);
+            var cart = await _cartRepository.GetByUserIdAsync(userId, role) ?? throw new InvalidOperationException("Cart not found");
+            var itemsToProcess = GetItemsToProcess(orderItemIds ?? new List<Guid>(), cart);
+            var user = await GetValidUserAsync(userId, role);
+            var (totalPrice, validItems) = await ValidateAndCalculateItemsAsync(itemsToProcess, role);
+            if (user.Balance < totalPrice) throw new InvalidOperationException($"Insufficient balance: {totalPrice} > {user.Balance}");
+            var createdOrder = await CreateAndSaveOrderAsync(userId, totalPrice, validItems, role);
+            await UpdateUserBalanceAsync(user, totalPrice, role);
+            await _cartRepository.RemoveCartItemsAsync(cart.CartId, itemsToProcess, role);
+            return MapToOrderListDTO(createdOrder);
+        }
+
+        private void ValidateOrderCreationAccess(UserRole role, Guid userId, Guid? curUserId)
+        {
+            if (role != UserRole.Admin && userId != curUserId) throw new UnauthorizedAccessException("Can only create orders for yourself");
+        }
+
+        private List<Guid> GetItemsToProcess(List<Guid> orderItemIds, CarTDTO cart)
+        {
             var cartOrderItemIds = cart.Items.Select(ci => ci.OrderItemId).ToList();
-            List<Guid> itemsToProcess = orderItemIds == null || !orderItemIds.Any() ? cartOrderItemIds : orderItemIds;
-            if (itemsToProcess.Except(cartOrderItemIds).Any())
-                throw new InvalidOperationException($"Some items not found in cart");
-            if (!itemsToProcess.Any())
-                throw new InvalidOperationException("No valid items to process");
+            var items = orderItemIds.Any() ? orderItemIds : cartOrderItemIds;
+            if (items.Except(cartOrderItemIds).Any()) throw new InvalidOperationException("Some items not found in cart");
+            if (!items.Any()) throw new InvalidOperationException("No valid items to process");
+            return items;
+        }
+
+        private async Task<UserProfileDTO> GetValidUserAsync(Guid userId, UserRole role)
+        {
             var user = await _userRepository.GetByIdAsync(userId, role);
-            if (user == null || user.IsBlocked)
-                throw new InvalidOperationException("Invalid or blocked user");
+            if (user == null || user.IsBlocked) throw new InvalidOperationException("Invalid or blocked user");
+            return user;
+        }
+
+        private async Task<(decimal TotalPrice, List<OrderItemDTO> ValidItems)> ValidateAndCalculateItemsAsync(List<Guid> itemsToProcess, UserRole role)
+        {
             decimal totalPrice = 0;
             var validItems = new List<OrderItemDTO>();
             foreach (var orderItemId in itemsToProcess)
             {
                 var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId, UserRole.Admin, null);
-                if (orderItem?.OrderId != null)
-                    throw new InvalidOperationException($"OrderItem {orderItemId} already in order");
-                if (orderItem?.IsGifted == true)
-                    throw new InvalidOperationException($"OrderItem {orderItemId} already gifted");
+                if (orderItem?.OrderId != null) throw new InvalidOperationException($"OrderItem {orderItemId} already in order");
+                if (orderItem?.IsGifted == true) throw new InvalidOperationException($"OrderItem {orderItemId} already gifted");
                 var game = await _gameRepository.GetByIdAsync(orderItem.GameId, role);
-                if (game?.IsForSale != true)
-                    throw new InvalidOperationException($"Game {orderItem.GameId} not for sale");
+                if (game?.IsForSale != true) throw new InvalidOperationException($"Game {orderItem.GameId} not for sale");
                 totalPrice += game.Price;
                 validItems.Add(orderItem);
             }
-            if (user.Balance < totalPrice)
-                throw new InvalidOperationException($"Insufficient balance: {totalPrice} > {user.Balance}");
+            return (totalPrice, validItems);
+        }
+
+        private async Task<OrderDetailsDTO> CreateAndSaveOrderAsync(Guid userId, decimal totalPrice, List<OrderItemDTO> validItems, UserRole role)
+        {
             var orderDto = new OrderDetailsDTO
             {
                 Id = Guid.NewGuid(),
@@ -80,16 +104,24 @@ namespace Gamesbakery.BusinessLogic.Services
                 item.OrderId = createdOrder.Id;
                 await _orderItemRepository.UpdateAsync(item, UserRole.Admin);
             }
+            return createdOrder;
+        }
+
+        private async Task UpdateUserBalanceAsync(UserProfileDTO user, decimal totalPrice, UserRole role)
+        {
             user.Balance -= totalPrice;
             await _userRepository.UpdateAsync(user, role);
-            await _cartRepository.RemoveCartItemsAsync(cart.CartId, itemsToProcess, role);
+        }
+
+        private OrderListDTO MapToOrderListDTO(OrderDetailsDTO order)
+        {
             return new OrderListDTO
             {
-                OrderId = createdOrder.Id,
-                OrderDate = createdOrder.OrderDate,
-                TotalAmount = createdOrder.TotalPrice,
-                IsCompleted = createdOrder.IsCompleted,
-                IsOverdue = createdOrder.IsOverdue
+                OrderId = order.Id,
+                OrderDate = order.OrderDate,
+                TotalAmount = order.TotalPrice,
+                IsCompleted = order.IsCompleted,
+                IsOverdue = order.IsOverdue
             };
         }
 

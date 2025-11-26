@@ -32,19 +32,7 @@ namespace Gamesbakery.Core.Entities
 
         public User(Guid id, string username, string email, DateTime registrationDate, string country, string password, bool isBlocked, decimal balance)
         {
-            if (string.IsNullOrWhiteSpace(username) || username.Length > 50)
-                throw new ArgumentException("Username must be between 1 and 50 characters.", nameof(username));
-            if (string.IsNullOrWhiteSpace(email) || email.Length > 100)
-                throw new ArgumentException("Email must be between 1 and 100 characters.", nameof(email));
-            if (string.IsNullOrWhiteSpace(country) || country.Length > 300)
-                throw new ArgumentException("Country must be between 1 and 300 characters.", nameof(country));
-            if (!CountryProvider.IsValidCountry(country))
-                throw new ArgumentException($"Country '{country}' is not a valid country name.", nameof(country));
-            if (string.IsNullOrWhiteSpace(password) || password.Length > 100)
-                throw new ArgumentException("Password must be between 1 and 100 characters.", nameof(password));
-            if (balance < 0)
-                throw new ArgumentException("Balance cannot be negative.", nameof(balance));
-
+            ValidateConstructorParameters(username, email, country, password, balance);
             Id = id;
             Username = username;
             Email = email;
@@ -58,6 +46,33 @@ namespace Gamesbakery.Core.Entities
             Reviews = new List<Review>();
             SentGifts = new List<Gift>();
             ReceivedGifts = new List<Gift>();
+        }
+
+        private void ValidateConstructorParameters(string username, string email, string country, string password, decimal balance)
+        {
+            ValidateString(username, 1, 50, nameof(username));
+            ValidateString(email, 1, 100, nameof(email));
+            ValidateCountry(country);
+            ValidateString(password, 1, 100, nameof(password));
+            ValidateBalance(balance);
+        }
+
+        private void ValidateString(string value, int minLength, int maxLength, string paramName)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length > maxLength)
+                throw new ArgumentException($"{paramName} must be between {minLength} and {maxLength} characters.", paramName);
+        }
+
+        private void ValidateCountry(string country)
+        {
+            if (string.IsNullOrWhiteSpace(country) || country.Length > 300 || !CountryProvider.IsValidCountry(country))
+                throw new ArgumentException("Country must be a valid name between 1 and 300 characters.", nameof(country));
+        }
+
+        private void ValidateBalance(decimal balance)
+        {
+            if (balance < 0)
+                throw new ArgumentException("Balance cannot be negative.", nameof(balance));
         }
 
         public void UpdateBalance(decimal newBalance)

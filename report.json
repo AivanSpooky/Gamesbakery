@@ -1,38 +1,30 @@
-{
-  "files": {
-    "C:\\Users\\User\\Desktop\\study\\bauman\\6-sem\\Gamesbakery\\**\\*.cs": {}
-  },
-  "overall": {
-    "comment_ratio": 0.0,
-    "cyclomatic_complexity": 2,
-    "fanout_external": 0,
-    "fanout_internal": 0,
-    "halstead_bugprop": 0.001,
-    "halstead_difficulty": 0.5,
-    "halstead_effort": 1.0,
-    "halstead_timerequired": 0.056,
-    "halstead_volume": 2.0,
-    "loc": 0,
-    "maintainability_index": 0,
-    "operands_sum": 0,
-    "operands_uniq": 0,
-    "operators_sum": 0,
-    "operators_uniq": 0,
-    "pylint": 100.0,
-    "tiobe": 49.328,
-    "tiobe_compiler": 0.0,
-    "tiobe_complexity": 95.522,
-    "tiobe_coverage": 100.0,
-    "tiobe_duplication": 100.0,
-    "tiobe_fanout": 100.0,
-    "tiobe_functional": 0.0,
-    "tiobe_security": 0.0,
-    "tiobe_standard": 0.0
-  },
-  "stats": {
-    "max": {},
-    "mean": {},
-    "median": {},
-    "min": {}
-  }
-}
+
+Description:
+  Форматирование кода для соответствия параметрам editorconfig.
+
+Использование:
+  dotnet-format [<PROJECT | SOLUTION>] [command] [options]
+
+Аргументы:
+  <PROJECT | SOLUTION>  Файл проекта или решения. Если файл не указан, команда будет искать его в текущем каталоге. [default: C:\Users\User\Desktop\study\bauman\6-sem\Gamesbakery\]
+
+Параметры:
+  --diagnostics <diagnostics>                                              Список идентификаторов диагностики, разделенных пробелами, который будет использоваться в качестве фильтра при исправлении стиля кода или сторонних проблем.
+  --exclude-diagnostics <exclude-diagnostics>                              Список идентификаторов диагностики, разделенных пробелами, который будет игнорироваться при исправлении стиля кода или сторонних проблем.
+  --severity <error|hidden|info|warn>                                      Серьезность диагностики для исправления. Допустимые значения: info, warn и error.
+  --no-restore                                                             Не выполняет неявное восстановление перед форматированием.
+  --verify-no-changes                                                      Убедитесь, что изменения форматирования не будут выполнены. Завершается ненулевым кодом завершения, если какие-либо файлы были отформатированы.
+  --include <include>                                                      Список относительных путей к файлам и папкам, включаемым в форматирование. Если список пуст, форматируются все файлы.
+  --exclude <exclude>                                                      Список относительных путей к файлам и папкам, исключаемым из форматирования.
+  --include-generated                                                      Файлы форматирования, созданные пакетом SDK.
+  -v, --verbosity <d|detailed|diag|diagnostic|m|minimal|n|normal|q|quiet>  Задает уровень детализации. Допустимые значения: q (без вывода подробных сведений), m (минимальный), n (нормальный), d (подробный) и diag (диагностика)
+  --binarylog <binary-log-path>                                            Запись всех сведений о загрузке проекта или решения в двоичный файл журнала.
+  --report <report-path>                                                   Принимает путь к файлу. Если путь к файлу указан, создает отчет JSON в указанном каталоге.
+  -?, -h, --help                                                           Show help and usage information
+  --version                                                                Показать информацию о версии
+
+Команды:
+  whitespace <PROJECT | SOLUTION>  Запуск форматирования пустого пространства. [default: C:\Users\User\Desktop\study\bauman\6-sem\Gamesbakery\]
+  style <PROJECT | SOLUTION>       Запустите анализаторы стиля кода и примените исправления. [default: C:\Users\User\Desktop\study\bauman\6-sem\Gamesbakery\]
+  analyzers <PROJECT | SOLUTION>   Запустите сторонние анализаторы и примените исправления. [default: C:\Users\User\Desktop\study\bauman\6-sem\Gamesbakery\]
+

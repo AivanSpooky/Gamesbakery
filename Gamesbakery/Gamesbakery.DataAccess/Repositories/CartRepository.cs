@@ -169,16 +169,24 @@ namespace Gamesbakery.DataAccess.Repositories
             {
                 CartId = entity.CartId,
                 UserId = entity.UserId,
-                Items = entity.Items.Select(ci => new CartItemDTO
-                {
-                    OrderItemId = ci.OrderItemID,
-                    GameId = ci.OrderItem?.GameId ?? Guid.Empty,
-                    GameTitle = ci.OrderItem?.Game?.Title ?? "Unknown",
-                    GamePrice = ci.OrderItem?.Game?.Price ?? 0,
-                    Key = ci.OrderItem?.Key,
-                    SellerId = ci.OrderItem?.SellerId ?? Guid.Empty,
-                    SellerName = ci.OrderItem?.Seller?.SellerName ?? "Unknown"
-                }).ToList()
+                Items = entity.Items.Select(MapToCartItemDTO).ToList()
+            };
+        }
+
+        private CartItemDTO MapToCartItemDTO(CartItem ci)
+        {
+            var orderItem = ci.OrderItem ?? new OrderItem();
+            var game = orderItem.Game ?? new Game();
+            var seller = orderItem.Seller ?? new Seller();
+            return new CartItemDTO
+            {
+                OrderItemId = ci.OrderItemID,
+                GameId = orderItem.GameId,
+                GameTitle = game.Title ?? "Unknown",
+                GamePrice = game.Price,
+                Key = orderItem.Key,
+                SellerId = orderItem.SellerId,
+                SellerName = seller.SellerName ?? "Unknown"
             };
         }
     }
