@@ -263,7 +263,6 @@ namespace Gamesbakery.DataSeeder
                 .RuleFor(o => o.Id, f => Guid.NewGuid())
                 .RuleFor(o => o.UserId, f => userIds[random.Next(userIds.Count)])
                 .RuleFor(o => o.OrderDate, f => f.Date.Past(1))
-                .RuleFor(o => o.Price, f => f.Random.Decimal(10, 500))
                 .RuleFor(o => o.IsCompleted, f => f.Random.Bool())
                 .RuleFor(o => o.IsOverdue, f => f.Random.Bool());
 

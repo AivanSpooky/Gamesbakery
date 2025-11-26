@@ -67,22 +67,22 @@ namespace Gamesbakery.ConsoleUI
                 }
             }
 
-            // Создаем ConsoleUI, передавая зависимости и учетные данные для аутентификации
-            var consoleUI = new ConsoleUI(
-                serviceProvider.GetService<IUserService>(),
-                serviceProvider.GetService<IGameService>(),
-                serviceProvider.GetService<IOrderService>(),
-                serviceProvider.GetService<IReviewService>(),
-                serviceProvider.GetService<IOrderStatusScheduler>(),
-                serviceProvider.GetService<IAuthenticationService>(),
-                serviceProvider.GetService<ISellerService>(),
-                serviceProvider.GetService<GamesbakeryDbContext>(), // Добавляем контекст
-                authUsername,
-                authPassword
-            );
+            //// Создаем ConsoleUI, передавая зависимости и учетные данные для аутентификации
+            //var consoleUI = new ConsoleUI(
+            //    serviceProvider.GetService<IUserService>(),
+            //    serviceProvider.GetService<IGameService>(),
+            //    serviceProvider.GetService<IOrderService>(),
+            //    serviceProvider.GetService<IReviewService>(),
+            //    serviceProvider.GetService<IOrderStatusScheduler>(),
+            //    serviceProvider.GetService<IAuthenticationService>(),
+            //    serviceProvider.GetService<ISellerService>(),
+            //    serviceProvider.GetService<GamesbakeryDbContext>(), // Добавляем контекст
+            //    authUsername,
+            //    authPassword
+            //);
 
-            // Запуск приложения
-            await consoleUI.RunAsync();
+            //// Запуск приложения
+            //await consoleUI.RunAsync();
         }
 
         private static string ModifyConnectionString(string baseConnectionString, string username, string password)

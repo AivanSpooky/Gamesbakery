@@ -2,6 +2,6 @@
 {
     public interface IConsoleUI
     {
-        Task RunAsync();
+        //Task RunAsync();
     }
 }
